@@ -16,7 +16,12 @@ const startServer = async () => {
 
   validateConfig();
 
-  await connectDB();
+  // Only connect to database if DB_HOST is provided
+  if (process.env.DB_HOST) {
+    await connectDB();
+  } else {
+    console.log('\x1b[33m⚠️  No database configured, running without database\x1b[0m');
+  }
 
   app.use(helmet());
   app.use(cors(corsOptions));
