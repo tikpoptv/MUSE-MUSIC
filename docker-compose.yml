@@ -6,9 +6,10 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
     ports:
-      - "7661:3000"
+      - "${FRONTEND_PORT:-7661}:3000"
     environment:
-      - NODE_ENV=production
+      - NODE_ENV=${NODE_ENV:-production}
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:7662}
     depends_on:
       - backend
     networks:
@@ -19,11 +20,16 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     ports:
-      - "7662:3001"
+      - "${BACKEND_PORT:-7662}:3001"
     environment:
-      - NODE_ENV=production
+      - NODE_ENV=${NODE_ENV:-production}
       - PORT=3001
-      - FRONTEND_URL=http://localhost:7661
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:7661}
+      - DB_HOST=${DB_HOST:-localhost}
+      - DB_PORT=${DB_PORT:-5432}
+      - DB_NAME=${DB_NAME:-muse_music}
+      - DB_USER=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD:-password}
     networks:
       - muse-network
 
