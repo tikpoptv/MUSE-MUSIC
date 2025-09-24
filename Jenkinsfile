@@ -1,7 +1,5 @@
 pipeline {
-    agent {
-        docker { image 'node:20' } // ใช้ container ที่มี Node.js มาให้เลย
-    }
+    agent any
 
     stages {
         stage('Checkout') {
@@ -12,21 +10,33 @@ pipeline {
 
         stage('Install Dependencies') {
             steps {
-                sh 'npm ci --prefix frontend'
-                sh 'npm ci --prefix backend'
+                script {
+                    docker.image('node:20').inside {
+                        sh 'npm ci --prefix frontend'
+                        sh 'npm ci --prefix backend'
+                    }
+                }
             }
         }
 
         stage('Lint & Test') {
             parallel {
-                stage('Frontend Lint') {
+                stage('Frontend') {
                     steps {
-                        sh 'npm run lint --prefix frontend || true'
+                        script {
+                            docker.image('node:20').inside {
+                                sh 'npm run lint --prefix frontend || true'
+                            }
+                        }
                     }
                 }
-                stage('Backend Test') {
+                stage('Backend') {
                     steps {
-                        sh 'npm test --prefix backend || true'
+                        script {
+                            docker.image('node:20').inside {
+                                sh 'npm test --prefix backend || true'
+                            }
+                        }
                     }
                 }
             }
@@ -35,10 +45,10 @@ pipeline {
 
     post {
         success {
-            echo "✅ CI checks passed! Ready for Coolify to deploy."
+            echo "✅ CI checks passed! Coolify can deploy."
         }
         failure {
-            echo "❌ CI failed! Please fix errors before deploying."
+            echo "❌ CI failed! Please fix before Coolify deploys."
         }
     }
 }
