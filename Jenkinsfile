@@ -8,47 +8,33 @@ pipeline {
             }
         }
 
-        stage('Install Dependencies') {
+        stage('Install & Build Frontend') {
             steps {
-                script {
-                    docker.image('node:20').inside {
-                        sh 'npm ci --prefix frontend'
-                        sh 'npm ci --prefix backend'
-                    }
-                }
+                sh '''
+                    cd frontend
+                    npm ci
+                    npm run build
+                '''
             }
         }
 
-        stage('Lint & Test') {
-            parallel {
-                stage('Frontend') {
-                    steps {
-                        script {
-                            docker.image('node:20').inside {
-                                sh 'npm run lint --prefix frontend || true'
-                            }
-                        }
-                    }
-                }
-                stage('Backend') {
-                    steps {
-                        script {
-                            docker.image('node:20').inside {
-                                sh 'npm test --prefix backend || true'
-                            }
-                        }
-                    }
-                }
+        stage('Install & Test Backend') {
+            steps {
+                sh '''
+                    cd backend
+                    npm ci
+                    npm test || true
+                '''
             }
         }
     }
 
     post {
         success {
-            echo "✅ CI checks passed! Coolify can deploy."
+            echo "✅ CI passed. Coolify will deploy automatically."
         }
         failure {
-            echo "❌ CI failed! Please fix before Coolify deploys."
+            echo "❌ CI failed. Please fix before merging."
         }
     }
 }
