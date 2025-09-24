@@ -2,12 +2,7 @@ pipeline {
     agent any
 
     tools {
-        nodejs "NodeJS_24"
-    }
-
-    environment {
-        // กำหนด environment ถ้าจำเป็น
-        NODE_ENV = 'production'
+        nodejs "NodeJS_24" 
     }
 
     stages {
@@ -17,39 +12,59 @@ pipeline {
             }
         }
 
-        stage('Install dependencies') {
+        stage('Install Frontend') {
             steps {
-                sh 'npm install'
+                dir('frontend') {
+                    sh 'npm install'
+                }
             }
         }
 
-        stage('Build') {
+        stage('Build Frontend') {
             steps {
-                sh 'npm run build'
+                dir('frontend') {
+                    sh 'npm run build'
+                }
             }
         }
 
-        stage('Test') {
+        stage('Install Backend') {
             steps {
-                // ถ้าไม่มี test จะไม่ fail แต่แนะนำให้มี
-                sh 'npm test || echo "no tests found"'
+                dir('backend') {
+                    sh 'npm install'
+                }
+            }
+        }
+
+        stage('Test Backend') {
+            steps {
+                dir('backend') {
+                    sh 'npm test || echo "no backend tests"'
+                }
+            }
+        }
+
+        stage('Run Backend') {
+            steps {
+                dir('backend') {
+                    sh 'npm run start || echo "no backend start script"'
+                }
             }
         }
 
         stage('Deploy') {
             steps {
-                echo 'Deploy step here (เช่น docker build & push, หรือ trigger coolify)'
-                // ตัวอย่าง: sh 'docker build -t muse-music . && docker push yourrepo/muse-music:latest'
+                echo '🚀 Deploy step (เชื่อม Docker หรือ Coolify ได้ตรงนี้)'
             }
         }
     }
 
     post {
         success {
-            echo '✅ Build & deploy success!'
+            echo '✅ Build & Deploy Success!'
         }
         failure {
-            echo '❌ Build failed, check logs.'
+            echo '❌ Build Failed, check logs!'
         }
     }
 }
