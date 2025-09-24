@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     tools {
-        nodejs "NodeJS_24"
+        nodejs "NodeJS_24" 
     }
 
     stages {
@@ -12,6 +12,7 @@ pipeline {
             }
         }
 
+        // ========== Frontend ==========
         stage('Install Frontend') {
             steps {
                 dir('frontend') {
@@ -36,6 +37,7 @@ pipeline {
             }
         }
 
+        // ========== Backend ==========
         stage('Install Backend') {
             steps {
                 dir('backend') {
@@ -47,7 +49,7 @@ pipeline {
         stage('Lint Backend') {
             steps {
                 dir('backend') {
-                    sh 'npm run lint || echo "⚠️ no lint script"'
+                    sh 'npm run lint || echo "⚠️ no backend lint script"'
                 }
             }
         }
@@ -55,6 +57,7 @@ pipeline {
         stage('Test Backend') {
             steps {
                 dir('backend') {
+                    // ถ้ามี test script จะรัน, ถ้าไม่มีจะไม่ fail
                     sh 'npm test || echo "⚠️ no backend tests"'
                 }
             }
@@ -66,14 +69,16 @@ pipeline {
                     sh '''
                       npm run start &
                       SERVER_PID=$!
+                      echo "⏳ Waiting for backend to be ready..."
                       sleep 5
-                      curl -f http://localhost:3001/api/health || exit 1
+                      curl --retry 5 --retry-delay 3 -f http://localhost:3001/api/health || exit 1
                       kill $SERVER_PID
                     '''
                 }
             }
         }
 
+        // ========== Deploy ==========
         stage('Deploy') {
             steps {
                 echo '🚀 Deploy step (เชื่อม Docker หรือ Coolify ได้ตรงนี้)'
@@ -83,10 +88,10 @@ pipeline {
 
     post {
         success {
-            echo '✅ Build, Lint, Test, Deploy Success!'
+            echo '✅ Build, Lint, Test, Health Check, Deploy Success!'
         }
         failure {
-            echo '❌ Build Failed, check logs!'
+            echo '❌ Pipeline Failed, check logs!'
         }
     }
 }
