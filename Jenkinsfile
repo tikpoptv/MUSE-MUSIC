@@ -84,16 +84,24 @@ pipeline {
         // ========== Deploy ==========
         stage('Deploy to Coolify') {
             steps {
-                withCredentials([string(credentialsId: 'coolify-api-token', variable: 'COOLIFY_TOKEN')]) {
+                withCredentials([
+                    string(credentialsId: 'coolify-token', variable: 'COOLIFY_TOKEN'),
+                    string(credentialsId: 'coolify-uuid-musemusic', variable: 'COOLIFY_UUID')
+                ]) {
                     sh '''
                     echo "🚀 Triggering deploy on Coolify..."
-                    curl -i -X POST https://coolify.phitik.com/api/v1/deployments/deploy \
-                        -H "Authorization: Bearer $COOLIFY_TOKEN" \
-                        -H "Content-Type: application/json" \
-                        -d '{
-                        "projectId": "xggw0oso0co04kgokkkswc0o",
-                        "serviceId": "jsc8ssg08gsssc0o0okwgcss"
-                        }'
+                    RESPONSE=$(curl -s -o response.json -w "%{http_code}" \
+                        -X GET "https://coolify.phitik.com/api/v1/deploy?uuid=$COOLIFY_UUID&force=true" \
+                        -H "Authorization: Bearer $COOLIFY_TOKEN")
+
+                    if [ "$RESPONSE" -ne 200 ]; then
+                        echo "❌ Deploy failed (HTTP $RESPONSE)"
+                        cat response.json
+                        exit 1
+                    fi
+
+                    echo "✅ Deploy triggered successfully!"
+                    cat response.json
                     '''
                 }
             }
