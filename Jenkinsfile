@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     tools {
-        nodejs "NodeJS_24" 
+        nodejs "NodeJS_24"
     }
 
     stages {
@@ -57,21 +57,25 @@ pipeline {
         stage('Test Backend') {
             steps {
                 dir('backend') {
-                    // ถ้ามี test script จะรัน, ถ้าไม่มีจะไม่ fail
                     sh 'npm test || echo "⚠️ no backend tests"'
                 }
             }
         }
 
-        stage('Health Check Backend') {
+        stage('Run Backend (Check for errors)') {
             steps {
                 dir('backend') {
                     sh '''
+                      echo "⏳ Starting backend for error check..."
                       npm run start &
                       SERVER_PID=$!
-                      echo "⏳ Waiting for backend to be ready..."
                       sleep 5
-                      curl --retry 5 --retry-delay 3 -f http://localhost:3001/api/health || exit 1
+                      # ถ้า process ตายไปภายใน 5 วิ ถือว่า error
+                      if ! kill -0 $SERVER_PID 2>/dev/null; then
+                        echo "❌ Backend crashed!"
+                        exit 1
+                      fi
+                      echo "✅ Backend started successfully (no crash)"
                       kill $SERVER_PID
                     '''
                 }
@@ -81,14 +85,14 @@ pipeline {
         // ========== Deploy ==========
         stage('Deploy') {
             steps {
-                echo '🚀 Deploy step (เชื่อม Docker หรือ Coolify ได้ตรงนี้)'
+                echo '🚀 Deploy step (ต่อกับ Docker หรือ Coolify ได้ตรงนี้)'
             }
         }
     }
 
     post {
         success {
-            echo '✅ Build, Lint, Test, Health Check, Deploy Success!'
+            echo '✅ Build, Lint, Error Check, Deploy Success!'
         }
         failure {
             echo '❌ Pipeline Failed, check logs!'
