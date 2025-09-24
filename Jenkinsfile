@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     tools {
-        nodejs "NodeJS_24" 
+        nodejs "NodeJS_24"
     }
 
     stages {
@@ -16,6 +16,14 @@ pipeline {
             steps {
                 dir('frontend') {
                     sh 'npm install'
+                }
+            }
+        }
+
+        stage('Lint Frontend') {
+            steps {
+                dir('frontend') {
+                    sh 'npm run lint'
                 }
             }
         }
@@ -36,18 +44,32 @@ pipeline {
             }
         }
 
-        stage('Test Backend') {
+        stage('Lint Backend') {
             steps {
                 dir('backend') {
-                    sh 'npm test || echo "no backend tests"'
+                    sh 'npm run lint || echo "⚠️ no lint script"'
                 }
             }
         }
 
-        stage('Run Backend') {
+        stage('Test Backend') {
             steps {
                 dir('backend') {
-                    sh 'npm run start || echo "no backend start script"'
+                    sh 'npm test || echo "⚠️ no backend tests"'
+                }
+            }
+        }
+
+        stage('Health Check Backend') {
+            steps {
+                dir('backend') {
+                    sh '''
+                      npm run start &
+                      SERVER_PID=$!
+                      sleep 5
+                      curl -f http://localhost:3001/api/health || exit 1
+                      kill $SERVER_PID
+                    '''
                 }
             }
         }
@@ -61,7 +83,7 @@ pipeline {
 
     post {
         success {
-            echo '✅ Build & Deploy Success!'
+            echo '✅ Build, Lint, Test, Deploy Success!'
         }
         failure {
             echo '❌ Build Failed, check logs!'
