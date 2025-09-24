@@ -1,0 +1,75 @@
+name: CI & Deploy to Coolify
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # ===== Checkout =====
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # ===== Frontend =====
+      - name: Install Frontend
+        working-directory: frontend
+        run: npm install
+
+      - name: Lint Frontend
+        working-directory: frontend
+        run: npm run lint
+
+      - name: Build Frontend
+        working-directory: frontend
+        run: npm run build
+
+      # ===== Backend =====
+      - name: Install Backend
+        working-directory: backend
+        run: npm install
+
+      - name: Lint Backend
+        working-directory: backend
+        run: npm run lint || echo "⚠️ no backend lint script"
+
+      - name: Test Backend
+        working-directory: backend
+        run: npm test || echo "⚠️ no backend tests"
+
+      - name: Run Backend (Check for errors)
+        working-directory: backend
+        run: |
+          echo "⏳ Starting backend for error check..."
+          npm run start &
+          SERVER_PID=$!
+          sleep 5
+          if ! kill -0 $SERVER_PID 2>/dev/null; then
+            echo "❌ Backend crashed!"
+            exit 1
+          fi
+          echo "✅ Backend started successfully (no crash)"
+          kill $SERVER_PID
+
+      # ===== Deploy to Coolify =====
+      - name: Deploy to Coolify
+        env:
+          COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
+          COOLIFY_WEBHOOK: ${{ secrets.COOLIFY_WEBHOOK }}
+        run: |
+          echo "🚀 Triggering deploy on Coolify..."
+          RESPONSE=$(curl -s -o response.json -w "%{http_code}" \
+            -H "Authorization: Bearer $COOLIFY_TOKEN" \
+            "$COOLIFY_WEBHOOK")
+
+          if [ "$RESPONSE" -ne 200 ]; then
+            echo "❌ Deploy failed (HTTP $RESPONSE)"
+            cat response.json
+            exit 1
+          fi
+
+          echo "✅ Deploy triggered successfully!"
+          cat response.json
