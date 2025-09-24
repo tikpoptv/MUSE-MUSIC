@@ -86,22 +86,14 @@ pipeline {
             steps {
                 withCredentials([string(credentialsId: 'coolify-api-token', variable: 'COOLIFY_TOKEN')]) {
                     sh '''
-                      echo "🚀 Triggering deploy on Coolify..."
-                      curl -s -o /dev/null -w "%{http_code}" \
-                        -X POST https://coolify.phitik.com/api/v1/deployments/deploy \
+                    echo "🚀 Triggering deploy on Coolify..."
+                    curl -i -X POST https://coolify.phitik.com/api/v1/deployments/deploy \
                         -H "Authorization: Bearer $COOLIFY_TOKEN" \
                         -H "Content-Type: application/json" \
                         -d '{
-                          "projectId": "xggw0oso0co04kgokkkswc0o",
-                          "serviceId": "jsc8ssg08gsssc0o0okwgcss"
-                        }' | grep 200 > /dev/null
-
-                      if [ $? -eq 0 ]; then
-                        echo "✅ Deploy triggered successfully on Coolify"
-                      else
-                        echo "❌ Deploy trigger failed"
-                        exit 1
-                      fi
+                        "projectId": "xggw0oso0co04kgokkkswc0o",
+                        "serviceId": "jsc8ssg08gsssc0o0okwgcss"
+                        }'
                     '''
                 }
             }
