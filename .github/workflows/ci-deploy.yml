@@ -55,21 +55,22 @@ jobs:
           kill $SERVER_PID
 
       # ===== Deploy to Coolify =====
-      - name: Deploy to Coolify
+            - name: Deploy to Coolify
         env:
           COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
           COOLIFY_WEBHOOK: ${{ secrets.COOLIFY_WEBHOOK }}
         run: |
           echo "🚀 Triggering deploy on Coolify..."
-          RESPONSE=$(curl -s -o response.json -w "%{http_code}" \
+          STATUS=$(curl -s -o response.json -w "%{http_code}" \
             -H "Authorization: Bearer $COOLIFY_TOKEN" \
             "$COOLIFY_WEBHOOK")
 
-          if [ "$RESPONSE" -ne 200 ]; then
-            echo "❌ Deploy failed (HTTP $RESPONSE)"
-            cat response.json
+          echo "HTTP status = $STATUS"
+          cat response.json || true
+
+          if [ "$STATUS" != "200" ] && [ "$STATUS" != "204" ]; then
+            echo "❌ Deploy failed (HTTP $STATUS)"
             exit 1
           fi
 
           echo "✅ Deploy triggered successfully!"
-          cat response.json
