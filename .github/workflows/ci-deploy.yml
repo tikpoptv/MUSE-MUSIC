@@ -10,8 +10,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # ===== Checkout =====
-      - name: Checkout Repository
+      - name: Checkout
         uses: actions/checkout@v4
 
       # ===== Frontend =====
@@ -55,21 +54,21 @@ jobs:
           kill $SERVER_PID
 
       # ===== Deploy to Coolify =====
-            - name: Deploy to Coolify
+      - name: Deploy to Coolify
         env:
           COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
-          COOLIFY_WEBHOOK: ${{ secrets.COOLIFY_WEBHOOK }}
+          COOLIFY_UUID: ${{ secrets.COOLIFY_UUID }}
         run: |
           echo "🚀 Triggering deploy on Coolify..."
-          STATUS=$(curl -s -o response.json -w "%{http_code}" \
-            -H "Authorization: Bearer $COOLIFY_TOKEN" \
-            "$COOLIFY_WEBHOOK")
+          RESPONSE=$(curl -s -o response.json -w "%{http_code}" \
+            -X GET "https://coolify.phitik.com/api/v1/deploy?uuid=$COOLIFY_UUID&force=true" \
+            -H "Authorization: Bearer $COOLIFY_TOKEN")
 
-          echo "HTTP status = $STATUS"
+          echo "HTTP status = $RESPONSE"
           cat response.json || true
 
-          if [ "$STATUS" != "200" ] && [ "$STATUS" != "204" ]; then
-            echo "❌ Deploy failed (HTTP $STATUS)"
+          if [ "$RESPONSE" -ne 200 ]; then
+            echo "❌ Deploy failed (HTTP $RESPONSE)"
             exit 1
           fi
 
