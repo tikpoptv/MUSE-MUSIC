@@ -1,38 +1,31 @@
 pipeline {
     agent any
-
     stages {
-        stage('Checkout') {
-            steps {
-                checkout scm
-            }
-        }
-
         stage('Install & Build Frontend') {
+            agent {
+                docker {
+                    image 'node:18-alpine'   // ใช้ Node.js official image
+                    args '-u root:root'     // ให้สิทธิ์ root ถ้าต้องติดตั้งเพิ่ม
+                }
+            }
             steps {
-                sh '''
-                    cd frontend
-                    npm ci
-                    npm run build
-                '''
+                dir('frontend') {
+                    sh 'npm ci'
+                    sh 'npm run build'
+                }
             }
         }
 
         stage('Install & Test Backend') {
             steps {
-                sh '''
-                    cd backend
-                    npm ci
-                    npm test || true
-                '''
+                dir('backend') {
+                    sh 'npm ci'
+                    sh 'npm test'
+                }
             }
         }
     }
-
     post {
-        success {
-            echo "✅ CI passed. Coolify will deploy automatically."
-        }
         failure {
             echo "❌ CI failed. Please fix before merging."
         }
