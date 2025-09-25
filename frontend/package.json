@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "NEXT_PUBLIC_NODE_ENV=${NEXT_PUBLIC_NODE_ENV:-development} next dev --turbopack -p ${NEXT_PUBLIC_PORT:-3000}",
-    "build": "NEXT_PUBLIC_NODE_ENV=${NEXT_PUBLIC_NODE_ENV:-production} next build --turbopack",
+    "build": "NEXT_PUBLIC_NODE_ENV=${NEXT_PUBLIC_NODE_ENV:-production} next build",
     "start": "NEXT_PUBLIC_NODE_ENV=${NEXT_PUBLIC_NODE_ENV:-production} next start -p ${NEXT_PUBLIC_PORT:-3000}",
     "lint": "eslint"
   },
