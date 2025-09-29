@@ -2,10 +2,37 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  useEffect(() => {
+    const handleResize = () => {
+      const searchContainer = document.getElementById('search-container');
+      const navContainer = document.getElementById('nav-container');
+      const hamburgerButton = document.getElementById('hamburger-button');
+      const mobileMenu = document.getElementById('mobile-menu');
+
+      if (window.innerWidth <= 1100) {
+        // Mobile mode
+        if (searchContainer) searchContainer.style.display = 'none';
+        if (navContainer) navContainer.style.display = 'none';
+        if (hamburgerButton) hamburgerButton.style.display = 'inline-flex';
+        if (mobileMenu) mobileMenu.style.display = 'block';
+      } else {
+        // Desktop mode
+        if (searchContainer) searchContainer.style.display = 'block';
+        if (navContainer) navContainer.style.display = 'flex';
+        if (hamburgerButton) hamburgerButton.style.display = 'none';
+        if (mobileMenu) mobileMenu.style.display = 'none';
+      }
+    };
+
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   return (
     <nav className="bg-white shadow-sm border-b border-gray-200">
@@ -21,37 +48,61 @@ export default function Navbar() {
                 className="w-5 h-5 sm:w-6 sm:h-6"
               />
               
-              <span className="text-lg md:text-2xl font-bold text-black tracking-wider">
+              <span className="text-sm md:text-sm xl:text-2xl font-bold text-black tracking-wider">
                 MUSE MUSIC
               </span>
             </Link>
+            
+            <div className="ml-4 pr-2 flex-shrink" id="search-container" style={{ display: 'block' }}>
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Search song by name, artist, etc."
+                  className="px-4 pl-4 pr-10 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#7B61FF] focus:border-transparent text-sm"
+                  style={{ width: '435px', height: '40px', color: '#1a1a1a', borderRadius: '12px', minWidth: '200px', maxWidth: '435px' }}
+                />
+                <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                  <svg 
+                    className="h-4 w-4" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    viewBox="0 0 24 24"
+                    style={{ color: '#8A73FF' }}
+                  >
+                    <path 
+                      strokeLinecap="round" 
+                      strokeLinejoin="round" 
+                      strokeWidth={2} 
+                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" 
+                    />
+                  </svg>
+                </div>
+              </div>
+            </div>
           </div>
 
-          <div className="hidden md:flex items-center space-x-8">
+          <div className="items-center space-x-8" id="nav-container" style={{ display: 'flex' }}>
             <Link 
               href="/" 
-              className="text-gray-700 hover:text-black transition-colors duration-200 font-medium"
-              style={{ fontSize: '17px' }}
+              className="text-gray-700 hover:text-black transition-colors duration-200 font-medium text-xs md:text-xs xl:text-sm"
             >
               Home
             </Link>
             <Link 
               href="/for-you" 
-              className="text-gray-700 hover:text-black transition-colors duration-200 font-medium"
-              style={{ fontSize: '17px' }}
+              className="text-gray-700 hover:text-black transition-colors duration-200 font-medium text-xs md:text-xs xl:text-sm"
             >
               For you
             </Link>
             <Link 
               href="/archive" 
-              className="text-gray-700 hover:text-black transition-colors duration-200 font-medium"
-              style={{ fontSize: '17px' }}
+              className="text-gray-700 hover:text-black transition-colors duration-200 font-medium text-xs md:text-xs xl:text-sm"
             >
               Archive
             </Link>
             <Link 
               href="/login"
-              className="bg-[#7B61FF] hover:bg-[#6B51EF] text-white rounded-2xl font-medium transition-all duration-200 flex items-center justify-center space-x-2 shadow-lg hover:shadow-xl transform hover:scale-105"
+              className="bg-[#7B61FF] hover:bg-[#6B51EF] text-white rounded-2xl font-medium transition-all duration-200 flex items-center justify-center space-x-2 shadow-lg hover:shadow-xl transform hover:scale-105 text-xs md:text-xs xl:text-sm"
               style={{ width: '142px', height: '48px' }}
             >
               <span>Sign up</span>
@@ -72,8 +123,10 @@ export default function Navbar() {
 
           <button
             onClick={() => setIsMenuOpen(!isMenuOpen)}
-            className="md:hidden inline-flex items-center justify-center p-2 rounded-md text-gray-700 hover:text-black hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-[#7B61FF] transition-colors duration-200"
+            className="inline-flex items-center justify-center p-2 rounded-md text-gray-700 hover:text-black hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-[#7B61FF] transition-colors duration-200"
             aria-label="Toggle menu"
+            id="hamburger-button"
+            style={{ display: 'none' }}
           >
             <svg 
               className={`${isMenuOpen ? 'hidden' : 'block'} h-6 w-6 transition-opacity duration-200`} 
@@ -94,12 +147,39 @@ export default function Navbar() {
           </button>
         </div>
 
-        <div className={`md:hidden transition-all duration-300 ease-in-out ${
+        <div className={`transition-all duration-300 ease-in-out ${
           isMenuOpen 
             ? 'max-h-96 opacity-100' 
             : 'max-h-0 opacity-0 overflow-hidden'
-        }`}>
+        }`} id="mobile-menu" style={{ display: 'none' }}>
           <div className="px-2 pt-2 pb-4 space-y-1 bg-white border-t border-gray-200">
+            <div className="px-3 py-3">
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Search song by name, artist, etc."
+                  className="w-full px-4 pl-4 pr-10 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#7B61FF] focus:border-transparent text-sm"
+                  style={{ height: '40px', color: '#1a1a1a', borderRadius: '12px' }}
+                />
+                <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                  <svg 
+                    className="h-4 w-4" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    viewBox="0 0 24 24"
+                    style={{ color: '#8A73FF' }}
+                  >
+                    <path 
+                      strokeLinecap="round" 
+                      strokeLinejoin="round" 
+                      strokeWidth={2} 
+                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" 
+                    />
+                  </svg>
+                </div>
+              </div>
+            </div>
+            
             <Link 
               href="/" 
               className="block px-3 py-3 text-gray-700 hover:text-black hover:bg-gray-50 rounded-md font-medium transition-colors duration-200"
