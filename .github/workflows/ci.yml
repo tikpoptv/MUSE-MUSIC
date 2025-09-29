@@ -46,7 +46,7 @@ jobs:
     - name: Run backend ESLint
       run: |
         cd backend
-        npx eslint@8 . --ext .js
+        npm run lint
         
     - name: Check backend syntax
       run: |
