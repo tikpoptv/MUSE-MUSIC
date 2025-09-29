@@ -6,6 +6,9 @@
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
+    "migrate": "node database/scripts/migrate.js",
+    "migrate:dev": "NODE_ENV=development node database/scripts/migrate.js",
+    "migrate:prod": "NODE_ENV=production node database/scripts/migrate.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": ["music", "api", "express", "nodejs"],
