@@ -1,5 +1,6 @@
 const { Pool } = require('pg');
 const { config } = require('./env');
+const { logger } = require('../middleware/logger');
 
 const pool = new Pool({
   user: config.database.user,
@@ -13,22 +14,22 @@ const pool = new Pool({
 });
 
 pool.on('connect', () => {
-  console.log('\x1b[32m✅ Connected to PostgreSQL database\x1b[0m');
+  logger.info('✅ Connected to PostgreSQL database');
 });
 
 pool.on('error', (err) => {
-  console.error('\x1b[31m❌ PostgreSQL connection error:\x1b[0m', err);
+  logger.error('❌ PostgreSQL connection error:', err);
   process.exit(-1);
 });
 
 const connectDB = async () => {
   try {
     const client = await pool.connect();
-    console.log('\x1b[36m🔗 PostgreSQL connection established\x1b[0m');
+    logger.info('🔗 PostgreSQL connection established');
     client.release();
   } catch (error) {
-    console.error('\x1b[31m❌ Database connection failed:\x1b[0m', error.message);
-    console.error('\x1b[31m💥 Server cannot start without database connection\x1b[0m');
+    logger.error('❌ Database connection failed:', error.message);
+    logger.error('💥 Server cannot start without database connection');
     process.exit(1);
   }
 };

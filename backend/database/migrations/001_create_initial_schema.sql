@@ -75,6 +75,8 @@ CREATE TABLE Songs (
     duration INT, -- duration in seconds
     filePath VARCHAR(500), -- path to audio file
     isActive BOOLEAN DEFAULT TRUE,
+    approved BOOLEAN DEFAULT FALSE,
+    approvedBy UUID, -- who approved this song
     playCount INT DEFAULT 0,
     popularity INT DEFAULT 0,
     createdBy UUID, -- who added this song
@@ -82,7 +84,8 @@ CREATE TABLE Songs (
     createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (createdBy) REFERENCES Users(userID) ON DELETE SET NULL,
-    FOREIGN KEY (updatedBy) REFERENCES Users(userID) ON DELETE SET NULL
+    FOREIGN KEY (updatedBy) REFERENCES Users(userID) ON DELETE SET NULL,
+    FOREIGN KEY (approvedBy) REFERENCES Users(userID) ON DELETE SET NULL
 );
 
 -- =========================
@@ -153,6 +156,7 @@ CREATE TABLE SongAIProcessing (
     
     -- Overall Processing Status
     status VARCHAR(20) DEFAULT 'completed', -- 'processing', 'completed', 'failed'
+    isCompleteProcessing BOOLEAN DEFAULT FALSE, -- whether AI generated all 3 components (summary, translation, mood)
     errorMessage TEXT,
     
     -- User tracking
@@ -208,7 +212,7 @@ CREATE TABLE History (
 CREATE TABLE UserSessions (
     sessionID UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     userID UUID NOT NULL,
-    deviceInfo VARCHAR(100), -- mobile, desktop, tablet
+    deviceInfo VARCHAR(200), -- mobile, desktop, tablet
     ipAddress INET,
     userAgent TEXT,
     isActive BOOLEAN DEFAULT TRUE,
