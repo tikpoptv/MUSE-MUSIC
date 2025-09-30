@@ -37,6 +37,33 @@ export default function Navbar() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  useEffect(() => {
+    const handleResize = () => {
+      const searchContainer = document.getElementById('search-container');
+      const navContainer = document.getElementById('nav-container');
+      const hamburgerButton = document.getElementById('hamburger-button');
+      const mobileMenu = document.getElementById('mobile-menu');
+
+      if (window.innerWidth <= 1100) {
+        // Mobile mode
+        if (searchContainer) searchContainer.style.display = 'none';
+        if (navContainer) navContainer.style.display = 'none';
+        if (hamburgerButton) hamburgerButton.style.display = 'inline-flex';
+        if (mobileMenu) mobileMenu.style.display = 'block';
+      } else {
+        // Desktop mode
+        if (searchContainer) searchContainer.style.display = 'block';
+        if (navContainer) navContainer.style.display = 'flex';
+        if (hamburgerButton) hamburgerButton.style.display = 'none';
+        if (mobileMenu) mobileMenu.style.display = 'none';
+      }
+    };
+
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   return (
     <nav className="bg-white shadow-sm border-b border-gray-200">
       <div className="max-w-8xl mx-auto px-8 sm:px-12 lg:px-16">

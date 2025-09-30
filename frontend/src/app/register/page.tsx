@@ -194,7 +194,6 @@ export default function RegisterPage() {
           <span className="px-4 text-gray-500 text-sm">Or Sign in with</span>
           <div className="flex-1 border-t border-gray-300"></div>
         </div>
-
         <GoogleAuthButton />
 
         <div className="flex justify-start items-center mt-6">
