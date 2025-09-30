@@ -1,12 +1,84 @@
 'use client';
 
 import { useState } from 'react';
-import Image from 'next/image';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import GoogleAuthButton from '@/components/GoogleAuthButton';
+import toast from 'react-hot-toast';
 
 export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    username: '',
+    password: '',
+    confirmPassword: ''
+  });
+  const router = useRouter();
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value || ''
+    }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Validation
+    if (!formData.username || !formData.password) {
+      toast.error('Username and password are required');
+      return;
+    }
+
+    if (formData.username.length < 3 || formData.username.length > 20) {
+      toast.error('Username must be 3-20 characters');
+      return;
+    }
+
+    if (formData.password.length < 6) {
+      toast.error('Password must be at least 6 characters');
+      return;
+    }
+
+    if (formData.password !== formData.confirmPassword) {
+      toast.error('Passwords do not match');
+      return;
+    }
+
+
+    setIsLoading(true);
+    
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:7662'}/api/auth/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          username: formData.username,
+          password: formData.password
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        toast.success('Account created successfully! Please sign in.');
+        router.push('/login');
+      } else {
+        toast.error(data.message || 'Registration failed');
+      }
+    } catch (error) {
+      console.error('Registration error:', error);
+      toast.error('An error occurred during registration');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div 
@@ -32,27 +104,37 @@ export default function RegisterPage() {
           <p className="text-gray-500 text-sm">Create your space to save favorite tracks and moods.</p>
         </div>
 
-        <form className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <input
               type="text"
-              placeholder="Romioneth"
-              className="w-full px-4 py-3 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-600"
+              name="username"
+              placeholder="Username"
+              value={formData.username || ''}
+              onChange={handleInputChange}
+              disabled={isLoading}
+              className="w-full px-4 py-3 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ borderRadius: '8px' }}
             />
           </div>
 
+
           <div className="relative">
             <input
               type={showPassword ? "text" : "password"}
+              name="password"
               placeholder="Password"
-              className="w-full px-4 py-3 pr-12 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-600"
+              value={formData.password || ''}
+              onChange={handleInputChange}
+              disabled={isLoading}
+              className="w-full px-4 py-3 pr-12 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ borderRadius: '8px' }}
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+              disabled={isLoading}
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 disabled:opacity-50"
             >
               {showPassword ? (
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -70,14 +152,19 @@ export default function RegisterPage() {
           <div className="relative">
             <input
               type={showConfirmPassword ? "text" : "password"}
+              name="confirmPassword"
               placeholder="Confirm Password"
-              className="w-full px-4 py-3 pr-12 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-600"
+              value={formData.confirmPassword || ''}
+              onChange={handleInputChange}
+              disabled={isLoading}
+              className="w-full px-4 py-3 pr-12 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ borderRadius: '8px' }}
             />
             <button
               type="button"
               onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+              disabled={isLoading}
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 disabled:opacity-50"
             >
               {showConfirmPassword ? (
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -94,10 +181,11 @@ export default function RegisterPage() {
 
           <button
             type="submit"
-            className="w-full py-3 bg-gray-200 text-purple-600 font-medium hover:bg-gray-300 transition-colors duration-200"
+            disabled={isLoading}
+            className="w-full py-3 bg-gray-200 text-purple-600 font-medium hover:bg-gray-300 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             style={{ borderRadius: '14px' }}
           >
-            Create!
+            {isLoading ? 'Creating Account...' : 'Create!'}
           </button>
         </form>
 
@@ -106,11 +194,7 @@ export default function RegisterPage() {
           <span className="px-4 text-gray-500 text-sm">Or Sign in with</span>
           <div className="flex-1 border-t border-gray-300"></div>
         </div>
-
-        <button className="py-3 border border-gray-300 flex items-center justify-center space-x-3 hover:bg-gray-50 transition-colors duration-200 mx-auto" style={{ width: '158px', borderRadius: '14px' }}>
-          <Image src="/icons/Google.svg" alt="Google" width={24} height={24} className="w-6 h-6" />
-          <span className="text-black font-medium">Google</span>
-        </button>
+        <GoogleAuthButton />
 
         <div className="flex justify-start items-center mt-6">
           <Link href="/login" className="text-gray-500 text-sm hover:text-gray-700 transition-colors duration-200">

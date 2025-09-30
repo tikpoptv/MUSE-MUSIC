@@ -13,12 +13,18 @@ MUSE-MUSIC/
 
 ## Getting Started
 
-### Development
+### Prerequisites
+- Node.js 18+ 
+- PostgreSQL 14+
+- npm or yarn
+
+### Development Setup
 ```bash
 # Backend
 cd backend
 npm install
 cp env.example .env
+npm run migrate    # Setup database
 npm run dev
 
 # Frontend  
@@ -26,6 +32,19 @@ cd frontend
 npm install
 cp env.example .env.local
 npm run dev
+```
+
+### Database Setup
+```bash
+# Run database migrations
+cd backend
+npm run migrate
+
+# Reset database (⚠️ WARNING: Deletes all data)
+npm run db:reset
+
+# Development database reset
+npm run db:reset:dev
 ```
 
 ### Docker
