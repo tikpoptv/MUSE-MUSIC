@@ -22,8 +22,27 @@ const sendValidationError = (res, errors) => {
   });
 };
 
+const successResponse = (message, data, statusCode = 200) => {
+  return {
+    success: true,
+    message,
+    data,
+    statusCode
+  };
+};
+
+const errorResponse = (message, statusCode = 500) => {
+  return {
+    success: false,
+    message,
+    statusCode
+  };
+};
+
 module.exports = {
   sendSuccess,
   sendError,
-  sendValidationError
+  sendValidationError,
+  successResponse,
+  errorResponse
 };

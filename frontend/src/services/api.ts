@@ -102,7 +102,8 @@ class ApiService {
   }
 
   removeAuthToken() {
-    const { Authorization: _, ...headers } = this.defaultHeaders as Record<string, string>;
+    const headers = { ...this.defaultHeaders } as Record<string, string>;
+    delete headers.Authorization;
     this.defaultHeaders = headers;
   }
 

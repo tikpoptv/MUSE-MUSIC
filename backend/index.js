@@ -7,7 +7,7 @@ require('dotenv').config();
 const { config, validateConfig } = require('./src/config/env');
 const corsOptions = require('./src/config/cors');
 const errorHandler = require('./src/middleware/errorHandler');
-const logger = require('./src/middleware/logger');
+const { logger } = require('./src/middleware/logger');
 const routes = require('./src/routes');
 const { connectDB } = require('./src/config/database');
 
@@ -20,13 +20,13 @@ const startServer = async () => {
   if (process.env.DB_HOST) {
     await connectDB();
   } else {
-    console.log('\x1b[33m⚠️  No database configured, running without database\x1b[0m');
+    logger.info('⚠️  No database configured, running without database');
   }
 
   app.use(helmet());
   app.use(cors(corsOptions));
   app.use(morgan('\x1b[90m:method\x1b[0m \x1b[36m:url\x1b[0m \x1b[33m:status\x1b[0m \x1b[2m:response-time ms\x1b[0m'));
-  app.use(logger);
+  app.use(require('./src/middleware/logger'));
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
 
@@ -44,16 +44,16 @@ const startServer = async () => {
 
   const port = process.env.PORT || config.server.port;
   app.listen(port, () => {
-    console.log(`🚀 MUSE Music API server is running on port ${port}`);
-    console.log(`📍 Health check: http://localhost:${port}/api/health`);
-    console.log(`🌍 Environment: ${config.server.nodeEnv}`);
+    logger.info(`🚀 MUSE Music API server is running on port ${port}`);
+    logger.info(`📍 Health check: http://localhost:${port}/api/health`);
+    logger.info(`🌍 Environment: ${config.server.nodeEnv}`);
   });
 
   return app;
 };
 
 startServer().catch((error) => {
-  console.error('\x1b[31m💥 Failed to start server:\x1b[0m', error.message);
+  logger.error('💥 Failed to start server:', error.message);
   process.exit(1);
 });
 

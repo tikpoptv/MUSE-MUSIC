@@ -3,9 +3,12 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { useState, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const pathname = usePathname();
+  const shouldHideSearch = pathname === '/login' || pathname === '/register';
 
   useEffect(() => {
     const handleResize = () => {
@@ -53,7 +56,8 @@ export default function Navbar() {
               </span>
             </Link>
             
-            <div className="ml-4 pr-2 flex-shrink" id="search-container" style={{ display: 'block' }}>
+            {!shouldHideSearch && (
+              <div className="ml-4 pr-2 flex-shrink" id="search-container" style={{ display: 'block' }}>
               <div className="relative">
                 <input
                   type="text"
@@ -79,6 +83,7 @@ export default function Navbar() {
                 </div>
               </div>
             </div>
+            )}
           </div>
 
           <div className="items-center space-x-8" id="nav-container" style={{ display: 'flex' }}>
@@ -153,7 +158,8 @@ export default function Navbar() {
             : 'max-h-0 opacity-0 overflow-hidden'
         }`} id="mobile-menu" style={{ display: 'none' }}>
           <div className="px-2 pt-2 pb-4 space-y-1 bg-white border-t border-gray-200">
-            <div className="px-3 py-3">
+            {!shouldHideSearch && (
+              <div className="px-3 py-3">
               <div className="relative">
                 <input
                   type="text"
@@ -179,6 +185,7 @@ export default function Navbar() {
                 </div>
               </div>
             </div>
+            )}
             
             <Link 
               href="/" 

@@ -1,3 +1,5 @@
+const { logger } = require('../middleware/logger');
+
 const config = {
   server: {
     port: process.env.PORT || 3001,
@@ -18,6 +20,15 @@ const config = {
   cors: {
     origin: process.env.FRONTEND_URL || 'http://localhost:3000',
     credentials: true
+  },
+  
+  jwt: {
+    secret: process.env.JWT_SECRET
+  },
+  
+  google: {
+    clientId: process.env.GOOGLE_CLIENT_ID,
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET
   }
 };
 
@@ -26,21 +37,22 @@ const validateConfig = () => {
     'DB_HOST',
     'DB_NAME', 
     'DB_USER',
-    'DB_PASSWORD'
+    'DB_PASSWORD',
+    'JWT_SECRET'
   ];
   
   const missing = required.filter(key => !process.env[key]);
   
   if (missing.length > 0) {
-    console.warn('\x1b[33m⚠️  Missing environment variables:\x1b[0m', missing.join(', '));
-    console.warn('\x1b[90mUsing default values...\x1b[0m');
+    logger.warn('⚠️  Missing environment variables:', missing.join(', '));
+    logger.warn('Using default values...');
   }
   
-  console.log('\x1b[32m✅ Environment configuration loaded\x1b[0m');
-  console.log('\x1b[90m📊 Config summary:\x1b[0m');
-  console.log(`   Server: ${config.server.nodeEnv} mode on port ${config.server.port}`);
-  console.log(`   Database: ${config.database.name}@${config.database.host}:${config.database.port}`);
-  console.log(`   CORS: ${config.cors.origin}`);
+  logger.info('✅ Environment configuration loaded');
+  logger.info('📊 Config summary:');
+  logger.info(`   Server: ${config.server.nodeEnv} mode on port ${config.server.port}`);
+  logger.info(`   Database: ${config.database.name}@${config.database.host}:${config.database.port}`);
+  logger.info(`   CORS: ${config.cors.origin}`);
 };
 
 module.exports = { config, validateConfig };

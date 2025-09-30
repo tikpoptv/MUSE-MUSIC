@@ -1,11 +1,67 @@
 'use client';
 
 import { useState } from 'react';
-import Image from 'next/image';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import GoogleAuthButton from '@/components/GoogleAuthButton';
+import { authService } from '@/services/authService';
+import toast from 'react-hot-toast';
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    username: '',
+    password: ''
+  });
+  const router = useRouter();
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!formData.username || !formData.password) {
+      toast.error('Please fill in all fields');
+      return;
+    }
+
+    setIsLoading(true);
+    
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:7662'}/api/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          username: formData.username,
+          password: formData.password
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        authService.setAuthData(data.data);
+        toast.success('Successfully signed in!');
+        router.push('/');
+      } else {
+        toast.error(data.message || 'Login failed');
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      toast.error('An error occurred during login');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div 
@@ -32,12 +88,16 @@ export default function LoginPage() {
           <p className="text-gray-500 text-sm">Hey, Enter your details to get sign in to your account</p>
         </div>
 
-        <form className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <input
               type="text"
+              name="username"
               placeholder="Enter your username"
-              className="w-full px-4 py-3 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-600"
+              value={formData.username}
+              onChange={handleInputChange}
+              disabled={isLoading}
+              className="w-full px-4 py-3 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ borderRadius: '8px' }}
             />
           </div>
@@ -45,14 +105,19 @@ export default function LoginPage() {
           <div className="relative">
             <input
               type={showPassword ? "text" : "password"}
+              name="password"
               placeholder="Password"
-              className="w-full px-4 py-3 pr-12 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-600"
+              value={formData.password}
+              onChange={handleInputChange}
+              disabled={isLoading}
+              className="w-full px-4 py-3 pr-12 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ borderRadius: '8px' }}
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+              disabled={isLoading}
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 disabled:opacity-50"
             >
               {showPassword ? (
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -69,10 +134,11 @@ export default function LoginPage() {
 
           <button
             type="submit"
-            className="w-full py-3 bg-gray-200 text-purple-600 font-medium hover:bg-gray-300 transition-colors duration-200"
+            disabled={isLoading}
+            className="w-full py-3 bg-gray-200 text-purple-600 font-medium hover:bg-gray-300 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             style={{ borderRadius: '14px' }}
           >
-            Sign in
+            {isLoading ? 'Signing in...' : 'Sign in'}
           </button>
         </form>
 
@@ -82,10 +148,7 @@ export default function LoginPage() {
           <div className="flex-1 border-t border-gray-300"></div>
         </div>
 
-        <button className="py-3 border border-gray-300 flex items-center justify-center space-x-3 hover:bg-gray-50 transition-colors duration-200 mx-auto" style={{ width: '158px', borderRadius: '14px' }}>
-          <Image src="/icons/Google.svg" alt="Google" width={24} height={24} className="w-6 h-6" />
-          <span className="text-black font-medium">Google</span>
-        </button>
+        <GoogleAuthButton />
 
         <div className="flex justify-between items-center mt-6">
           <a href="#" className="text-gray-500 text-sm hover:text-gray-700 transition-colors duration-200">
