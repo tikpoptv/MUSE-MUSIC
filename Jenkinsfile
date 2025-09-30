@@ -121,21 +121,34 @@ pipeline {
         }
 
         stage('Deploy to Coolify') {
-            when { branch 'main' } 
+            when { branch 'main' }
             steps {
                 script {
                     notifyN8N("INFO", "Preparing deployment to Coolify...")
                     deployToCoolify(
-                        "MuseMusic",         
-                        "COOLIFY_UUID_MUSEMUSIC",   
-                        "COOLIFY_TOKEN",      
-                        "COOLIFY_BASEURL"       
+                        "MuseMusic",                // projectName
+                        "COOLIFY_UUID_MUSEMUSIC",   // credentialsId UUID
+                        "COOLIFY_TOKEN",            // credentialsId Token
+                        "COOLIFY_BASEURL"           // credentialsId BaseURL
                     )
                     notifyN8N("SUCCESS", "Deployment request sent to Coolify.")
                 }
             }
-            post { failure { script { notifyN8N("FAILURE", "Stage: Deploy to Coolify failed") } } }
+            post {
+                failure {
+                    script { 
+                        notifyN8N("FAILURE", "Stage: Deploy to Coolify failed") 
+                    }
+                }
+                skipped {
+                    script { 
+                        echo "⏭️ Skipping deploy: current branch = ${env.BRANCH_NAME}, only main can deploy."
+                        notifyN8N("INFO", "⏭️ Deploy skipped because branch is ${env.BRANCH_NAME}, only main can deploy.")
+                    }
+                }
+            }
         }
+
 
     }
 
