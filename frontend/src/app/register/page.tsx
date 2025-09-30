@@ -4,7 +4,6 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import GoogleAuthButton from '@/components/GoogleAuthButton';
-import { authService } from '@/services/authService';
 import toast from 'react-hot-toast';
 
 export default function RegisterPage() {
