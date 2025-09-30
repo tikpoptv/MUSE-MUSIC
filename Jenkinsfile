@@ -120,35 +120,35 @@ pipeline {
             post { failure { script { notifyN8N("FAILURE", "Stage: Run Backend (Smoke Test) failed") } } }
         }
 
+        stage('Skip Deploy') {
+            when { not { branch 'main' } }
+            steps {
+                script {
+                    echo "⏭️ Skipping deploy: branch = ${env.BRANCH_NAME}, only main can deploy."
+                    notifyN8N("INFO", "⏭️ Deploy skipped because branch is ${env.BRANCH_NAME}, only main can deploy.")
+                }
+            }
+        }
         stage('Deploy to Coolify') {
             when { branch 'main' }
             steps {
                 script {
                     notifyN8N("INFO", "Preparing deployment to Coolify...")
                     deployToCoolify(
-                        "MuseMusic",                // projectName
-                        "COOLIFY_UUID_MUSEMUSIC",   // credentialsId UUID
-                        "COOLIFY_TOKEN",            // credentialsId Token
-                        "COOLIFY_BASEURL"           // credentialsId BaseURL
+                        "MuseMusic",
+                        "COOLIFY_UUID_MUSEMUSIC",
+                        "COOLIFY_TOKEN",
+                        "COOLIFY_BASEURL"
                     )
                     notifyN8N("SUCCESS", "Deployment request sent to Coolify.")
                 }
             }
             post {
                 failure {
-                    script { 
-                        notifyN8N("FAILURE", "Stage: Deploy to Coolify failed") 
-                    }
-                }
-                skipped {
-                    script { 
-                        echo "⏭️ Skipping deploy: current branch = ${env.BRANCH_NAME}, only main can deploy."
-                        notifyN8N("INFO", "⏭️ Deploy skipped because branch is ${env.BRANCH_NAME}, only main can deploy.")
-                    }
+                    script { notifyN8N("FAILURE", "Stage: Deploy to Coolify failed") }
                 }
             }
         }
-
 
     }
 
