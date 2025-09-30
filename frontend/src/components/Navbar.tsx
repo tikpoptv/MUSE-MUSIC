@@ -37,33 +37,6 @@ export default function Navbar() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  useEffect(() => {
-    const handleResize = () => {
-      const searchContainer = document.getElementById('search-container');
-      const navContainer = document.getElementById('nav-container');
-      const hamburgerButton = document.getElementById('hamburger-button');
-      const mobileMenu = document.getElementById('mobile-menu');
-
-      if (window.innerWidth <= 1100) {
-        // Mobile mode
-        if (searchContainer) searchContainer.style.display = 'none';
-        if (navContainer) navContainer.style.display = 'none';
-        if (hamburgerButton) hamburgerButton.style.display = 'inline-flex';
-        if (mobileMenu) mobileMenu.style.display = 'block';
-      } else {
-        // Desktop mode
-        if (searchContainer) searchContainer.style.display = 'block';
-        if (navContainer) navContainer.style.display = 'flex';
-        if (hamburgerButton) hamburgerButton.style.display = 'none';
-        if (mobileMenu) mobileMenu.style.display = 'none';
-      }
-    };
-
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
   return (
     <nav className="bg-white shadow-sm border-b border-gray-200">
       <div className="max-w-8xl mx-auto px-8 sm:px-12 lg:px-16">
@@ -85,31 +58,31 @@ export default function Navbar() {
             
             {!shouldHideSearch && (
               <div className="ml-4 pr-2 flex-shrink" id="search-container" style={{ display: 'block' }}>
-              <div className="relative">
-                <input
-                  type="text"
-                  placeholder="Search song by name, artist, etc."
-                  className="px-4 pl-4 pr-10 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#7B61FF] focus:border-transparent text-sm"
-                  style={{ width: '435px', height: '40px', color: '#1a1a1a', borderRadius: '12px', minWidth: '200px', maxWidth: '435px' }}
-                />
-                <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                  <svg 
-                    className="h-4 w-4" 
-                    fill="none" 
-                    stroke="currentColor" 
-                    viewBox="0 0 24 24"
-                    style={{ color: '#8A73FF' }}
-                  >
-                    <path 
-                      strokeLinecap="round" 
-                      strokeLinejoin="round" 
-                      strokeWidth={2} 
-                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" 
-                    />
-                  </svg>
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="Search song by name, artist, etc."
+                    className="px-4 pl-4 pr-10 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#7B61FF] focus:border-transparent text-sm"
+                    style={{ width: '435px', height: '40px', color: '#1a1a1a', borderRadius: '12px', minWidth: '200px', maxWidth: '435px' }}
+                  />
+                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                    <svg 
+                      className="h-4 w-4" 
+                      fill="none" 
+                      stroke="currentColor" 
+                      viewBox="0 0 24 24"
+                      style={{ color: '#8A73FF' }}
+                    >
+                      <path 
+                        strokeLinecap="round" 
+                        strokeLinejoin="round" 
+                        strokeWidth={2} 
+                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" 
+                      />
+                    </svg>
+                  </div>
                 </div>
               </div>
-            </div>
             )}
           </div>
 
@@ -187,31 +160,31 @@ export default function Navbar() {
           <div className="px-2 pt-2 pb-4 space-y-1 bg-white border-t border-gray-200">
             {!shouldHideSearch && (
               <div className="px-3 py-3">
-              <div className="relative">
-                <input
-                  type="text"
-                  placeholder="Search song by name, artist, etc."
-                  className="w-full px-4 pl-4 pr-10 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#7B61FF] focus:border-transparent text-sm"
-                  style={{ height: '40px', color: '#1a1a1a', borderRadius: '12px' }}
-                />
-                <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                  <svg 
-                    className="h-4 w-4" 
-                    fill="none" 
-                    stroke="currentColor" 
-                    viewBox="0 0 24 24"
-                    style={{ color: '#8A73FF' }}
-                  >
-                    <path 
-                      strokeLinecap="round" 
-                      strokeLinejoin="round" 
-                      strokeWidth={2} 
-                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" 
-                    />
-                  </svg>
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="Search song by name, artist, etc."
+                    className="w-full px-4 pl-4 pr-10 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#7B61FF] focus:border-transparent text-sm"
+                    style={{ height: '40px', color: '#1a1a1a', borderRadius: '12px' }}
+                  />
+                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                    <svg 
+                      className="h-4 w-4" 
+                      fill="none" 
+                      stroke="currentColor" 
+                      viewBox="0 0 24 24"
+                      style={{ color: '#8A73FF' }}
+                    >
+                      <path 
+                        strokeLinecap="round" 
+                        strokeLinejoin="round" 
+                        strokeWidth={2} 
+                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" 
+                      />
+                    </svg>
+                  </div>
                 </div>
               </div>
-            </div>
             )}
             
             <Link 
