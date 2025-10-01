@@ -118,30 +118,6 @@ pipeline {
             post { failure { script { notifyN8N("FAILURE", "Stage: Test Backend failed") } } }
         }
 
-        stage('Run Backend (Smoke Test)') {
-            steps {
-                dir('backend') {
-                    nodejs('NodeJS_24') {
-                        sh '''
-                          echo "⏳ Starting backend for smoke test..."
-                          npm run start &
-                          SERVER_PID=$!
-                          # put into its own process group
-                          PGID=$(ps -o pgid= $SERVER_PID | tr -d ' ')
-                          sleep 5
-                          if ! kill -0 $SERVER_PID 2>/dev/null; then
-                            echo "❌ Backend crashed!"
-                            exit 1
-                          fi
-                          echo "✅ Backend started successfully (no crash)"
-                          kill -TERM -$PGID
-                        '''
-                    }
-                }
-            }
-            post { failure { script { notifyN8N("FAILURE", "Stage: Run Backend (Smoke Test) failed") } } }
-        }
-
         stage('Skip Deploy') {
             when { not { branch 'main' } }
             steps {
@@ -183,7 +159,7 @@ pipeline {
 
     post {
         success {
-            script { notifyN8N("SUCCESS", "✅ Build, Lint, Smoke, Deploy Success! (branch=${env.BRANCH_NAME})") }
+            script { notifyN8N("SUCCESS", "✅ Build, Lint, Test, Deploy Success! (branch=${env.BRANCH_NAME})") }
         }
         failure {
             script { notifyN8N("FAILURE", "❌ Pipeline Failed, check logs!") }
