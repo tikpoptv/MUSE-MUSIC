@@ -160,8 +160,5 @@ pipeline {
             script { notifyN8N("FAILURE", "❌ Pipeline Failed, check logs!") }
         }
     }
-<<<<<<< HEAD
 }
-=======
-}
->>>>>>> main
+
