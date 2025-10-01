@@ -221,5 +221,39 @@ export const authService = {
     }
 
     return null;
+  },
+
+  async refreshAccessToken(): Promise<boolean> {
+    const tokensData = this.getTokensData();
+    
+    if (!tokensData?.refreshToken) {
+      return false;
+    }
+
+    try {
+      const response = await apiService.post<{ tokens: { accessToken: string; tokenType: string; expiresIn: string } }>('/api/auth/refresh', {
+        refreshToken: tokensData.refreshToken,
+      });
+
+      if (response.success && response.data) {
+        // อัปเดต access token ใหม่
+        this.setToken(response.data.tokens.accessToken);
+        
+        // อัปเดต tokens data
+        const updatedTokensData = {
+          ...tokensData,
+          accessToken: response.data.tokens.accessToken,
+          tokenType: response.data.tokens.tokenType,
+          expiresIn: response.data.tokens.expiresIn,
+        };
+        this.setTokensData(updatedTokensData);
+        
+        return true;
+      }
+    } catch (error) {
+      console.error('Refresh token failed:', error);
+    }
+
+    return false;
   }
 };
