@@ -12,7 +12,6 @@ pipeline {
     environment {
         PROJECT_NAME = 'MUSE MUSIC'
         REPO_URL     = 'https://github.com/tikpoptv/MUSE-MUSIC.git'
-        REPO_BRANCH  = 'main'
         REPO_CREDENTIALS = 'github-token'
     }
 
@@ -21,7 +20,7 @@ pipeline {
         stage('Checkout') {
             steps {
                 script {
-                    notifyN8N("INFO", "Pipeline started. Checking out code...")
+                    notifyN8N("INFO", "Pipeline started. Checking out code... (branch=${env.BRANCH_NAME})")
                 }
                 checkout scm
             }
@@ -47,7 +46,14 @@ pipeline {
             steps {
                 dir('frontend') {
                     nodejs('NodeJS_24') {
-                        sh 'npm run lint'
+                        sh '''
+                          if npm run lint; then
+                            echo "✅ Frontend lint passed"
+                          else
+                            echo "❌ Frontend lint failed"
+                            exit 1
+                          fi
+                        '''
                     }
                 }
             }
@@ -80,7 +86,14 @@ pipeline {
             steps {
                 dir('backend') {
                     nodejs('NodeJS_24') {
-                        sh 'npm run lint || echo "⚠️ no backend lint script"'
+                        sh '''
+                          if npm run lint; then
+                            echo "✅ Backend lint passed"
+                          else
+                            echo "⚠️ No lint script or lint failed"
+                            exit 1
+                          fi
+                        '''
                     }
                 }
             }
@@ -91,7 +104,14 @@ pipeline {
             steps {
                 dir('backend') {
                     nodejs('NodeJS_24') {
-                        sh 'npm test || echo "⚠️ no backend tests"'
+                        sh '''
+                          if npm test; then
+                            echo "✅ Backend tests passed"
+                          else
+                            echo "⚠️ No backend tests or tests failed"
+                            exit 1
+                          fi
+                        '''
                     }
                 }
             }
@@ -106,13 +126,15 @@ pipeline {
                           echo "⏳ Starting backend for smoke test..."
                           npm run start &
                           SERVER_PID=$!
+                          # put into its own process group
+                          PGID=$(ps -o pgid= $SERVER_PID | tr -d ' ')
                           sleep 5
                           if ! kill -0 $SERVER_PID 2>/dev/null; then
                             echo "❌ Backend crashed!"
                             exit 1
                           fi
                           echo "✅ Backend started successfully (no crash)"
-                          kill $SERVER_PID
+                          kill -TERM -$PGID
                         '''
                     }
                 }
@@ -129,18 +151,25 @@ pipeline {
                 }
             }
         }
+
         stage('Deploy to Coolify') {
             when { branch 'main' }
             steps {
-                script {
-                    notifyN8N("INFO", "Preparing deployment to Coolify...")
-                    deployToCoolify(
-                        "MuseMusic",
-                        "COOLIFY_UUID_MUSEMUSIC",
-                        "COOLIFY_TOKEN",
-                        "COOLIFY_BASEURL"
-                    )
-                    notifyN8N("SUCCESS", "Deployment request sent to Coolify.")
+                withCredentials([
+                    string(credentialsId: 'COOLIFY_TOKEN', variable: 'COOLIFY_TOKEN'),
+                    string(credentialsId: 'COOLIFY_UUID_MUSEMUSIC', variable: 'COOLIFY_UUID_MUSEMUSIC'),
+                    string(credentialsId: 'COOLIFY_BASEURL', variable: 'COOLIFY_BASEURL')
+                ]) {
+                    script {
+                        notifyN8N("INFO", "Preparing deployment to Coolify...")
+                        deployToCoolify(
+                            "MuseMusic",
+                            env.COOLIFY_UUID_MUSEMUSIC,
+                            env.COOLIFY_TOKEN,
+                            env.COOLIFY_BASEURL
+                        )
+                        notifyN8N("SUCCESS", "Deployment request sent to Coolify.")
+                    }
                 }
             }
             post {
@@ -154,7 +183,7 @@ pipeline {
 
     post {
         success {
-            script { notifyN8N("SUCCESS", "✅ Build, Lint, Smoke, Deploy Success!") }
+            script { notifyN8N("SUCCESS", "✅ Build, Lint, Smoke, Deploy Success! (branch=${env.BRANCH_NAME})") }
         }
         failure {
             script { notifyN8N("FAILURE", "❌ Pipeline Failed, check logs!") }
