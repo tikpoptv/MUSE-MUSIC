@@ -241,9 +241,59 @@ const googleLogin = async (req, res) => {
       }
     };
 
+const refreshToken = async (req, res) => {
+  try {
+    const { refreshToken } = req.body;
+
+    if (!refreshToken) {
+      return res.status(400).json(
+        errorResponse('Refresh token is required', 400)
+      );
+    }
+
+    const decoded = JWTService.verifyRefreshToken(refreshToken);
+
+    if (!decoded) {
+      return res.status(401).json(
+        errorResponse('Invalid or expired refresh token', 401)
+      );
+    }
+
+    const user = await UserService.findByID(decoded.userID);
+
+    if (!user) {
+      return res.status(401).json(
+        errorResponse('User not found', 401)
+      );
+    }
+
+    // สร้าง access token ใหม่
+    const newAccessToken = JWTService.generateAccessToken(user.userID, user.username, user.role);
+
+    const responseData = {
+      tokens: {
+        accessToken: newAccessToken,
+        tokenType: 'Bearer',
+        expiresIn: '7d'
+      }
+    };
+
+    res.status(200).json(
+      successResponse('Token refreshed successfully', responseData)
+    );
+
+  } catch (error) {
+    logger.error('Refresh token error:', error);
+    res.status(500).json(
+      errorResponse('Internal server error', 500)
+    );
+  }
+};
+
 module.exports = {
   register,
   login,
   googleLogin,
-  googleCallback
+  googleCallback,
+  refreshToken
 };
