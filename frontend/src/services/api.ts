@@ -7,6 +7,12 @@ interface ApiResponse<T = unknown> {
   error?: string;
 }
 
+// Import authService for auto refresh
+let authService: {
+  refreshAccessToken: () => Promise<boolean>;
+  logout: () => void;
+} | null = null;
+
 class ApiService {
   private baseURL: string;
   private defaultHeaders: HeadersInit;
@@ -36,6 +42,55 @@ class ApiService {
     try {
       const response = await fetch(url, config);
       const data = await response.json();
+
+      // ตรวจสอบ 401 Unauthorized และพยายาม refresh token
+      if (response.status === 401 && this.hasAuthToken()) {
+        console.log('Token expired, attempting to refresh...');
+        
+        // Import authService dynamically to avoid circular dependency
+        if (!authService) {
+          const authServiceModule = await import('./authService');
+          authService = authServiceModule.authService;
+        }
+        
+        const refreshSuccess = await authService.refreshAccessToken();
+        
+        if (refreshSuccess) {
+          console.log('Token refreshed successfully, retrying request...');
+          // Retry the original request with new token
+          const retryConfig: RequestInit = {
+            ...config,
+            headers: {
+              ...config.headers,
+              'Authorization': `Bearer ${this.getAuthToken()}`,
+            },
+          };
+          
+          const retryResponse = await fetch(url, retryConfig);
+          const retryData = await retryResponse.json();
+          
+          if (!retryResponse.ok) {
+            return {
+              success: false,
+              error: retryData.message || `HTTP ${retryResponse.status}`,
+            };
+          }
+          
+          return {
+            success: true,
+            data: retryData,
+          };
+        } else {
+          console.log('Refresh token failed, redirecting to login...');
+          // Clear auth data and redirect to login
+          authService.logout();
+          window.location.href = '/login';
+          return {
+            success: false,
+            error: 'Session expired, please login again',
+          };
+        }
+      }
 
       if (!response.ok) {
         return {
