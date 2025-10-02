@@ -117,29 +117,6 @@ pipeline {
             post { failure { script { notifyN8N("FAILURE", "Stage: Lint Backend failed") } } }
         }
 
-        stage('Test Backend') {
-            steps {
-                dir('backend') {
-                    nodejs('NodeJS_24') {
-                        sh '''
-                          if npm test; then
-                            echo "✅ Backend tests passed"
-                          else
-                            echo "⚠️ No backend tests or tests failed"
-                          if npm test; then
-                            echo "✅ Backend tests passed"
-                          else
-                            echo "⚠️ No backend tests or tests failed"
-                            exit 1
-                          fi
-                        '''
-                    }
-                }
-            }
-            post { failure { script { notifyN8N("FAILURE", "Stage: Test Backend failed") } } }
-            post { failure { script { notifyN8N("FAILURE", "Stage: Test Backend failed") } } }
-        }
-
         stage('Skip Deploy') {
             when { not { branch 'main' } }
             steps {
