@@ -20,6 +20,30 @@ const eslintConfig = [
       "next-env.d.ts",
     ],
   },
+  // Disallow importing next/document anywhere except pages/_document.tsx
+  {
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            {
+              name: "next/document",
+              message:
+                "Do not import from next/document in the App Router. Use <html> and <body> in app/layout.tsx. Allowed only in src/pages/_document.tsx.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  // Allow next/document import specifically in the legacy Pages Router _document file
+  {
+    files: ["src/pages/_document.tsx"],
+    rules: {
+      "no-restricted-imports": "off",
+    },
+  },
 ];
 
 export default eslintConfig;
