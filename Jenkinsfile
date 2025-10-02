@@ -131,21 +131,15 @@ pipeline {
         stage('Deploy to Coolify') {
             when { branch 'main' }
             steps {
-                withCredentials([
-                    string(credentialsId: 'COOLIFY_TOKEN', variable: 'COOLIFY_TOKEN'),
-                    string(credentialsId: 'COOLIFY_UUID_MUSEMUSIC', variable: 'COOLIFY_UUID_MUSEMUSIC'),
-                    string(credentialsId: 'COOLIFY_BASEURL', variable: 'COOLIFY_BASEURL')
-                ]) {
-                    script {
-                        notifyN8N("INFO", "Preparing deployment to Coolify...")
-                        deployToCoolify(
-                            "MuseMusic",
-                            env.COOLIFY_UUID_MUSEMUSIC,
-                            env.COOLIFY_TOKEN,
-                            env.COOLIFY_BASEURL
-                        )
-                        notifyN8N("SUCCESS", "Deployment request sent to Coolify.")
-                    }
+                script {
+                    notifyN8N("INFO", "Preparing deployment to Coolify...")
+                    deployToCoolify(
+                        "MuseMusic",
+                        "COOLIFY_UUID_MUSEMUSIC",
+                        "COOLIFY_TOKEN",
+                        "COOLIFY_BASEURL"
+                    )
+                    notifyN8N("SUCCESS", "Deployment request sent to Coolify.")
                 }
             }
             post {
