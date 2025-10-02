@@ -68,18 +68,7 @@ pipeline {
             }
             post { failure { script { notifyN8N("FAILURE", "Stage: Lint Frontend failed") } } }
         }
-
-        stage('Build Frontend') {
-            steps {
-                dir('frontend') {
-                    nodejs('NodeJS_24') {
-                        sh 'npm run build'
-                    }
-                }
-            }
-            post { failure { script { notifyN8N("FAILURE", "Stage: Build Frontend failed") } } }
-        }
-
+        
         stage('Install Backend') {
             steps {
                 dir('backend') {
