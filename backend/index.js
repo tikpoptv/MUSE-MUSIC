@@ -42,7 +42,7 @@ const startServer = async () => {
     });
   });
 
-  const port = process.env.PORT || config.server.port;
+  const port = process.env.BACKEND_PORT || config.server.port;
   app.listen(port, () => {
     logger.info(`🚀 MUSE Music API server is running on port ${port}`);
     logger.info(`📍 Health check: http://localhost:${port}/api/health`);

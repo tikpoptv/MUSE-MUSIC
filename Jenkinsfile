@@ -105,16 +105,27 @@ pipeline {
         }
 
         stage('Deploy to Coolify') {
-            when { branch 'main' }
+            when { anyOf { branch 'main'; branch 'develop' } }
             steps {
                 script {
                     notifyN8N("INFO", "Preparing deployment to Coolify...")
-                    deployToCoolify(
-                        "MuseMusic",
-                        "COOLIFY_UUID_MUSEMUSIC",
-                        "COOLIFY_TOKEN",
-                        "COOLIFY_BASEURL"
-                    )
+
+                    if (env.BRANCH_NAME == "main") {
+                        deployToCoolify(
+                            "MuseMusic",
+                            "COOLIFY_UUID_MUSEMUSIC",
+                            "COOLIFY_TOKEN",
+                            "COOLIFY_BASEURL"
+                        )
+                    } else if (env.BRANCH_NAME == "develop") {
+                        deployToCoolify(
+                            "MuseMusic",
+                            "COOLIFY_UUID_MUSEMUSIC_DEV",
+                            "COOLIFY_TOKEN",
+                            "COOLIFY_BASEURL"
+                        )
+                    }
+
                     notifyN8N("SUCCESS", "Deployment request has been successfully sent to Coolify.")
                 }
             }
@@ -124,6 +135,7 @@ pipeline {
                 }
             }
         }
+
     }
 
     post {

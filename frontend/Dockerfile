@@ -1,4 +1,4 @@
-FROM node:20-alpine
+FROM node:20-alpine AS builder
 
 WORKDIR /app
 
@@ -17,10 +17,25 @@ ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 ENV NEXT_PUBLIC_NODE_ENV=${NEXT_PUBLIC_NODE_ENV}
 ENV NEXT_PUBLIC_PORT=${NEXT_PUBLIC_PORT}
 
-RUN npm run build
+RUN NODE_ENV=production npm run build
+
+FROM node:20-alpine AS runner
+
+WORKDIR /app
+
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nextjs
+
+COPY --from=builder /app/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+
+USER nextjs
 
 ENV NODE_ENV=production
-ENV PORT=3000
+ENV NEXT_PUBLIC_PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-CMD ["npm", "start"]
+EXPOSE 3000
+
+CMD ["sh", "-c", "PORT=${NEXT_PUBLIC_PORT} node server.js"]
