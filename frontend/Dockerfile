@@ -17,7 +17,9 @@ ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 ENV NEXT_PUBLIC_NODE_ENV=${NEXT_PUBLIC_NODE_ENV}
 ENV NEXT_PUBLIC_PORT=${NEXT_PUBLIC_PORT}
 
-RUN npm run build
+# Always build the Next.js app in production mode to avoid runtime-only env values from
+# breaking the static build step on services like Coolify.
+RUN NODE_ENV=production npm run build
 
 ENV NODE_ENV=production
 ENV PORT=3000
