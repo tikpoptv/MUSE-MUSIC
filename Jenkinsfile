@@ -127,9 +127,10 @@ pipeline {
                 }
             }
         }
-
         stage('Deploy to Coolify') {
-            when { branch 'main' }
+            when {
+                branch 'main'
+            }
             steps {
                 script {
                     notifyN8N("INFO", "Preparing deployment to Coolify...")
@@ -139,7 +140,7 @@ pipeline {
                         "COOLIFY_TOKEN",
                         "COOLIFY_BASEURL"
                     )
-                    notifyN8N("SUCCESS", "Deployment request sent to Coolify.")
+                    notifyN8N("SUCCESS", "Deployment request has been successfully sent to Coolify.")
                 }
             }
             post {
@@ -148,7 +149,6 @@ pipeline {
                 }
             }
         }
-
     }
 
     post {
