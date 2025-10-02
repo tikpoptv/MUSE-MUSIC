@@ -25,6 +25,14 @@ __pycache__/
 pip-log.txt
 pip-delete-this-directory.txt
 
+# Large files and directories
+*.log
+*.tmp
+*.temp
+.cache/
+.temp/
+.tmp/
+
 # IDE files
 .vscode/
 .idea/
