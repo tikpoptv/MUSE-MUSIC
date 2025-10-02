@@ -21,6 +21,7 @@ pipeline {
             steps {
                 script {
                     notifyN8N("INFO", "Pipeline started. Checking out code... (branch=${env.BRANCH_NAME})")
+                    notifyN8N("INFO", "Pipeline started. Checking out code... (branch=${env.BRANCH_NAME})")
                 }
                 checkout scm
             }
@@ -46,6 +47,14 @@ pipeline {
             steps {
                 dir('frontend') {
                     nodejs('NodeJS_24') {
+                        sh '''
+                          if npm run lint; then
+                            echo "✅ Frontend lint passed"
+                          else
+                            echo "❌ Frontend lint failed"
+                            exit 1
+                          fi
+                        '''
                         sh '''
                           if npm run lint; then
                             echo "✅ Frontend lint passed"
@@ -94,6 +103,14 @@ pipeline {
                             exit 1
                           fi
                         '''
+                        sh '''
+                          if npm run lint; then
+                            echo "✅ Backend lint passed"
+                          else
+                            echo "⚠️ No lint script or lint failed"
+                            exit 1
+                          fi
+                        '''
                     }
                 }
             }
@@ -109,12 +126,17 @@ pipeline {
                             echo "✅ Backend tests passed"
                           else
                             echo "⚠️ No backend tests or tests failed"
+                          if npm test; then
+                            echo "✅ Backend tests passed"
+                          else
+                            echo "⚠️ No backend tests or tests failed"
                             exit 1
                           fi
                         '''
                     }
                 }
             }
+            post { failure { script { notifyN8N("FAILURE", "Stage: Test Backend failed") } } }
             post { failure { script { notifyN8N("FAILURE", "Stage: Test Backend failed") } } }
         }
 
@@ -129,23 +151,19 @@ pipeline {
         }
 
         stage('Deploy to Coolify') {
-            when { branch 'main' }
+            when {
+                branch 'main'
+            }
             steps {
-                withCredentials([
-                    string(credentialsId: 'COOLIFY_TOKEN', variable: 'COOLIFY_TOKEN'),
-                    string(credentialsId: 'COOLIFY_UUID_MUSEMUSIC', variable: 'COOLIFY_UUID_MUSEMUSIC'),
-                    string(credentialsId: 'COOLIFY_BASEURL', variable: 'COOLIFY_BASEURL')
-                ]) {
-                    script {
-                        notifyN8N("INFO", "Preparing deployment to Coolify...")
-                        deployToCoolify(
-                            "MuseMusic",
-                            env.COOLIFY_UUID_MUSEMUSIC,
-                            env.COOLIFY_TOKEN,
-                            env.COOLIFY_BASEURL
-                        )
-                        notifyN8N("SUCCESS", "Deployment request sent to Coolify.")
-                    }
+                script {
+                    notifyN8N("INFO", "Preparing deployment to Coolify...")
+                    deployToCoolify(
+                        "MuseMusic",
+                        "COOLIFY_UUID_MUSEMUSIC",
+                        "COOLIFY_TOKEN",
+                        "COOLIFY_BASEURL"
+                    )
+                    notifyN8N("SUCCESS", "Deployment request has been successfully sent to Coolify.")
                 }
             }
             post {
@@ -154,11 +172,11 @@ pipeline {
                 }
             }
         }
-
     }
 
     post {
         success {
+            script { notifyN8N("SUCCESS", "✅ Build, Lint, Test, Deploy Success! (branch=${env.BRANCH_NAME})") }
             script { notifyN8N("SUCCESS", "✅ Build, Lint, Test, Deploy Success! (branch=${env.BRANCH_NAME})") }
         }
         failure {
