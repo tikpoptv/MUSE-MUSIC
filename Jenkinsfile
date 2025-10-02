@@ -21,6 +21,7 @@ pipeline {
             steps {
                 script {
                     notifyN8N("INFO", "Pipeline started. Checking out code... (branch=${env.BRANCH_NAME})")
+                    notifyN8N("INFO", "Pipeline started. Checking out code... (branch=${env.BRANCH_NAME})")
                 }
                 checkout scm
             }
@@ -46,6 +47,14 @@ pipeline {
             steps {
                 dir('frontend') {
                     nodejs('NodeJS_24') {
+                        sh '''
+                          if npm run lint; then
+                            echo "✅ Frontend lint passed"
+                          else
+                            echo "❌ Frontend lint failed"
+                            exit 1
+                          fi
+                        '''
                         sh '''
                           if npm run lint; then
                             echo "✅ Frontend lint passed"
@@ -94,6 +103,14 @@ pipeline {
                             exit 1
                           fi
                         '''
+                        sh '''
+                          if npm run lint; then
+                            echo "✅ Backend lint passed"
+                          else
+                            echo "⚠️ No lint script or lint failed"
+                            exit 1
+                          fi
+                        '''
                     }
                 }
             }
@@ -109,12 +126,17 @@ pipeline {
                             echo "✅ Backend tests passed"
                           else
                             echo "⚠️ No backend tests or tests failed"
+                          if npm test; then
+                            echo "✅ Backend tests passed"
+                          else
+                            echo "⚠️ No backend tests or tests failed"
                             exit 1
                           fi
                         '''
                     }
                 }
             }
+            post { failure { script { notifyN8N("FAILURE", "Stage: Test Backend failed") } } }
             post { failure { script { notifyN8N("FAILURE", "Stage: Test Backend failed") } } }
         }
 
@@ -127,6 +149,7 @@ pipeline {
                 }
             }
         }
+
         stage('Deploy to Coolify') {
             when {
                 branch 'main'
@@ -154,9 +177,11 @@ pipeline {
     post {
         success {
             script { notifyN8N("SUCCESS", "✅ Build, Lint, Test, Deploy Success! (branch=${env.BRANCH_NAME})") }
+            script { notifyN8N("SUCCESS", "✅ Build, Lint, Test, Deploy Success! (branch=${env.BRANCH_NAME})") }
         }
         failure {
             script { notifyN8N("FAILURE", "❌ Pipeline Failed, check logs!") }
         }
     }
 }
+
