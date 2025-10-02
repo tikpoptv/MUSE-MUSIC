@@ -10,17 +10,15 @@ pipeline {
     }
 
     environment {
-        PROJECT_NAME = 'MUSE MUSIC'
-        REPO_URL     = 'https://github.com/tikpoptv/MUSE-MUSIC.git'
+        PROJECT_NAME     = 'MUSE MUSIC'
+        REPO_URL         = 'https://github.com/tikpoptv/MUSE-MUSIC.git'
         REPO_CREDENTIALS = 'github-token'
     }
 
     stages {
-
         stage('Checkout') {
             steps {
                 script {
-                    notifyN8N("INFO", "Pipeline started. Checking out code... (branch=${env.BRANCH_NAME})")
                     notifyN8N("INFO", "Pipeline started. Checking out code... (branch=${env.BRANCH_NAME})")
                 }
                 checkout scm
@@ -32,78 +30,68 @@ pipeline {
             }
         }
 
-        stage('Install Frontend') {
-            steps {
-                dir('frontend') {
-                    nodejs('NodeJS_24') {
-                        sh 'npm install'
+        stage('Build & Lint Parallel') {
+            parallel {
+                stage('Frontend') {
+                    stages {
+                        stage('Install Frontend') {
+                            steps {
+                                dir('frontend') {
+                                    nodejs('NodeJS_24') {
+                                        sh 'npm install'
+                                    }
+                                }
+                            }
+                        }
+                        stage('Lint Frontend') {
+                            steps {
+                                dir('frontend') {
+                                    nodejs('NodeJS_24') {
+                                        sh '''
+                                          if npm run lint; then
+                                            echo "✅ Frontend lint passed"
+                                          else
+                                            echo "❌ Frontend lint failed"
+                                            exit 1
+                                          fi
+                                        '''
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
-            }
-            post { failure { script { notifyN8N("FAILURE", "Stage: Install Frontend failed") } } }
-        }
 
-        stage('Lint Frontend') {
-            steps {
-                dir('frontend') {
-                    nodejs('NodeJS_24') {
-                        sh '''
-                          if npm run lint; then
-                            echo "✅ Frontend lint passed"
-                          else
-                            echo "❌ Frontend lint failed"
-                            exit 1
-                          fi
-                        '''
-                        sh '''
-                          if npm run lint; then
-                            echo "✅ Frontend lint passed"
-                          else
-                            echo "❌ Frontend lint failed"
-                            exit 1
-                          fi
-                        '''
+                stage('Backend') {
+                    stages {
+                        stage('Install Backend') {
+                            steps {
+                                dir('backend') {
+                                    nodejs('NodeJS_24') {
+                                        sh 'npm install'
+                                    }
+                                }
+                            }
+                        }
+                        stage('Lint Backend') {
+                            steps {
+                                dir('backend') {
+                                    nodejs('NodeJS_24') {
+                                        sh '''
+                                          if npm run lint; then
+                                            echo "✅ Backend lint passed"
+                                          else
+                                            echo "⚠️ No lint script or lint failed"
+                                            exit 1
+                                          fi
+                                        '''
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
-            post { failure { script { notifyN8N("FAILURE", "Stage: Lint Frontend failed") } } }
-        }
-        
-        stage('Install Backend') {
-            steps {
-                dir('backend') {
-                    nodejs('NodeJS_24') {
-                        sh 'npm install'
-                    }
-                }
-            }
-            post { failure { script { notifyN8N("FAILURE", "Stage: Install Backend failed") } } }
-        }
-
-        stage('Lint Backend') {
-            steps {
-                dir('backend') {
-                    nodejs('NodeJS_24') {
-                        sh '''
-                          if npm run lint; then
-                            echo "✅ Backend lint passed"
-                          else
-                            echo "⚠️ No lint script or lint failed"
-                            exit 1
-                          fi
-                        '''
-                        sh '''
-                          if npm run lint; then
-                            echo "✅ Backend lint passed"
-                          else
-                            echo "⚠️ No lint script or lint failed"
-                            exit 1
-                          fi
-                        '''
-                    }
-                }
-            }
-            post { failure { script { notifyN8N("FAILURE", "Stage: Lint Backend failed") } } }
         }
 
         stage('Skip Deploy') {
@@ -117,9 +105,7 @@ pipeline {
         }
 
         stage('Deploy to Coolify') {
-            when {
-                branch 'main'
-            }
+            when { branch 'main' }
             steps {
                 script {
                     notifyN8N("INFO", "Preparing deployment to Coolify...")
@@ -143,11 +129,9 @@ pipeline {
     post {
         success {
             script { notifyN8N("SUCCESS", "✅ Build, Lint, Test, Deploy Success! (branch=${env.BRANCH_NAME})") }
-            script { notifyN8N("SUCCESS", "✅ Build, Lint, Test, Deploy Success! (branch=${env.BRANCH_NAME})") }
         }
         failure {
             script { notifyN8N("FAILURE", "❌ Pipeline Failed, check logs!") }
         }
     }
 }
-
