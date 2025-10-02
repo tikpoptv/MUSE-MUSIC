@@ -21,6 +21,9 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+      args:
+        NODE_ENV: production
+        BACKEND_PORT: 3001
     ports:
       - "7662:3001"
     networks:

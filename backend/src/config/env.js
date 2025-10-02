@@ -2,7 +2,7 @@ const { logger } = require('../middleware/logger');
 
 const config = {
   server: {
-    port: process.env.PORT || 3001,
+    port: process.env.BACKEND_PORT || 3001,
     nodeEnv: process.env.NODE_ENV || 'development',
     isDevelopment: process.env.NODE_ENV === 'development',
     isProduction: process.env.NODE_ENV === 'production',
@@ -18,7 +18,7 @@ const config = {
   },
   
   cors: {
-    origin: process.env.FRONTEND_URL || `http://localhost:${process.env.NEXT_PUBLIC_PORT || 3000}`,
+    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
     credentials: true
   },
   
