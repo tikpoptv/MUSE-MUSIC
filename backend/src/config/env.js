@@ -18,7 +18,7 @@ const config = {
   },
   
   cors: {
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    origin: process.env.FRONTEND_URL || `http://localhost:${process.env.NEXT_PUBLIC_PORT || 3000}`,
     credentials: true
   },
   
