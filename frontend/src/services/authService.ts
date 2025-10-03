@@ -195,7 +195,9 @@ export const authService = {
   },
 
   isAuthenticated(): boolean {
-    return this.hasToken() && !!this.getUserData();
+    const token = this.getStoredToken();
+    const userData = this.getUserData();
+    return !!(token && userData);
   },
 
   getCurrentUser(): UserData | null {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import GoogleAuthButton from '@/components/GoogleAuthButton';
@@ -15,6 +15,15 @@ export default function LoginPage() {
     password: ''
   });
   const router = useRouter();
+
+  useEffect(() => {
+    const isAuth = authService.isAuthenticated();
+    
+    if (isAuth) {
+      toast.success('คุณเข้าสู่ระบบอยู่แล้ว');
+      router.push('/');
+    }
+  }, [router]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -62,6 +71,7 @@ export default function LoginPage() {
       setIsLoading(false);
     }
   };
+
 
   return (
     <div 
