@@ -17,7 +17,7 @@ const options = {
     servers: [
       {
         url: config.server.isProduction 
-          ? `https://${process.env.BACKEND_HOST || 'api.musemusic.com'}:${config.server.port}`
+          ? `https://${process.env.BACKEND_HOST || 'api.musemusic.com'}`
           : `http://localhost:${config.server.port}`,
         description: config.server.isProduction ? 'Production server' : 'Development server'
       }
