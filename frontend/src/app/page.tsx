@@ -1,4 +1,35 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+
 export default function Home() {
+  const [stars, setStars] = useState<Array<{
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+    animation: string;
+    animationDelay: string;
+    opacity: number;
+  }>>([]);
+
+  useEffect(() => {
+    const generateStars = () => {
+      const newStars = [...Array(50)].map(() => ({
+        left: Math.random() * 100,
+        top: Math.random() * 100,
+        width: Math.random() * 3 + 1,
+        height: Math.random() * 3 + 1,
+        animation: `twinkle ${0.8 + Math.random() * 2}s ease-in-out infinite`,
+        animationDelay: `${Math.random() * 4}s`,
+        opacity: Math.random() * 0.8 + 0.2
+      }));
+      setStars(newStars);
+    };
+
+    generateStars();
+  }, []);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-black to-slate-800 flex items-center justify-center relative overflow-hidden">
       <div className="absolute inset-0">
@@ -20,18 +51,18 @@ export default function Home() {
       </div>
 
       <div className="absolute inset-0 pointer-events-none">
-        {[...Array(50)].map((_, i) => (
+        {stars.map((star, i) => (
           <div
             key={i}
             className="absolute bg-white rounded-full"
             style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-              width: `${Math.random() * 3 + 1}px`,
-              height: `${Math.random() * 3 + 1}px`,
-              animation: `twinkle ${0.8 + Math.random() * 2}s ease-in-out infinite`,
-              animationDelay: `${Math.random() * 4}s`,
-              opacity: Math.random() * 0.8 + 0.2,
+              left: `${star.left}%`,
+              top: `${star.top}%`,
+              width: `${star.width}px`,
+              height: `${star.height}px`,
+              animation: star.animation,
+              animationDelay: star.animationDelay,
+              opacity: star.opacity,
               boxShadow: '0 0 6px rgba(255,255,255,0.8)'
             }}
           ></div>
