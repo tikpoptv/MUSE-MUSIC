@@ -159,8 +159,23 @@ export const authService = {
     return null;
   },
 
-  logout() {
-    this.removeToken();
+  async logout() {
+    try {
+      const token = this.getStoredToken();
+      if (token) {
+        await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:7662'}/api/auth/logout`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Logout API error:', error);
+    } finally {
+      this.removeToken();
+    }
   },
 
   async validateToken(): Promise<User | null> {
