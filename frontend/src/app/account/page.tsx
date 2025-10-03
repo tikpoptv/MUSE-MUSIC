@@ -267,7 +267,6 @@ export default function AccountSettingsPage() {
                   count={userStats?.surprise || 0}
                 />
               </div>
-
             </div>
           </div>
 
