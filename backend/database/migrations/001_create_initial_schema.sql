@@ -491,3 +491,16 @@ $$ language 'plpgsql';
 CREATE TRIGGER update_rating_stats_trigger 
     AFTER INSERT OR UPDATE OR DELETE ON AIProcessingRatings
     FOR EACH ROW EXECUTE FUNCTION update_rating_stats();
+
+-- =========================
+-- Table: Prompts (AI Prompts for Translation and Mood Analysis)
+-- =========================
+CREATE TABLE Prompts (
+    promptID UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    promptType VARCHAR(50) NOT NULL, -- 'translation', 'mood'
+    promptText TEXT NOT NULL,
+    isActive BOOLEAN DEFAULT TRUE,
+    createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT check_prompt_type CHECK (promptType IN ('translation', 'mood'))
+);
