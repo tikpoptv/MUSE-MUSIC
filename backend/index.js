@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
+const swaggerUi = require('swagger-ui-express');
 require('dotenv').config();
 
 const { config, validateConfig } = require('./src/config/env');
@@ -10,6 +11,7 @@ const errorHandler = require('./src/middleware/errorHandler');
 const { logger } = require('./src/middleware/logger');
 const routes = require('./src/routes');
 const { connectDB } = require('./src/config/database');
+const swaggerSpecs = require('./src/config/swagger');
 
 const startServer = async () => {
   const app = express();
@@ -30,6 +32,7 @@ const startServer = async () => {
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
 
+  app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs));
   app.use('/', routes);
 
   app.use(errorHandler);
