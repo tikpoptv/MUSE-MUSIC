@@ -23,7 +23,9 @@ export default function RegisterPage() {
     
     if (isAuth) {
       toast.success('คุณเข้าสู่ระบบอยู่แล้ว');
-      router.push('/');
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 1500);
     }
   }, [router]);
 
@@ -78,7 +80,9 @@ export default function RegisterPage() {
 
       if (response.ok && data.success) {
         toast.success('Account created successfully! Please sign in.');
-        router.push('/login');
+        setTimeout(() => {
+          window.location.href = '/login';
+        }, 1500);
       } else {
         toast.error(data.message || 'Registration failed');
       }

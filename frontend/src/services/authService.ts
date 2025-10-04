@@ -159,22 +159,29 @@ export const authService = {
     return null;
   },
 
-  async logout() {
+  async logout(): Promise<{ success: boolean; message?: string }> {
     try {
       const token = this.getStoredToken();
       if (token) {
-        await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:7662'}/api/auth/logout`, {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:7662'}/api/auth/logout`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           }
         });
+        
+        if (!response.ok) {
+          throw new Error('Logout API failed');
+        }
       }
+      
+      this.removeToken();
+      return { success: true };
     } catch (error) {
       console.error('Logout API error:', error);
-    } finally {
-      this.removeToken();
+      this.removeToken(); // Still clear local storage even if API fails
+      return { success: false, message: 'Logout failed but local session cleared' };
     }
   },
 

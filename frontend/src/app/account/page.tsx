@@ -208,8 +208,20 @@ export default function AccountSettingsPage() {
                 <div className="mt-4 flex justify-center">
                   <button
                     onClick={async () => {
-                      await authService.logout();
-                      router.push('/');
+                      try {
+                        const result = await authService.logout();
+                        if (result.success) {
+                          toast.success('Logged out successfully!');
+                        } else {
+                          toast.error(result.message || 'Logout completed with warnings');
+                        }
+                        setTimeout(() => {
+                          window.location.href = '/';
+                        }, 1500);
+                      } catch (error) {
+                        console.error('Logout error:', error);
+                        toast.error('Logout failed. Please try again.');
+                      }
                     }}
                     className="flex items-center justify-center space-x-2 px-4 py-2 bg-red-50 text-red-600 hover:text-red-700 hover:bg-red-100 border border-red-200 rounded-lg transition-colors duration-200"
                   >

@@ -21,7 +21,9 @@ export default function LoginPage() {
     
     if (isAuth) {
       toast.success('คุณเข้าสู่ระบบอยู่แล้ว');
-      router.push('/');
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 1500);
     }
   }, [router]);
 
@@ -60,7 +62,9 @@ export default function LoginPage() {
       if (response.ok && data.success) {
         authService.setAuthData(data.data);
         toast.success('Successfully signed in!');
-        router.push('/');
+        setTimeout(() => {
+          window.location.href = '/';
+        }, 1500);
       } else {
         toast.error(data.message || 'Login failed');
       }

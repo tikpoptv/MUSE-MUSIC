@@ -53,7 +53,9 @@ function GoogleCallbackContent() {
             if (data.success && data.data) {
               authService.setAuthData(data.data);
               toast.success('Successfully signed in with Google!');
-              router.push('/');
+              setTimeout(() => {
+                window.location.href = '/';
+              }, 1500);
             } else {
               throw new Error('Authentication failed');
             }
@@ -68,10 +70,24 @@ function GoogleCallbackContent() {
   }, [searchParams, router]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center">
-      <div className="text-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
-        <p className="text-gray-600">Signing in with Google...</p>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50">
+      <div className="text-center max-w-md mx-auto px-6">
+        <div className="relative mb-8">
+          <div className="w-24 h-24 border-4 border-purple-100 rounded-full animate-pulse mx-auto"></div>
+          <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-24 h-24 border-4 border-transparent border-t-purple-600 border-r-purple-600 rounded-full animate-spin"></div>
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-4 h-4 bg-purple-600 rounded-full animate-pulse"></div>
+        </div>
+        
+        <div className="space-y-4">
+          <h2 className="text-3xl font-bold text-gray-800">Signing in with Google</h2>
+          <p className="text-gray-600 text-lg">Please wait while we authenticate your account...</p>
+          
+          <div className="flex justify-center space-x-2 mt-8">
+            <div className="w-3 h-3 bg-purple-600 rounded-full animate-bounce"></div>
+            <div className="w-3 h-3 bg-purple-600 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+            <div className="w-3 h-3 bg-purple-600 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -80,10 +96,24 @@ function GoogleCallbackContent() {
 export default function GoogleCallbackPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50">
+        <div className="text-center max-w-md mx-auto px-6">
+          <div className="relative mb-8">
+            <div className="w-24 h-24 border-4 border-purple-100 rounded-full animate-pulse mx-auto"></div>
+            <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-24 h-24 border-4 border-transparent border-t-purple-600 border-r-purple-600 rounded-full animate-spin"></div>
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-4 h-4 bg-purple-600 rounded-full animate-pulse"></div>
+          </div>
+          
+          <div className="space-y-4">
+            <h2 className="text-3xl font-bold text-gray-800">Loading...</h2>
+            <p className="text-gray-600 text-lg">Please wait...</p>
+            
+            <div className="flex justify-center space-x-2 mt-8">
+              <div className="w-3 h-3 bg-purple-600 rounded-full animate-bounce"></div>
+              <div className="w-3 h-3 bg-purple-600 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+              <div className="w-3 h-3 bg-purple-600 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+            </div>
+          </div>
         </div>
       </div>
     }>
