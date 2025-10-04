@@ -16,6 +16,8 @@ export default function RegisterPage() {
     password: '',
     confirmPassword: ''
   });
+  const [passwordError, setPasswordError] = useState('');
+  const [isFormValid, setIsFormValid] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -29,6 +31,29 @@ export default function RegisterPage() {
     }
   }, [router]);
 
+  useEffect(() => {
+    if (!formData.password || !formData.confirmPassword) {
+      setPasswordError('');
+      setIsFormValid(false);
+      return;
+    }
+    
+    if (formData.password.length < 6) {
+      setPasswordError('Password must be at least 6 characters');
+      setIsFormValid(false);
+      return;
+    }
+    
+    if (formData.password !== formData.confirmPassword) {
+      setPasswordError('Passwords do not match');
+      setIsFormValid(false);
+      return;
+    }
+    
+    setPasswordError('');
+    setIsFormValid(true);
+  }, [formData.password, formData.confirmPassword]);
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({
@@ -40,7 +65,6 @@ export default function RegisterPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validation
     if (!formData.username || !formData.password) {
       toast.error('Username and password are required');
       return;
@@ -60,7 +84,6 @@ export default function RegisterPage() {
       toast.error('Passwords do not match');
       return;
     }
-
 
     setIsLoading(true);
     
@@ -193,11 +216,21 @@ export default function RegisterPage() {
               )}
             </button>
           </div>
+          
+          {passwordError && (
+            <div className="text-red-500 text-sm mt-2">
+              {passwordError}
+            </div>
+          )}
 
           <button
             type="submit"
-            disabled={isLoading}
-            className="w-full py-3 bg-gray-200 text-purple-600 font-medium hover:bg-gray-300 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={isLoading || !isFormValid || !formData.username}
+            className={`w-full py-3 font-medium transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${
+              isFormValid && formData.username && !isLoading
+                ? 'bg-[#7B61FF] hover:bg-[#6B51EF] text-white'
+                : 'bg-gray-200 text-purple-600'
+            }`}
             style={{ borderRadius: '14px' }}
           >
             {isLoading ? 'Creating Account...' : 'Create!'}
