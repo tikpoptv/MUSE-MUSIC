@@ -31,6 +31,12 @@ class ApiService {
   ): Promise<ApiResponse<T>> {
     const url = `${this.baseURL}${endpoint}`;
     
+    // Auto-set token from localStorage if not already set
+    const token = localStorage.getItem('auth_token');
+    if (token && !this.hasAuthToken()) {
+      this.setAuthToken(token);
+    }
+    
     const config: RequestInit = {
       ...options,
       headers: {

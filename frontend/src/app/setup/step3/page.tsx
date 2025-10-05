@@ -1,8 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
+import { setupService } from '@/services/setupService';
+import { SetupLayout, SetupHeader, SetupNavigation, SetupButton } from '@/components/setup';
 // @ts-expect-error - No type definitions available for country-list
 import countryList from 'country-list';
 import { formatInTimeZone } from 'date-fns-tz';
@@ -13,8 +15,7 @@ export default function SetupStep3() {
   const [country, setCountry] = useState('Thailand');
   const [timezone, setTimezone] = useState('Thailand (GMT+7)');
   const [language, setLanguage] = useState('English');
-  const [acceptTerms, setAcceptTerms] = useState(false);
-  const [showTermsModal, setShowTermsModal] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   const countries = countryList.getNames();
   
@@ -186,63 +187,86 @@ export default function SetupStep3() {
     return countryLanguageMap[countryName] || 'English';
   };
 
-  const handleNext = () => {
-    if (acceptTerms) {
-      router.push('/setup/step4');
+  const handleNext = async () => {
+    try {
+      await setupService.saveSetupStep('step3', { 
+        country, 
+        timezone, 
+        language 
+      });
+      
+      const userData = localStorage.getItem('user_data');
+      if (userData) {
+        const user = JSON.parse(userData);
+        user.stepData = user.stepData || {};
+        user.stepData.step3 = { country, timezone, language };
+        user.stepStatus = user.stepStatus || {};
+        user.stepStatus.step3 = true;
+        localStorage.setItem('user_data', JSON.stringify(user));
+      }
+      
+      toast.success('Preferences saved successfully!');
+      setTimeout(() => {
+        router.push('/setup/step4');
+      }, 1500);
+    } catch {
+      toast.error('Failed to save preferences. Please try again.');
     }
   };
 
-  const handleTermsClick = () => {
-    setShowTermsModal(true);
-  };
-
-  const handleAcceptTerms = () => {
-    setAcceptTerms(true);
-    setShowTermsModal(false);
-    toast.success('Terms and conditions accepted');
-  };
-
-  const handleCloseModal = () => {
-    setShowTermsModal(false);
-  };
-
-  const handleSkip = () => {
-    if (!acceptTerms) {
-      setShowTermsModal(true);
-      toast.error('Please accept terms and conditions before skipping setup');
-      return;
-    }
-    router.push('/');
-  };
 
   const handleBack = () => {
     router.push('/setup/step2');
   };
 
+  useEffect(() => {
+    const fetchSetupStatus = async () => {
+      try {
+        const token = localStorage.getItem('auth_token');
+        if (!token) {
+          toast.error('Please login first');
+          setTimeout(() => {
+            router.push('/login');
+          }, 1500);
+          return;
+        }
+
+            const data = await setupService.getSetupStatus();
+        
+        if (data.stepStatus && data.stepStatus.step3) {
+          if (data.stepData && data.stepData.step3) {
+            setCountry(data.stepData.step3.country);
+            setTimezone(data.stepData.step3.timezone);
+            setLanguage(data.stepData.step3.language);
+            toast.success('Preferences loaded from previous setup!');
+          } else {
+            toast.success('Preferences already set up! Redirecting to next step...');
+            setTimeout(() => {
+              router.push('/setup/step4');
+            }, 1500);
+            return;
+          }
+        }
+        
+        setIsLoading(false);
+      } catch (error) {
+        console.error('Error fetching setup status:', error);
+        toast.error('Authentication failed. Please login again.');
+        setTimeout(() => {
+          router.push('/login');
+        }, 1500);
+      }
+    };
+
+    fetchSetupStatus();
+  }, [router]);
+
   return (
-    <div 
-      className="min-h-screen flex items-center justify-center relative overflow-hidden" 
-      style={{ 
-        backgroundImage: 'url(/login-background.svg)',
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat',
-        backgroundColor: '#ffffff'
-      }}
-    >
-      <div className="bg-white rounded-2xl p-8 mx-4 shadow-2xl relative z-10 flex flex-col justify-center" style={{
-        boxShadow: '0 0 50px rgba(94, 7, 202, 0.1), 0 0 100px rgba(94, 7, 202, 0.05), 0 0 150px rgba(94, 7, 202, 0.03), 0 0 200px rgba(94, 7, 202, 0.02), 0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-        width: '480px',
-        height: '700px'
-      }}>
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">
-            Set up your profile
-          </h1>
-          <p className="text-sm text-gray-600">
-            Pick at least one genre to start shaping your music mood.
-          </p>
-        </div>
+    <SetupLayout isLoading={isLoading}>
+      <SetupHeader 
+        title="Set up your profile"
+        description="Pick at least one genre to start shaping your music mood."
+      />
 
         <div className="mb-8 space-y-6">
           <div>
@@ -296,144 +320,18 @@ export default function SetupStep3() {
             </select>
           </div>
 
-          <div className="flex items-start space-x-3">
-            <button
-              onClick={handleTermsClick}
-              className="flex-shrink-0 mt-1"
-            >
-              <div className={`w-5 h-5 border-2 rounded flex items-center justify-center ${
-                acceptTerms 
-                  ? 'bg-[#7B61FF] border-[#7B61FF]' 
-                  : 'border-gray-300'
-              }`}>
-                {acceptTerms && (
-                  <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                )}
-              </div>
-            </button>
-            <div>
-              <p className="text-sm text-gray-900">
-                Accept{' '}
-                <button
-                  type="button"
-                  onClick={handleTermsClick}
-                  className="text-purple-600 hover:text-purple-800 underline"
-                >
-                  terms and conditions
-                </button>
-              </p>
-              <p className="text-xs text-gray-500 mt-1">
-                You agree to our Terms of Service and Privacy Policy.
-              </p>
-            </div>
-          </div>
         </div>
 
         <div className="space-y-4">
-          <button
-            onClick={handleNext}
-            disabled={!acceptTerms}
-            className={`w-full px-6 py-3 rounded-xl font-medium transition-colors flex items-center justify-center space-x-2 ${
-              acceptTerms
-                ? 'bg-[#7B61FF] hover:bg-[#6B51EF] text-white'
-                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-            }`}
-          >
+          <SetupButton onClick={handleNext}>
             <span>Next</span>
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
             </svg>
-          </button>
+          </SetupButton>
           
-          <div className="flex items-center justify-between">
-            <button
-              onClick={handleSkip}
-              className="text-gray-500 hover:text-gray-700 text-sm transition-colors"
-            >
-              Skip Set up
-            </button>
-            
-            <button
-              onClick={handleBack}
-              className="text-gray-500 hover:text-gray-700 text-sm transition-colors"
-            >
-              Back
-            </button>
-          </div>
+          <SetupNavigation onBack={handleBack} />
         </div>
-      </div>
-
-      {showTermsModal && (
-        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl p-8 mx-4 max-w-2xl w-full max-h-[80vh] overflow-y-auto shadow-2xl">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-gray-900">Terms and Conditions</h2>
-              <button
-                onClick={handleCloseModal}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-            
-            <div className="space-y-4 text-sm text-gray-700">
-              <div>
-                <h3 className="font-semibold text-gray-900 mb-2">1. Educational Project</h3>
-                <p>MUSE Music is an educational project developed for CPE 334 Software Engineering course. This is a demonstration application for learning purposes only.</p>
-              </div>
-              
-              <div>
-                <h3 className="font-semibold text-gray-900 mb-2">2. Music Content Disclaimer</h3>
-                <p>All music content used in this application is for educational demonstration purposes only. We do not claim ownership of any music tracks and acknowledge that all rights belong to their respective copyright holders.</p>
-              </div>
-              
-              <div>
-                <h3 className="font-semibold text-gray-900 mb-2">3. Non-Commercial Use</h3>
-                <p>This application is strictly for educational and demonstration purposes. No commercial use is intended or permitted. All music content is used under fair use for educational purposes.</p>
-              </div>
-              
-              <div>
-                <h3 className="font-semibold text-gray-900 mb-2">4. Copyright Notice</h3>
-                <p>We respect all copyright holders and their intellectual property rights. If you are a copyright holder and believe your content has been used inappropriately, please contact us for immediate removal.</p>
-              </div>
-              
-              <div>
-                <h3 className="font-semibold text-gray-900 mb-2">5. Educational Purpose</h3>
-                <p>This project demonstrates software engineering principles including user authentication, database design, API development, and frontend-backend integration for academic evaluation.</p>
-              </div>
-              
-              <div>
-                <h3 className="font-semibold text-gray-900 mb-2">6. Data Privacy</h3>
-                <p>User data collected is used solely for educational demonstration purposes. No personal information will be shared or used for commercial purposes.</p>
-              </div>
-              
-              <div>
-                <h3 className="font-semibold text-gray-900 mb-2">7. Project Scope</h3>
-                <p>This is a capstone project for CPE 334 Software Engineering course, demonstrating full-stack development skills and software engineering best practices.</p>
-              </div>
-            </div>
-            
-            <div className="flex space-x-4 mt-8">
-              <button
-                onClick={handleCloseModal}
-                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleAcceptTerms}
-                className="flex-1 px-4 py-2 bg-[#7B61FF] text-white rounded-lg hover:bg-[#6B51EF] transition-colors"
-              >
-                Accept Terms
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+    </SetupLayout>
   );
 }

@@ -5,6 +5,7 @@ const { config } = require('./env');
 const commonSchemas = require('../docs/schemas/common');
 const userSchemas = require('../docs/schemas/user');
 const authSchemas = require('../docs/schemas/auth');
+const setupSchemas = require('../docs/schemas/setup');
 
 const options = {
   definition: {
@@ -26,7 +27,8 @@ const options = {
       schemas: {
         ...commonSchemas,
         ...userSchemas,
-        ...authSchemas
+        ...authSchemas,
+        ...setupSchemas
       },
       securitySchemes: {
         bearerAuth: {

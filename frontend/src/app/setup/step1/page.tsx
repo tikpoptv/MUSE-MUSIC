@@ -3,8 +3,12 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
-import TermsModal from '@/components/TermsModal';
 import Image from 'next/image';
+import { setupService } from '@/services/setupService';
+import { SetupLayout, SetupHeader, SetupNavigation, SetupButton } from '@/components/setup';
+
+// Import interface type
+type SetupStatusData = Awaited<ReturnType<typeof setupService.getSetupStatus>>;
 
 export default function SetupStep1() {
   const router = useRouter();
@@ -12,15 +16,78 @@ export default function SetupStep1() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [showTermsModal, setShowTermsModal] = useState(false);
-  const [acceptTerms, setAcceptTerms] = useState(false);
   const [passwordError, setPasswordError] = useState('');
   const [isValid, setIsValid] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    const fetchSetupStatus = async () => {
+      try {
+        const token = localStorage.getItem('auth_token');
+        if (!token) {
+          toast.error('Please login first');
+          setTimeout(() => {
+            router.push('/login');
+          }, 1500);
+          return;
+        }
+
+        const data: SetupStatusData = await setupService.getSetupStatus();
+        
+        console.log('Step 1 - Received data:', data);
+        console.log('Step 1 - data.stepStatus:', data.stepStatus);
+        console.log('Step 1 - data.stepData:', data.stepData);
+        console.log('Step 1 - stepStatus.step1:', data.stepStatus?.step1);
+        console.log('Step 1 - stepData.step1:', data.stepData?.step1);
+        console.log('Step 1 - hasPassword:', data.stepData?.step1?.hasPassword);
+
+        if (data.stepStatus && data.stepStatus.step1) {
+          console.log('Step 1 is completed, checking for password data...');
+          if (data.stepData && data.stepData.step1?.hasPassword) {
+            console.log('Auto-filling password fields...');
+            setPassword('*****');
+            setConfirmPassword('*****');
+            setIsValid(true);
+            toast.success('Password already set up! Auto-filled with *****. You can proceed to next step.');
+          } else {
+            console.log('No password data, redirecting...');
+            toast.success('Password already set up! Redirecting to next step...');
+            setTimeout(() => {
+              router.push('/setup/step2');
+            }, 1500);
+            return;
+          }
+        } else {
+          console.log('Step 1 not completed yet');
+        }
+        
+        setIsLoading(false);
+      } catch (error) {
+        console.error('Error fetching setup status:', error);
+        toast.error('Authentication failed. Please login again.');
+        setTimeout(() => {
+          router.push('/login');
+        }, 1500);
+      }
+    };
+
+    fetchSetupStatus();
+  }, [router]);
+
+  useEffect(() => {
+    console.log('Password validation triggered:', { password, confirmPassword, isValid });
+    
     if (!password || !confirmPassword) {
       setPasswordError('');
       setIsValid(false);
+      return;
+    }
+    
+    if (password === '*****') {
+      // Password already set up, skip validation
+      console.log('Password is *****, setting valid to true');
+      setPasswordError('');
+      setIsValid(true);
       return;
     }
     
@@ -38,7 +105,7 @@ export default function SetupStep1() {
     
     setPasswordError('');
     setIsValid(true);
-  }, [password, confirmPassword]);
+  }, [password, confirmPassword, isValid]);
 
   const validatePassword = () => {
     if (!password || !confirmPassword) {
@@ -49,6 +116,11 @@ export default function SetupStep1() {
       setPasswordError('Passwords do not match');
       return false;
     }
+    if (password === '*****') {
+      // Password already set up, skip length validation
+      setPasswordError('');
+      return true;
+    }
     if (password.length < 6) {
       setPasswordError('Password must be at least 6 characters');
       return false;
@@ -57,24 +129,29 @@ export default function SetupStep1() {
     return true;
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (validatePassword()) {
-      router.push('/setup/step2');
+      if (password === '*****') {
+        // Password already set up, just proceed
+        toast.success('Proceeding to next step...');
+        setTimeout(() => {
+          router.push('/setup/step2');
+        }, 1500);
+      } else {
+        // New password, save it
+        try {
+          await setupService.saveSetupStep('step1', { password });
+          toast.success('Password saved successfully!');
+          setTimeout(() => {
+            router.push('/setup/step2');
+          }, 1500);
+        } catch {
+          toast.error('Failed to save password. Please try again.');
+        }
+      }
     }
   };
 
-  const handleSkip = () => {
-    if (!acceptTerms) {
-      setShowTermsModal(true);
-      toast.error('Please accept terms and conditions before skipping setup');
-      return;
-    }
-    router.push('/');
-  };
-
-  const handleAcceptTerms = () => {
-    setAcceptTerms(true);
-  };
 
 
   const handleBack = () => {
@@ -82,29 +159,11 @@ export default function SetupStep1() {
   };
 
   return (
-    <div 
-      className="min-h-screen flex items-center justify-center relative overflow-hidden" 
-      style={{ 
-        backgroundImage: 'url(/login-background.svg)',
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat',
-        backgroundColor: '#ffffff'
-      }}
-    >
-      <div className="bg-white rounded-2xl p-8 mx-4 shadow-2xl relative z-10 flex flex-col justify-center" style={{
-        boxShadow: '0 0 50px rgba(94, 7, 202, 0.1), 0 0 100px rgba(94, 7, 202, 0.05), 0 0 150px rgba(94, 7, 202, 0.03), 0 0 200px rgba(94, 7, 202, 0.02), 0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-        width: '480px',
-        height: '700px'
-      }}>
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">
-            Set up your profile
-          </h1>
-          <p className="text-sm text-gray-600">
-            Create a password for your account to keep it secure.
-          </p>
-        </div>
+    <SetupLayout isLoading={isLoading}>
+      <SetupHeader 
+        title="Set up your profile"
+        description="Create a password for your account to keep it secure."
+      />
 
         <div className="mb-8 space-y-4">
           <div className="relative">
@@ -167,44 +226,18 @@ export default function SetupStep1() {
         </div>
 
         <div className="space-y-4">
-          <button
+          <SetupButton
             onClick={handleNext}
             disabled={!isValid}
-            className={`w-full px-6 py-3 rounded-xl font-medium transition-colors flex items-center justify-center space-x-2 ${
-              isValid 
-                ? 'bg-[#7B61FF] hover:bg-[#6B51EF] text-white cursor-pointer' 
-                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-            }`}
           >
             <span>Next</span>
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
             </svg>
-          </button>
+          </SetupButton>
           
-          <div className="flex items-center justify-between">
-            <button
-              onClick={handleSkip}
-              className="text-gray-500 hover:text-gray-700 text-sm transition-colors"
-            >
-              Skip Set up
-            </button>
-            
-            <button
-              onClick={handleBack}
-              className="text-gray-500 hover:text-gray-700 text-sm transition-colors"
-            >
-              Back
-            </button>
-          </div>
+          <SetupNavigation onBack={handleBack} />
         </div>
-      </div>
-
-      <TermsModal
-        isOpen={showTermsModal}
-        onClose={() => setShowTermsModal(false)}
-        onAccept={handleAcceptTerms}
-      />
-    </div>
+    </SetupLayout>
   );
 }
