@@ -58,7 +58,7 @@ interface TokensData {
   refreshToken: string;
   tokenType: string;
   expiresIn: string;
-}
+} 
 
 interface AuthData {
   user: UserData;
