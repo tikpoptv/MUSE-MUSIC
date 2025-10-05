@@ -103,7 +103,16 @@ export const authService = {
   getUserData(): UserData | null {
     if (typeof window !== 'undefined') {
       const userData = localStorage.getItem('user_data');
-      return userData ? JSON.parse(userData) : null;
+      if (userData && userData !== 'undefined' && userData !== 'null') {
+        try {
+          return JSON.parse(userData);
+        } catch (error) {
+          console.error('Error parsing user data from localStorage:', error);
+          localStorage.removeItem('user_data');
+          return null;
+        }
+      }
+      return null;
     }
     return null;
   },
@@ -279,5 +288,15 @@ export const authService = {
     }
 
     return false;
+  },
+
+  async fetchUserData(): Promise<UserData> {
+    const response = await apiService.get<{success: boolean, data: UserData}>('/api/user/me');
+    
+    if (!response.success) {
+      throw new Error(response.error || 'Failed to fetch user data');
+    }
+    
+    return response.data!.data;
   }
 };

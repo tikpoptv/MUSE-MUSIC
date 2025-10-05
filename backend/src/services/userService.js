@@ -178,6 +178,109 @@ class UserService {
     
     return user;
   }
+
+  static async getUserWithSetupStatus(userID) {
+    const query = `
+      SELECT 
+        u.userID,
+        u.username,
+        u.email,
+        u.fullName,
+        u.provider,
+        u.setupCompleted,
+        u.setupSkipped,
+        u.createdAt,
+        u.updatedAt,
+        u.password,
+        c.DOB as birthday,
+        c.preferredLanguage as language,
+        c.timezone,
+        c.country,
+        c.musicInterestTypes
+      FROM Users u
+      LEFT JOIN Customers c ON u.userID = c.userID
+      WHERE u.userID = $1
+    `;
+
+    const result = await pool.query(query, [userID]);
+    
+    if (result.rows.length === 0) {
+      return null;
+    }
+
+    const user = result.rows[0];
+    
+    // Build step status and data
+    const stepStatus = {
+      step1: false,
+      step2: false,
+      step3: false,
+      step4: false
+    };
+
+    const stepData = {
+      step1: null,
+      step2: null,
+      step3: null,
+      step4: null
+    };
+
+    // Step 1: Password for Google users
+    if (user.provider === 'google') {
+      stepStatus.step1 = user.password !== null;
+      stepData.step1 = {
+        hasPassword: user.password !== null
+      };
+    } else {
+      stepStatus.step1 = true;
+      stepData.step1 = {
+        hasPassword: true
+      };
+    }
+
+    // Step 2: Birthday
+    stepStatus.step2 = user.birthday !== null;
+    if (user.birthday) {
+      stepData.step2 = {
+        birthday: user.birthday
+      };
+    }
+
+    // Step 3: Preferences
+    stepStatus.step3 = user.country !== null && user.timezone !== null && user.language !== null;
+    if (user.country && user.timezone && user.language) {
+      stepData.step3 = {
+        country: user.country,
+        timezone: user.timezone,
+        language: user.language
+      };
+    }
+
+    // Step 4: Music genres (PostgreSQL array)
+    stepStatus.step4 = user.musicinteresttypes !== null && user.musicinteresttypes !== undefined && user.musicinteresttypes.length > 0;
+    if (user.musicinteresttypes && user.musicinteresttypes.length > 0) {
+      stepData.step4 = {
+        genres: user.musicinteresttypes
+      };
+    }
+
+    const allStatus = user.setupcompleted;
+
+    return {
+      userID: user.userid,
+      username: user.username,
+      email: user.email,
+      fullName: user.fullname,
+      provider: user.provider,
+      setupCompleted: user.setupcompleted,
+      setupSkipped: user.setupskipped,
+      createdAt: user.createdat,
+      updatedAt: user.updatedat,
+      allStatus,
+      stepStatus,
+      stepData
+    };
+  }
 }
 
 module.exports = UserService;
