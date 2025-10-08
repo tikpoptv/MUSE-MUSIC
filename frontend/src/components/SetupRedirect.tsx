@@ -135,7 +135,7 @@ export default function SetupRedirect() {
     };
 
     checkUserSetup();
-  }, [router, pathname, isChecking]);
+  }, [router, pathname]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return null;
 }
