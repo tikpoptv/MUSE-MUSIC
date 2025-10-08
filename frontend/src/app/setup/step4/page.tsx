@@ -72,7 +72,7 @@ export default function SetupStep4() {
       // Step 3: Fetch latest data
       toast.loading('Syncing your profile...', { id: 'sync-profile' });
       const latestUserData = await authService.fetchUserData();
-      localStorage.setItem('user_data', JSON.stringify(latestUserData));
+      authService.setUserData(latestUserData);
       toast.success('Profile synced!', { id: 'sync-profile' });
       
       // Final success

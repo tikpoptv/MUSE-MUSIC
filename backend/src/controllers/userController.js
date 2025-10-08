@@ -7,15 +7,19 @@ const getUserData = async (req, res) => {
   try {
     const userId = req.user.userID;
 
-    const userData = await UserService.getUserWithSetupStatus(userId);
+    const user = await UserService.findByID(userId);
 
-    if (!userData) {
+    if (!user) {
       return res.status(404).json(
         errorResponse('User not found', 404)
       );
     }
 
-    res.json(successResponse(userData));
+    const responseData = {
+      user: user.toJSON()
+    };
+
+    res.json(successResponse('User data retrieved successfully', responseData));
 
   } catch (error) {
     logger.error('Error fetching user data:', error);
