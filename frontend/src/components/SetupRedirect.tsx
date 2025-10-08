@@ -27,15 +27,9 @@ export default function SetupRedirect() {
       if (userData && userData !== 'undefined' && userData !== 'null') {
         try {
           const user = JSON.parse(userData);
-          console.log('SetupRedirect - User data from localStorage:', {
-            setupCompleted: user.setupCompleted,
-            setupSkipped: user.setupSkipped,
-            provider: user.provider
-          });
         
           if (user) {
           if (!user.setupCompleted && !user.setupSkipped) {
-            console.log('SetupRedirect - Redirecting to setup (not completed, not skipped)');
             toast.success('Welcome! Let\'s set up your profile to get started.');
             if (user.provider === 'google') {
               router.push('/setup/step1');
@@ -43,7 +37,6 @@ export default function SetupRedirect() {
               router.push('/setup/step2');
             }
           } else if (user.setupSkipped && !user.setupCompleted) {
-            console.log('SetupRedirect - Showing skip toast (skipped but not completed)');
             const handleSetupClick = () => {
               if (user.provider === 'google') {
                 router.push('/setup/step1');
@@ -76,7 +69,6 @@ export default function SetupRedirect() {
               }
             }, 100);
           } else {
-            console.log('SetupRedirect - Setup completed, no action needed');
           }
         }
         } catch (error) {
@@ -89,16 +81,9 @@ export default function SetupRedirect() {
         try {
           const user = await setupService.getSetupStatus();
           localStorage.setItem('user_data', JSON.stringify(user));
-          
-          console.log('SetupRedirect - User data from API:', {
-            setupCompleted: user.setupCompleted,
-            setupSkipped: user.setupSkipped,
-            provider: user.provider
-          });
         
           if (user) {
             if (!user.setupCompleted && !user.setupSkipped) {
-              console.log('SetupRedirect - Redirecting to setup (not completed, not skipped)');
               toast.success('Welcome! Let\'s set up your profile to get started.');
               if (user.provider === 'google') {
                 router.push('/setup/step1');
@@ -106,7 +91,6 @@ export default function SetupRedirect() {
                 router.push('/setup/step2');
               }
             } else if (user.setupSkipped && !user.setupCompleted) {
-              console.log('SetupRedirect - Showing skip toast (skipped but not completed)');
               const handleSetupClick = () => {
                 if (user.provider === 'google') {
                   router.push('/setup/step1');
@@ -139,7 +123,6 @@ export default function SetupRedirect() {
                 }
               }, 100);
             } else {
-              console.log('SetupRedirect - Setup completed, no action needed');
             }
           }
         } catch (error) {
@@ -152,7 +135,7 @@ export default function SetupRedirect() {
     };
 
     checkUserSetup();
-  }, [router, pathname]);
+  }, [router, pathname, isChecking]);
 
   return null;
 }

@@ -51,7 +51,6 @@ class ApiService {
 
       // ตรวจสอบ 401 Unauthorized และพยายาม refresh token
       if (response.status === 401 && this.hasAuthToken()) {
-        console.log('Token expired, attempting to refresh...');
         
         // Import authService dynamically to avoid circular dependency
         if (!authService) {
@@ -62,7 +61,6 @@ class ApiService {
         const refreshSuccess = await authService.refreshAccessToken();
         
         if (refreshSuccess) {
-          console.log('Token refreshed successfully, retrying request...');
           // Retry the original request with new token
           const retryConfig: RequestInit = {
             ...config,
@@ -87,7 +85,6 @@ class ApiService {
             data: retryData,
           };
         } else {
-          console.log('Refresh token failed, redirecting to login...');
           // Clear auth data and redirect to login
           authService.logout();
           window.location.href = '/login';
