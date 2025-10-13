@@ -1,8 +1,8 @@
 import AdminMenu from '@/components/AdminMenu';
 
-export default function AdminPage() {
+export default function AdminDashboard() {
     return (
-        <div>
+        <div className="my-4">
             <AdminMenu />
         </div>
     );
