@@ -2,6 +2,7 @@ const UserService = require('../services/userService');
 const SessionService = require('../services/sessionService');
 const JWTService = require('../services/jwtService');
 const GoogleAuthService = require('../services/googleAuthService');
+const EmailService = require('../services/emailService');
 const { successResponse, errorResponse } = require('../utils/response');
 const { logger } = require('../middleware/logger');
 
@@ -58,6 +59,21 @@ const register = async (req, res) => {
       password,
       fullName
     });
+
+    // Send welcome email
+    if (email) {
+      try {
+        await EmailService.sendWelcomeEmail({
+          email,
+          fullName,
+          username
+        });
+        logger.info('Welcome email sent to:', email);
+      } catch (emailError) {
+        logger.error('Failed to send welcome email:', emailError);
+        // Don't fail registration if email fails
+      }
+    }
 
     res.status(201).json(
       successResponse('User registered successfully', newUser.toJSON())
