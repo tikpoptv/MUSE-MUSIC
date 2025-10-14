@@ -14,7 +14,7 @@ export default function Navbar() {
   const [isMobile, setIsMobile] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
-  const shouldHideSearch = pathname === '/login' || pathname === '/register' || pathname === '/account/settings' || pathname.startsWith('/setup');
+  const shouldHideSearch = pathname === '/login' || pathname === '/register' || pathname === '/forgot-password' || pathname === '/account/settings' || pathname.startsWith('/setup');
 
   useEffect(() => {
     const handleResize = () => {
@@ -142,7 +142,7 @@ export default function Navbar() {
                 className="bg-[#7B61FF] hover:bg-[#6B51EF] text-white rounded-2xl font-medium transition-all duration-200 flex items-center justify-center space-x-2 shadow-lg hover:shadow-xl transform hover:scale-105 text-xs md:text-xs xl:text-sm"
                 style={{ width: '142px', height: '48px' }}
               >
-                <span>Sign up</span>
+                <span>Sign in</span>
                 <svg 
                   className="w-4 h-4" 
                   fill="none" 
@@ -263,7 +263,7 @@ export default function Navbar() {
                   className="block w-full bg-[#7B61FF] hover:bg-[#6B51EF] text-white rounded-2xl font-medium transition-all duration-200 flex items-center justify-center space-x-2 shadow-lg hover:shadow-xl transform hover:scale-105 py-3 px-4"
                   onClick={() => setIsMenuOpen(false)}
                 >
-                  <span>Sign up</span>
+                  <span>Sign in</span>
                   <svg 
                     className="w-4 h-4" 
                     fill="none" 

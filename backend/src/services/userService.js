@@ -179,6 +179,52 @@ class UserService {
     return user;
   }
 
+  static async storePasswordResetToken(userID, resetToken, resetTokenExpiry) {
+    const query = `
+      UPDATE Users 
+      SET passwordResetToken = $1, passwordResetTokenExpiry = $2, updatedAt = CURRENT_TIMESTAMP 
+      WHERE userID = $3
+    `;
+    await pool.query(query, [resetToken, resetTokenExpiry, userID]);
+  }
+
+  static async findByResetToken(resetToken) {
+    const query = `
+      SELECT userID, username, email, passwordResetToken, passwordResetTokenExpiry
+      FROM Users 
+      WHERE passwordResetToken = $1
+    `;
+    const result = await pool.query(query, [resetToken]);
+    
+    if (result.rows.length === 0) {
+      return null;
+    }
+    
+    return result.rows[0];
+  }
+
+  static async updatePassword(userID, newPassword) {
+    const bcrypt = require('bcrypt');
+    const saltRounds = 12;
+    const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
+    
+    const query = `
+      UPDATE Users 
+      SET password = $1, updatedAt = CURRENT_TIMESTAMP 
+      WHERE userID = $2
+    `;
+    await pool.query(query, [hashedPassword, userID]);
+  }
+
+  static async clearPasswordResetToken(userID) {
+    const query = `
+      UPDATE Users 
+      SET passwordResetToken = NULL, passwordResetTokenExpiry = NULL, updatedAt = CURRENT_TIMESTAMP 
+      WHERE userID = $1
+    `;
+    await pool.query(query, [userID]);
+  }
+
   static async getUserWithSetupStatus(userID) {
     const query = `
       SELECT 
