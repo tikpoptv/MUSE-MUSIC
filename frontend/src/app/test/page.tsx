@@ -49,12 +49,12 @@ export default function LandingPage() {
       <div className="flex flex-wrap gap-4 p-4 w-full max-w-[640px] mx-auto">
 
         <div className="flex-1 min-w-[280px] bg-gray-100 rounded-xl flex items-center justify-between gap-2 p-4">
-          <p className="text-violet-600 text-sm sm:text-base">Translate to understandx</p>
+          <p className="text-violet-600 text-sm sm:text-base">Translate to understand</p>
           <Languages className="text-violet-600 w-6 h-6" />
         </div>
 
         <div className="flex-1 min-w-[280px] bg-gray-100 rounded-xl flex items-center justify-between gap-2 p-4">
-          <p className="text-violet-600 text-sm sm:text-base">Translate to understandx</p>
+          <p className="text-violet-600 text-sm sm:text-base">Check the Mood</p>
           <SmilePlus className="text-violet-600 w-6 h-6" />
         </div>
       </div>
