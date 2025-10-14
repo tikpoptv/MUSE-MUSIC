@@ -186,7 +186,7 @@ const googleLogin = async (req, res) => {
 
     const googleCallback = async (req, res) => {
       try {
-        const { code } = req.body;
+        const { code, type = 'login', userId } = req.body;
 
         if (!code) {
           return res.status(400).json(
@@ -224,20 +224,24 @@ const googleLogin = async (req, res) => {
           id_token,
           req.headers['user-agent'] || 'Unknown',
           req.ip || '127.0.0.1',
-          req.headers['user-agent'] || 'Unknown'
+          req.headers['user-agent'] || 'Unknown',
+          type,
+          userId
         );
 
         res.json(successResponse('Google authentication successful', result));
       } catch (error) {
-        if (error.message.includes('Account exists but not linked to Google')) {
-          return res.status(409).json(
-            errorResponse('Account exists but not linked to Google. Please link your Google account first or register with Google.', 409)
+        logger.error('Google callback error:', error);
+        
+        if (error.message.includes('already linked to another user')) {
+          res.status(409).json(
+            errorResponse('This Google account is already linked to another user', 409)
+          );
+        } else {
+          res.status(500).json(
+            errorResponse('Google authentication failed', 500)
           );
         }
-        
-        res.status(500).json(
-          errorResponse('Google authentication failed', 500)
-        );
       }
     };
 
