@@ -103,7 +103,18 @@ export const authService = {
   getUserData(): UserData | null {
     if (typeof window !== 'undefined') {
       const userData = localStorage.getItem('user_data');
-      return userData ? JSON.parse(userData) : null;
+      
+      if (userData && userData !== 'undefined' && userData !== 'null') {
+        try {
+          const parsedData = JSON.parse(userData);
+          return parsedData;
+        } catch (error) {
+          console.error('Error parsing user data from localStorage:', error);
+          localStorage.removeItem('user_data');
+          return null;
+        }
+      }
+      return null;
     }
     return null;
   },
@@ -159,22 +170,29 @@ export const authService = {
     return null;
   },
 
-  async logout() {
+  async logout(): Promise<{ success: boolean; message?: string }> {
     try {
       const token = this.getStoredToken();
       if (token) {
-        await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:7662'}/api/auth/logout`, {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:7662'}/api/auth/logout`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           }
         });
+        
+        if (!response.ok) {
+          throw new Error('Logout API failed');
+        }
       }
+      
+      this.removeToken();
+      return { success: true };
     } catch (error) {
       console.error('Logout API error:', error);
-    } finally {
-      this.removeToken();
+      this.removeToken(); // Still clear local storage even if API fails
+      return { success: false, message: 'Logout failed but local session cleared' };
     }
   },
 
@@ -272,5 +290,97 @@ export const authService = {
     }
 
     return false;
+  },
+
+  async fetchUserData(): Promise<UserData> {
+    const response = await apiService.get<{success: boolean, data: {user: UserData}}>('/api/user/me');
+    
+    if (!response.success) {
+      throw new Error(response.error || 'Failed to fetch user data');
+    }
+    
+    if (!response.data?.data?.user) {
+      throw new Error('No user data received from API');
+    }
+    
+    return response.data.data.user;
+  },
+
+  async forgotPassword(email: string): Promise<{ success: boolean; message?: string }> {
+    try {
+      const response = await apiService.post<{ success: boolean; message: string; data: { email: string } }>('/api/auth/forgot-password', {
+        email
+      });
+
+      if (response.success) {
+        return { 
+          success: true, 
+          message: response.data?.message || 'Password reset link sent to your email' 
+        };
+      } else {
+        return { 
+          success: false, 
+          message: response.error || 'Failed to send password reset email' 
+        };
+      }
+    } catch (error) {
+      console.error('Forgot password error:', error);
+      return { 
+        success: false, 
+        message: 'An error occurred while sending password reset email' 
+      };
+    }
+  },
+
+  async resetPassword(token: string, password: string): Promise<{ success: boolean; message?: string }> {
+    try {
+      const response = await apiService.post<{ success: boolean; message: string }>('/api/auth/reset-password', {
+        token,
+        password
+      });
+
+      if (response.success) {
+        return { 
+          success: true, 
+          message: response.data?.message || 'Password reset successfully' 
+        };
+      } else {
+        return { 
+          success: false, 
+          message: response.error || 'Failed to reset password' 
+        };
+      }
+    } catch (error) {
+      console.error('Reset password error:', error);
+      return { 
+        success: false, 
+        message: 'An error occurred while resetting password' 
+      };
+    }
+  },
+
+  async validateResetToken(token: string): Promise<{ success: boolean; message?: string; data?: { email: string; username: string } }> {
+    try {
+      const response = await apiService.get<{ success: boolean; message: string; data: { email: string; username: string } }>(`/api/auth/validate-reset-token/${token}`);
+
+      if (response.success) {
+        return { 
+          success: true, 
+          message: response.data?.message || 'Reset token is valid',
+          data: response.data?.data
+        };
+      } else {
+        return { 
+          success: false, 
+          message: response.error || 'Invalid or expired reset token' 
+        };
+      }
+    } catch (error) {
+      console.error('Validate reset token error:', error);
+      return { 
+        success: false, 
+        message: 'An error occurred while validating reset token' 
+      };
+    }
   }
 };

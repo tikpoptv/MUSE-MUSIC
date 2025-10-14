@@ -5,6 +5,7 @@ const { config } = require('./env');
 const commonSchemas = require('../docs/schemas/common');
 const userSchemas = require('../docs/schemas/user');
 const authSchemas = require('../docs/schemas/auth');
+const setupSchemas = require('../docs/schemas/setup');
 
 const options = {
   definition: {
@@ -17,7 +18,7 @@ const options = {
     servers: [
       {
         url: config.server.isProduction 
-          ? `https://${process.env.BACKEND_HOST || 'api.musemusic.com'}:${config.server.port}`
+          ? `https://${process.env.BACKEND_HOST || 'api.musemusic.com'}`
           : `http://localhost:${config.server.port}`,
         description: config.server.isProduction ? 'Production server' : 'Development server'
       }
@@ -26,7 +27,8 @@ const options = {
       schemas: {
         ...commonSchemas,
         ...userSchemas,
-        ...authSchemas
+        ...authSchemas,
+        ...setupSchemas
       },
       securitySchemes: {
         bearerAuth: {

@@ -21,7 +21,9 @@ export default function LoginPage() {
     
     if (isAuth) {
       toast.success('คุณเข้าสู่ระบบอยู่แล้ว');
-      router.push('/');
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 1500);
     }
   }, [router]);
 
@@ -60,7 +62,9 @@ export default function LoginPage() {
       if (response.ok && data.success) {
         authService.setAuthData(data.data);
         toast.success('Successfully signed in!');
-        router.push('/');
+        setTimeout(() => {
+          window.location.href = '/';
+        }, 1500);
       } else {
         toast.error(data.message || 'Login failed');
       }
@@ -161,9 +165,9 @@ export default function LoginPage() {
         <GoogleAuthButton />
 
         <div className="flex justify-between items-center mt-6">
-          <a href="#" className="text-gray-500 text-sm hover:text-gray-700 transition-colors duration-200">
+          <Link href="/forgot-password" className="text-gray-500 text-sm hover:text-gray-700 transition-colors duration-200">
             Forgot Password?
-          </a>
+          </Link>
           <Link href="/register" className="text-gray-500 text-sm hover:text-gray-700 transition-colors duration-200">
             Create an account
           </Link>

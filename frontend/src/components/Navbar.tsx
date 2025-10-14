@@ -11,9 +11,10 @@ export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userData, setUserData] = useState<UserData | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
-  const shouldHideSearch = pathname === '/login' || pathname === '/register' || pathname === '/account/settings';
+  const shouldHideSearch = pathname === '/login' || pathname === '/register' || pathname === '/forgot-password' || pathname === '/account/settings' || pathname.startsWith('/setup');
 
   useEffect(() => {
     const handleResize = () => {
@@ -24,12 +25,14 @@ export default function Navbar() {
 
       if (window.innerWidth <= 1100) {
         // Mobile mode
+        setIsMobile(true);
         if (searchContainer) searchContainer.style.display = 'none';
         if (navContainer) navContainer.style.display = 'none';
         if (hamburgerButton) hamburgerButton.style.display = 'inline-flex';
         if (mobileMenu) mobileMenu.style.display = 'block';
       } else {
         // Desktop mode
+        setIsMobile(false);
         if (searchContainer) searchContainer.style.display = 'block';
         if (navContainer) navContainer.style.display = 'flex';
         if (hamburgerButton) hamburgerButton.style.display = 'none';
@@ -74,7 +77,7 @@ export default function Navbar() {
               </span>
             </Link>
             
-            {!shouldHideSearch && (
+            {!shouldHideSearch && !isMobile && (
               <div className="ml-4 pr-2 flex-shrink" id="search-container" style={{ display: 'block' }}>
                 <div className="relative">
                   <input
@@ -139,7 +142,7 @@ export default function Navbar() {
                 className="bg-[#7B61FF] hover:bg-[#6B51EF] text-white rounded-2xl font-medium transition-all duration-200 flex items-center justify-center space-x-2 shadow-lg hover:shadow-xl transform hover:scale-105 text-xs md:text-xs xl:text-sm"
                 style={{ width: '142px', height: '48px' }}
               >
-                <span>Sign up</span>
+                <span>Sign in</span>
                 <svg 
                   className="w-4 h-4" 
                   fill="none" 
@@ -260,7 +263,7 @@ export default function Navbar() {
                   className="block w-full bg-[#7B61FF] hover:bg-[#6B51EF] text-white rounded-2xl font-medium transition-all duration-200 flex items-center justify-center space-x-2 shadow-lg hover:shadow-xl transform hover:scale-105 py-3 px-4"
                   onClick={() => setIsMenuOpen(false)}
                 >
-                  <span>Sign up</span>
+                  <span>Sign in</span>
                   <svg 
                     className="w-4 h-4" 
                     fill="none" 

@@ -3,6 +3,8 @@ const { config } = require('../config/env');
 const UserService = require('./userService');
 const SessionService = require('./sessionService');
 const JWTService = require('./jwtService');
+const EmailService = require('./emailService');
+const { logger } = require('../middleware/logger');
 
 class GoogleAuthService {
   static getClient() {
@@ -30,19 +32,47 @@ class GoogleAuthService {
     }
   }
 
-  static async findOrCreateGoogleUser(googleUserData) {
+  static async findOrCreateGoogleUser(googleUserData, type = 'login', userId = null) {
     const { googleId, email } = googleUserData;
 
-    let user = await this.findByGoogleId(googleId);
-    
-    if (user) {
-      return user;
-    }
-
-    user = await UserService.findByEmail(email);
-    
-    if (user) {
-      throw new Error('Account exists but not linked to Google. Please link your Google account first or register with Google.');
+    if (type === 'link' && userId) {
+      // สำหรับ link account ตรวจสอบ Google account ก่อน
+      const existingGoogleUser = await this.findByGoogleId(googleId);
+      if (existingGoogleUser) {
+        throw new Error('This Google account is already linked to another user');
+      }
+      // สำหรับ link account ให้ใช้ userId ที่ส่งมา
+      const user = await UserService.findByID(userId);
+      if (!user) {
+        throw new Error('User not found');
+      }
+      
+      // ตรวจสอบว่า user นี้มี Google account แล้วหรือไม่
+      if (user.provider === 'google' && user.providerID) {
+        throw new Error('This user already has a Google account linked');
+      }
+      
+      return await this.updateUserWithGoogleInfo(user.userID, googleId, email, googleUserData.picture);
+    } else {
+      // สำหรับ login/register ใช้ logic เดียวกัน
+      let user = await this.findByGoogleId(googleId);
+      
+      if (user) {
+        return user;
+      }
+      
+      // หา user จาก email
+      user = await UserService.findByEmail(email);
+      
+      if (user) {
+        // ตรวจสอบว่า Google account นี้มีเจ้าของแล้วหรือไม่
+        const existingGoogleUser = await this.findByGoogleId(googleId);
+        if (existingGoogleUser && existingGoogleUser.userID !== user.userID) {
+          throw new Error('This Google account is already linked to another user');
+        }
+        
+        return await this.updateUserWithGoogleInfo(user.userID, googleId, email, googleUserData.picture);
+      }
     }
 
     return await this.createGoogleUser(googleUserData);
@@ -98,9 +128,36 @@ class GoogleAuthService {
           profilePicture = $3,
           updatedAt = CURRENT_TIMESTAMP
       WHERE userID = $4
+      RETURNING userID, username, email, fullName, profilePicture, provider, providerID, providerEmail, role, loginStatus, setupCompleted, setupSkipped, registerDate, createdAt, updatedAt
     `;
     
-    await pool.query(query, [googleId, email, picture, userID]);
+    const result = await pool.query(query, [googleId, email, picture, userID]);
+    
+    if (result.rows.length === 0) {
+      throw new Error('Failed to link Google account');
+    }
+    
+    const userData = result.rows[0];
+    const normalizedData = {
+      userID: userData.userid,
+      username: userData.username,
+      email: userData.email,
+      password: null,
+      fullName: userData.fullname,
+      profilePicture: userData.profilepicture,
+      provider: userData.provider,
+      providerID: userData.providerid,
+      providerEmail: userData.provideremail,
+      role: userData.role,
+      loginStatus: userData.loginstatus,
+      setupCompleted: userData.setupcompleted,
+      setupSkipped: userData.setupskipped,
+      registerDate: userData.registerdate,
+      createdAt: userData.createdat,
+      updatedAt: userData.updatedat
+    };
+    
+    return new (require('../models/User'))(normalizedData);
   }
 
   static async createGoogleUser(googleUserData) {
@@ -139,17 +196,32 @@ class GoogleAuthService {
       updatedAt: userData.createdat
     };
     
-    return new (require('../models/User'))(normalizedData);
+    const newUser = new (require('../models/User'))(normalizedData);
+    
+    // Send welcome email for new Google users
+    try {
+      await EmailService.sendWelcomeEmail({
+        email: userData.email,
+        fullName: userData.fullname,
+        username: userData.username
+      });
+      logger.info('Welcome email sent to Google user:', userData.email);
+    } catch (emailError) {
+      logger.error('Failed to send welcome email to Google user:', emailError);
+      // Don't fail user creation if email fails
+    }
+    
+    return newUser;
   }
 
-  static async handleGoogleLogin(googleToken, deviceInfo, ipAddress, userAgent) {
+  static async handleGoogleLogin(googleToken, deviceInfo, ipAddress, userAgent, type = 'login', userId = null) {
     const googleUserData = await this.verifyGoogleToken(googleToken);
     
     if (!googleUserData) {
       throw new Error('Invalid Google token');
     }
 
-    const user = await this.findOrCreateGoogleUser(googleUserData);
+    const user = await this.findOrCreateGoogleUser(googleUserData, type, userId);
     
     if (!user) {
       throw new Error('Failed to create or find user');

@@ -1,5 +1,6 @@
 const { pool } = require('../config/database');
 const jwt = require('jsonwebtoken');
+const { logger } = require('../middleware/logger');
 
 const logout = async (req, res) => {
   try {
@@ -46,7 +47,7 @@ const logout = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Logout error:', error);
+    logger.error('Logout error:', error);
     res.status(500).json({
       success: false,
       message: 'Internal server error'

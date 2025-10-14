@@ -35,6 +35,43 @@ const authSchemas = {
     }
   },
   
+  ForgotPassword: {
+    type: 'object',
+    required: ['email'],
+    properties: {
+      email: {
+        type: 'string',
+        format: 'email',
+        description: 'User email address',
+        example: 'user@example.com'
+      }
+    }
+  },
+  
+  ForgotPasswordResponse: {
+    type: 'object',
+    properties: {
+      success: {
+        type: 'boolean',
+        example: true
+      },
+      message: {
+        type: 'string',
+        example: 'Password reset link sent to your email'
+      },
+      data: {
+        type: 'object',
+        properties: {
+          email: {
+            type: 'string',
+            format: 'email',
+            example: 'user@example.com'
+          }
+        }
+      }
+    }
+  },
+  
   LoginResponse: {
     type: 'object',
     properties: {

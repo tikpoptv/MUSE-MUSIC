@@ -29,6 +29,16 @@ const config = {
   google: {
     clientId: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET
+  },
+  
+  frontend: {
+    url: process.env.FRONTEND_URL || 'http://localhost:3000'
+  },
+  
+  EMAIL: {
+    username: process.env.EMAIL_N8N_USERNAME,
+    password: process.env.EMAIL_N8N_PASSWORD,
+    webhookUrl: process.env.EMAIL_N8N_WEBHOOK_URL
   }
 };
 

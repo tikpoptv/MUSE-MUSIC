@@ -26,6 +26,11 @@ CREATE TABLE Users (
     loginStatus VARCHAR(50) DEFAULT 'offline',
     setupCompleted BOOLEAN DEFAULT FALSE, -- ตั้งค่าเริ่มต้นเสร็จหรือไม่
     setupSkipped BOOLEAN DEFAULT FALSE, -- ข้ามการตั้งค่าเริ่มต้นหรือไม่
+    
+    -- Password Reset
+    passwordResetToken VARCHAR(255),
+    passwordResetTokenExpiry TIMESTAMP,
+    
     registerDate TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -288,6 +293,10 @@ CREATE INDEX idx_users_setup ON Users(setupCompleted);
 CREATE INDEX idx_users_setup_skipped ON Users(setupSkipped);
 CREATE INDEX idx_users_profile_picture ON Users(profilePicture) WHERE profilePicture IS NOT NULL;
 
+-- Password reset indexes
+CREATE INDEX idx_users_password_reset_token ON Users(passwordResetToken) WHERE passwordResetToken IS NOT NULL;
+CREATE INDEX idx_users_password_reset_expiry ON Users(passwordResetTokenExpiry) WHERE passwordResetTokenExpiry IS NOT NULL;
+
 -- OAuth indexes
 CREATE INDEX idx_users_provider ON Users(provider);
 CREATE INDEX idx_users_provider_id ON Users(providerID);
@@ -491,3 +500,16 @@ $$ language 'plpgsql';
 CREATE TRIGGER update_rating_stats_trigger 
     AFTER INSERT OR UPDATE OR DELETE ON AIProcessingRatings
     FOR EACH ROW EXECUTE FUNCTION update_rating_stats();
+
+-- =========================
+-- Table: Prompts (AI Prompts for Translation and Mood Analysis)
+-- =========================
+CREATE TABLE Prompts (
+    promptID UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    promptType VARCHAR(50) NOT NULL, -- 'translation', 'mood'
+    promptText TEXT NOT NULL,
+    isActive BOOLEAN DEFAULT TRUE,
+    createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT check_prompt_type CHECK (promptType IN ('translation', 'mood'))
+);
