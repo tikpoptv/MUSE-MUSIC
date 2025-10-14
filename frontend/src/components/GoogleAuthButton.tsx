@@ -34,10 +34,17 @@ export default function GoogleAuthButton({
         return;
       }
 
-      const frontendUrl = window.location.origin;
+      // เก็บ flag ว่าเป็น login/register ปกติ ตาม path ปัจจุบัน
+      const currentPath = window.location.pathname;
+      const authType = currentPath.includes('/login') ? 'login' : 'register';
+      localStorage.setItem('google_auth_type', authType);
+      // ส่ง type เป็น 'login' สำหรับ backend (logic เดียวกัน)
+      localStorage.setItem('google_backend_type', 'login');
+      
+      const frontendUrl = process.env.NEXT_PUBLIC_FRONTEND_URL || 'http://localhost:3000';
       const redirectUri = encodeURIComponent(`${frontendUrl}/auth/google/callback`);
       const scope = encodeURIComponent('openid email profile');
-      const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}&access_type=offline&prompt=consent`;
+      const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}&access_type=offline&prompt=select_account`;
       
       window.location.href = authUrl;
       
