@@ -165,9 +165,9 @@ export default function LoginPage() {
         <GoogleAuthButton />
 
         <div className="flex justify-between items-center mt-6">
-          <a href="#" className="text-gray-500 text-sm hover:text-gray-700 transition-colors duration-200">
+          <Link href="/forgot-password" className="text-gray-500 text-sm hover:text-gray-700 transition-colors duration-200">
             Forgot Password?
-          </a>
+          </Link>
           <Link href="/register" className="text-gray-500 text-sm hover:text-gray-700 transition-colors duration-200">
             Create an account
           </Link>

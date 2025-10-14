@@ -5,6 +5,7 @@ const GoogleAuthService = require('../services/googleAuthService');
 const EmailService = require('../services/emailService');
 const { successResponse, errorResponse } = require('../utils/response');
 const { logger } = require('../middleware/logger');
+const crypto = require('crypto');
 
 const register = async (req, res) => {
   try {
@@ -60,7 +61,6 @@ const register = async (req, res) => {
       fullName
     });
 
-    // Send welcome email
     if (email) {
       try {
         await EmailService.sendWelcomeEmail({
@@ -71,7 +71,6 @@ const register = async (req, res) => {
         logger.info('Welcome email sent to:', email);
       } catch (emailError) {
         logger.error('Failed to send welcome email:', emailError);
-        // Don't fail registration if email fails
       }
     }
 
@@ -287,7 +286,6 @@ const refreshToken = async (req, res) => {
       );
     }
 
-    // สร้าง access token ใหม่
     const newAccessToken = JWTService.generateAccessToken(user.userID, user.username, user.role);
 
     const responseData = {
@@ -310,10 +308,160 @@ const refreshToken = async (req, res) => {
   }
 };
 
+const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json(
+        errorResponse('Email is required', 400)
+      );
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json(
+        errorResponse('Invalid email format', 400)
+      );
+    }
+
+    const user = await UserService.findByEmail(email);
+    if (!user) {
+      return res.status(200).json(
+        successResponse('If the email exists, a password reset link has been sent', { email })
+      );
+    }
+
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const resetTokenExpiry = new Date(Date.now() + 3600000);
+
+    await UserService.storePasswordResetToken(user.userID, resetToken, resetTokenExpiry);
+
+    const resetLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password?token=${resetToken}`;
+
+    try {
+      await EmailService.sendPasswordResetEmail({
+        email: user.email,
+        fullName: user.fullName || user.username,
+        resetLink
+      });
+      
+      logger.info('Password reset email sent successfully:', { email: user.email });
+      
+      return res.status(200).json(
+        successResponse('Password reset link sent to your email', { email })
+      );
+    } catch (emailError) {
+      logger.error('Failed to send password reset email:', emailError);
+      return res.status(500).json(
+        errorResponse('Failed to send password reset email', 500)
+      );
+    }
+
+  } catch (error) {
+    logger.error('Forgot password error:', error);
+    res.status(500).json(
+      errorResponse('Internal server error', 500)
+    );
+  }
+};
+
+const resetPassword = async (req, res) => {
+  try {
+    const { token, password } = req.body;
+
+    if (!token || !password) {
+      return res.status(400).json(
+        errorResponse('Token and password are required', 400)
+      );
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json(
+        errorResponse('Password must be at least 6 characters', 400)
+      );
+    }
+
+    // Find user by reset token
+    const user = await UserService.findByResetToken(token);
+    if (!user) {
+      return res.status(400).json(
+        errorResponse('Invalid or expired reset token', 400)
+      );
+    }
+
+    // Check if token is expired
+    if (user.passwordResetTokenExpiry && new Date() > new Date(user.passwordResetTokenExpiry)) {
+      return res.status(400).json(
+        errorResponse('Reset token has expired', 400)
+      );
+    }
+
+    // Update password and clear reset token
+    await UserService.updatePassword(user.userID, password);
+    await UserService.clearPasswordResetToken(user.userID);
+
+    logger.info('Password reset successfully for user:', { userID: user.userID, email: user.email });
+
+    res.status(200).json(
+      successResponse('Password reset successfully', { email: user.email })
+    );
+
+  } catch (error) {
+    logger.error('Reset password error:', error);
+    res.status(500).json(
+      errorResponse('Internal server error', 500)
+    );
+  }
+};
+
+const validateResetToken = async (req, res) => {
+  try {
+    const { token } = req.params;
+
+    if (!token) {
+      return res.status(400).json(
+        errorResponse('Reset token is required', 400)
+      );
+    }
+
+    // Find user by reset token
+    const user = await UserService.findByResetToken(token);
+    if (!user) {
+      return res.status(400).json(
+        errorResponse('Invalid reset token', 400)
+      );
+    }
+
+    // Check if token is expired
+    if (user.passwordResetTokenExpiry && new Date() > new Date(user.passwordResetTokenExpiry)) {
+      return res.status(400).json(
+        errorResponse('Reset token has expired', 400)
+      );
+    }
+
+    res.status(200).json(
+      successResponse('Reset token is valid', { 
+        email: user.email,
+        username: user.username 
+      })
+    );
+
+  } catch (error) {
+    logger.error('Validate reset token error:', error);
+    res.status(500).json(
+      errorResponse('Internal server error', 500)
+    );
+  }
+};
+
 module.exports = {
   register,
   login,
   googleLogin,
   googleCallback,
-  refreshToken
+  refreshToken,
+  forgotPassword,
+  resetPassword,
+  validateResetToken
 };

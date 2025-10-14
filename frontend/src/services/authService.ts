@@ -304,5 +304,83 @@ export const authService = {
     }
     
     return response.data.data.user;
+  },
+
+  async forgotPassword(email: string): Promise<{ success: boolean; message?: string }> {
+    try {
+      const response = await apiService.post<{ success: boolean; message: string; data: { email: string } }>('/api/auth/forgot-password', {
+        email
+      });
+
+      if (response.success) {
+        return { 
+          success: true, 
+          message: response.data?.message || 'Password reset link sent to your email' 
+        };
+      } else {
+        return { 
+          success: false, 
+          message: response.error || 'Failed to send password reset email' 
+        };
+      }
+    } catch (error) {
+      console.error('Forgot password error:', error);
+      return { 
+        success: false, 
+        message: 'An error occurred while sending password reset email' 
+      };
+    }
+  },
+
+  async resetPassword(token: string, password: string): Promise<{ success: boolean; message?: string }> {
+    try {
+      const response = await apiService.post<{ success: boolean; message: string }>('/api/auth/reset-password', {
+        token,
+        password
+      });
+
+      if (response.success) {
+        return { 
+          success: true, 
+          message: response.data?.message || 'Password reset successfully' 
+        };
+      } else {
+        return { 
+          success: false, 
+          message: response.error || 'Failed to reset password' 
+        };
+      }
+    } catch (error) {
+      console.error('Reset password error:', error);
+      return { 
+        success: false, 
+        message: 'An error occurred while resetting password' 
+      };
+    }
+  },
+
+  async validateResetToken(token: string): Promise<{ success: boolean; message?: string; data?: { email: string; username: string } }> {
+    try {
+      const response = await apiService.get<{ success: boolean; message: string; data: { email: string; username: string } }>(`/api/auth/validate-reset-token/${token}`);
+
+      if (response.success) {
+        return { 
+          success: true, 
+          message: response.data?.message || 'Reset token is valid',
+          data: response.data?.data
+        };
+      } else {
+        return { 
+          success: false, 
+          message: response.error || 'Invalid or expired reset token' 
+        };
+      }
+    } catch (error) {
+      console.error('Validate reset token error:', error);
+      return { 
+        success: false, 
+        message: 'An error occurred while validating reset token' 
+      };
+    }
   }
 };
