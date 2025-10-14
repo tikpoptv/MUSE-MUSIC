@@ -3,6 +3,8 @@ const { config } = require('../config/env');
 const UserService = require('./userService');
 const SessionService = require('./sessionService');
 const JWTService = require('./jwtService');
+const EmailService = require('./emailService');
+const { logger } = require('../middleware/logger');
 
 class GoogleAuthService {
   static getClient() {
@@ -194,7 +196,22 @@ class GoogleAuthService {
       updatedAt: userData.createdat
     };
     
-    return new (require('../models/User'))(normalizedData);
+    const newUser = new (require('../models/User'))(normalizedData);
+    
+    // Send welcome email for new Google users
+    try {
+      await EmailService.sendWelcomeEmail({
+        email: userData.email,
+        fullName: userData.fullname,
+        username: userData.username
+      });
+      logger.info('Welcome email sent to Google user:', userData.email);
+    } catch (emailError) {
+      logger.error('Failed to send welcome email to Google user:', emailError);
+      // Don't fail user creation if email fails
+    }
+    
+    return newUser;
   }
 
   static async handleGoogleLogin(googleToken, deviceInfo, ipAddress, userAgent, type = 'login', userId = null) {
