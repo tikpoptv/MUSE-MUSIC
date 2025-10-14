@@ -1,4 +1,4 @@
-const { pool } = require('../config/database');
+// const { pool } = require('../config/database');
 const { logger } = require('../middleware/logger');
 const UserService = require('../services/userService');
 

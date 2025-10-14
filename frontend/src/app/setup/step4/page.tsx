@@ -80,7 +80,7 @@ export default function SetupStep4() {
       setTimeout(() => {
         router.push('/');
       }, 2000);
-    } catch (error) {
+    } catch {
       toast.dismiss();
       toast.error('Failed to complete setup. Please try again.');
     } finally {
