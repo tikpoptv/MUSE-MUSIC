@@ -34,12 +34,6 @@ export default function SetupStep1() {
 
         const data: SetupStatusData = await setupService.getSetupStatus();
         
-        console.log('Step 1 - Received data:', data);
-        console.log('Step 1 - data.stepStatus:', data.stepStatus);
-        console.log('Step 1 - data.stepData:', data.stepData);
-        console.log('Step 1 - stepStatus.step1:', data.stepStatus?.step1);
-        console.log('Step 1 - stepData.step1:', data.stepData?.step1);
-        console.log('Step 1 - hasPassword:', data.stepData?.step1?.hasPassword);
 
         if (data.stepStatus && data.stepStatus.step1) {
           console.log('Step 1 is completed, checking for password data...');
