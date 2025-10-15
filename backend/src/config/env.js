@@ -39,6 +39,9 @@ const config = {
     username: process.env.EMAIL_N8N_USERNAME,
     password: process.env.EMAIL_N8N_PASSWORD,
     webhookUrl: process.env.EMAIL_N8N_WEBHOOK_URL
+  },
+  n8n: {
+    translateWebHook: process.env.TRANSLATE_WEBHOOK
   }
 };
 
