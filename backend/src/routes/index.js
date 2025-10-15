@@ -6,6 +6,7 @@ const authRoutes = require('./auth');
 const userRoutes = require('./user');
 const setupRoutes = require('./setup');
 const setupSaveRoutes = require('./setupSave');
+const translateRoutes = require('./analysis');
 
 router.get('/', (req, res) => {
   res.json({
@@ -24,5 +25,8 @@ router.use('/api/auth', authRoutes);
 router.use('/api/user', userRoutes);
 router.use('/api/setup', setupRoutes);
 router.use('/api/setup', setupSaveRoutes);
+
+// Mount them
+router.use('/api/analysis', translateRoutes);
 
 module.exports = router;
