@@ -1,4 +1,5 @@
 const { config } = require('../config/env');
+const { logger } = require('../middleware/logger');
 
 class TranslateService {
     static async getTranslate(language1, language2, lyrics) {
