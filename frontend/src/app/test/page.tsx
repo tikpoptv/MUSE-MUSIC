@@ -5,7 +5,6 @@ import { Languages, SmilePlus } from 'lucide-react';
 import { fetchRecommendedAlbums } from "@/songs/fetchRecommendedAlbums"; // Import the function
 import { RecommendedAlbum } from "@/types/user";
 import MusicCard from '@/components/MusicCard';
-import Link from 'next/link';
 
 export default function LandingPage() {
   const [loading, setLoading] = useState(true); // State for loading
