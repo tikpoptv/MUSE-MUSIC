@@ -1,14 +1,36 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Languages, SmilePlus } from 'lucide-react';
+import { fetchRecommendedAlbums } from "@/songs/fetchRecommendedAlbums"; // Import the function
+import { RecommendedAlbum } from "@/types/user";
+import MusicCard from '@/components/MusicCard';
 
 export default function LandingPage() {
+  const [loading, setLoading] = useState(true); // State for loading
+  const [albums, setAlbums] = useState<RecommendedAlbum[]>([]); // State for albums
+
+  useEffect(() => {
+    // Fetch recommended albums on component mount
+    const fetchAlbums = async () => {
+      try {
+        const data = await fetchRecommendedAlbums();
+        setAlbums(data);
+      } catch (error) {
+        console.error("Error fetching albums:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAlbums();
+  }, []);
+
   return (
     <div className="w-full px-4 sm:px-8 md:px-12 lg:px-16 bg-white min-h-screen">
-      {/* ส่วนหัว */}
+      {/* Header */}
       <div className="mt-12 mb-10 text-center px-4">
-        <p className="mb-6 text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold">
+        <p className="mb-6 text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-black">
           Discover the soul of music!
         </p>
         <p className="text-xs xs:text-base leading-relaxed text-gray-700">
@@ -18,8 +40,7 @@ export default function LandingPage() {
         </p>
       </div>
 
-
-      {/* search bar */}
+      {/* Search bar */}
       <div className="w-full max-w-[640px] mx-auto mt-4 px-4">
         <div className="relative w-full h-[60px]">
           <input
@@ -47,7 +68,6 @@ export default function LandingPage() {
 
       {/* Analyze Menu */}
       <div className="flex flex-wrap gap-4 p-4 w-full max-w-[640px] mx-auto">
-
         <div className="flex-1 min-w-[280px] bg-gray-100 rounded-xl flex items-center justify-between gap-2 p-4">
           <p className="text-violet-600 text-sm sm:text-base">Translate to understand</p>
           <Languages className="text-violet-600 w-6 h-6" />
@@ -59,8 +79,26 @@ export default function LandingPage() {
         </div>
       </div>
 
-      {/* Analyze Button */}
+      {/* Recommend Section */}
+      <section className="mt-16 text-left text-black">
+        <h2 className="text-lg font-semibold mb-4">Recommend</h2>
 
+        {loading ? (
+          <p className="text-gray-500 text-sm">Loading...</p>
+        ) : (
+          <div className="flex flex-wrap justify-center md:justify-start gap-6">
+            {albums.map((album) => (
+              <MusicCard
+                key={album.id}
+                image={album.coverImage}
+                title={album.title}
+                artist={album.artist}
+                href={`/songs/${album.id}`}
+              />
+            ))}
+          </div>
+        )}
+      </section>
     </div>
   );
 }

@@ -14,7 +14,7 @@ export default function Navbar() {
   const [isMobile, setIsMobile] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
-  const shouldHideSearch = pathname === '/login' || pathname === '/register' || pathname === '/forgot-password' || pathname === '/account/settings' || pathname.startsWith('/setup');
+  const shouldHideSearch = pathname === '/test'|| pathname === '/login' || pathname === '/register' || pathname === '/forgot-password' || pathname === '/account/settings' || pathname.startsWith('/setup');
 
   useEffect(() => {
     const handleResize = () => {
