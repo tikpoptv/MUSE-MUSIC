@@ -32,6 +32,22 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-black to-slate-800 flex items-center justify-center relative overflow-hidden">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'WebSite',
+            name: 'MUSE MUSIC',
+            url: process.env.NEXT_PUBLIC_SITE_URL || 'https://muse-music.example.com',
+            potentialAction: {
+              '@type': 'SearchAction',
+              target: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://muse-music.example.com'}/search?q={search_term_string}`,
+              'query-input': 'required name=search_term_string',
+            },
+          }),
+        }}
+      />
       <div className="absolute inset-0">
         <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/20 via-purple-900/10 to-pink-900/20"></div>
         
