@@ -107,6 +107,11 @@ const login = async (req, res) => {
 
     const twoFAStatus = await TwoFactorService.get2FAStatus(user.userID);
 
+    // Get device info once
+    const deviceInfo = req.headers['user-agent']?.includes('Mobile') ? 'mobile' : 'desktop';
+    const ipAddress = req.ip || req.connection.remoteAddress;
+    const userAgent = req.headers['user-agent'];
+
     if (twoFAStatus && twoFAStatus.twofactorenabled) {
       if (!twoFactorToken) {
         return res.status(200).json(
@@ -117,10 +122,6 @@ const login = async (req, res) => {
           })
         );
       }
-
-      const ipAddress = req.ip || req.connection.remoteAddress;
-      const userAgent = req.headers['user-agent'];
-      const deviceInfo = req.headers['user-agent']?.includes('Mobile') ? 'mobile' : 'desktop';
 
       const isValid2FA = await TwoFactorService.verifyToken(
         user.userID,
@@ -139,10 +140,6 @@ const login = async (req, res) => {
     }
 
     await UserService.updateLoginStatus(user.userID, 'online');
-
-    const deviceInfo = req.headers['user-agent']?.includes('Mobile') ? 'mobile' : 'desktop';
-    const ipAddress = req.ip || req.connection.remoteAddress;
-    const userAgent = req.headers['user-agent'];
 
     const session = await SessionService.createSession(
       user.userID,

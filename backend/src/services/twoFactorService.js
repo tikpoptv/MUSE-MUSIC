@@ -5,15 +5,17 @@ const DatabaseService = require('./databaseService');
 const { logger } = require('../middleware/logger');
 
 class TwoFactorService {
-  static async generateSecret(userID, username) {
+  static async generateSecret(userID, username, email) {
     try {
       const secret = speakeasy.generateSecret({
-        name: `MUSE Music (${username})`,
-        issuer: 'MUSE Music',
+        name: `${username}`,
+        issuer: 'MuseMusic',
         length: 32
       });
 
-      const qrCodeUrl = await QRCode.toDataURL(secret.otpauth_url);
+      const otpauthUrl = `otpauth://totp/MuseMusic:${username} (${email})?secret=${secret.base32}&issuer=MuseMusic`;
+      
+      const qrCodeUrl = await QRCode.toDataURL(otpauthUrl);
 
       await DatabaseService.query(
         `INSERT INTO UserTwoFactorAuth (userID, secretKey, setupStep) 
@@ -81,8 +83,8 @@ class TwoFactorService {
         `UPDATE UserTwoFactorAuth 
          SET backupCodes = $1, setupStep = 'backup_codes_generated', 
              setupCompleted = true, updatedAt = CURRENT_TIMESTAMP 
-         WHERE userID = $1`,
-        [backupCodes]
+         WHERE userID = $2`,
+        [backupCodes, userID]
       );
 
       await DatabaseService.query(
@@ -210,7 +212,16 @@ class TwoFactorService {
         return null;
       }
 
-      return result.rows[0];
+      const row = result.rows[0];
+      return {
+        twofactorenabled: row.twofactorenabled,
+        twoFactorSetupCompleted: row.twofactorsetupcompleted,
+        setupStep: row.setupstep,
+        failedAttempts: row.failedattempts,
+        isLocked: row.islocked,
+        lockedUntil: row.lockeduntil,
+        backupCodesCount: row.backupcodescount || 0
+      };
     } catch (error) {
       logger.error('Get 2FA status error:', error);
       throw error;

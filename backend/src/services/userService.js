@@ -1,6 +1,7 @@
 const DatabaseService = require('./databaseService');
 const bcrypt = require('bcrypt');
 const User = require('../models/User');
+const TwoFactorService = require('./twoFactorService');
 
 class UserService {
   static async createUser(userData) {
@@ -256,19 +257,30 @@ class UserService {
 
     const user = result.rows[0];
     
+    // Get 2FA status first (needed for step 2)
+    let twoFAStatus = null;
+    try {
+      twoFAStatus = await TwoFactorService.get2FAStatus(userID);
+    } catch (error) {
+      // If 2FA is not set up, twoFAStatus will be null
+      twoFAStatus = null;
+    }
+    
     // Build step status and data
     const stepStatus = {
       step1: false,
       step2: false,
       step3: false,
-      step4: false
+      step4: false,
+      step5: false
     };
 
     const stepData = {
       step1: null,
       step2: null,
       step3: null,
-      step4: null
+      step4: null,
+      step5: null
     };
 
     // Step 1: Password for Google users
@@ -284,28 +296,45 @@ class UserService {
       };
     }
 
-    // Step 2: Birthday
-    stepStatus.step2 = user.birthday !== null;
-    if (user.birthday) {
+    // Step 2: Two-Factor Authentication
+    if (twoFAStatus && twoFAStatus.twofactorenabled) {
+      stepStatus.step2 = true;
       stepData.step2 = {
+        twoFactorEnabled: true,
+        setupCompleted: twoFAStatus.twoFactorSetupCompleted,
+        backupCodesCount: twoFAStatus.backupCodesCount
+      };
+    } else {
+      stepStatus.step2 = false;
+      stepData.step2 = {
+        twoFactorEnabled: false,
+        setupCompleted: false,
+        backupCodesCount: 0
+      };
+    }
+
+    // Step 3: Birthday
+    stepStatus.step3 = user.birthday !== null;
+    if (user.birthday) {
+      stepData.step3 = {
         birthday: user.birthday
       };
     }
 
-    // Step 3: Preferences
-    stepStatus.step3 = user.country !== null && user.timezone !== null && user.language !== null;
+    // Step 4: Preferences
+    stepStatus.step4 = user.country !== null && user.timezone !== null && user.language !== null;
     if (user.country && user.timezone && user.language) {
-      stepData.step3 = {
+      stepData.step4 = {
         country: user.country,
         timezone: user.timezone,
         language: user.language
       };
     }
 
-    // Step 4: Music genres (PostgreSQL array)
-    stepStatus.step4 = user.musicinteresttypes !== null && user.musicinteresttypes !== undefined && user.musicinteresttypes.length > 0;
+    // Step 5: Music genres
+    stepStatus.step5 = user.musicinteresttypes !== null && user.musicinteresttypes !== undefined && user.musicinteresttypes.length > 0;
     if (user.musicinteresttypes && user.musicinteresttypes.length > 0) {
-      stepData.step4 = {
+      stepData.step5 = {
         genres: user.musicinteresttypes
       };
     }
@@ -324,7 +353,8 @@ class UserService {
       updatedAt: user.updatedat,
       allStatus,
       stepStatus,
-      stepData
+      stepData,
+      twoFAStatus
     };
   }
 }

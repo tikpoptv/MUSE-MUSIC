@@ -1,13 +1,27 @@
 const TwoFactorService = require('../services/twoFactorService');
+const DatabaseService = require('../services/databaseService');
 const { successResponse, errorResponse } = require('../utils/response');
 const { logger } = require('../middleware/logger');
 
 const setup2FA = async (req, res) => {
   try {
     const { userID } = req.user;
-    const { username } = req.user;
+    
+    // Get username and email from database
+    const userResult = await DatabaseService.query(
+      'SELECT username, email FROM Users WHERE userID = $1',
+      [userID]
+    );
+    
+    if (userResult.rows.length === 0) {
+      return res.status(404).json(
+        errorResponse('User not found', 404)
+      );
+    }
+    
+    const { username, email } = userResult.rows[0];
 
-    const result = await TwoFactorService.generateSecret(userID, username);
+    const result = await TwoFactorService.generateSecret(userID, username, email);
 
     res.status(200).json(
       successResponse('2FA setup initiated', {

@@ -23,7 +23,8 @@ const getSetupStatus = async (req, res) => {
         stepData: userData.stepData,
         setupCompleted: userData.setupCompleted,
         setupSkipped: userData.setupSkipped,
-        provider: userData.provider
+        provider: userData.provider,
+        twoFAStatus: userData.twoFAStatus
       }
     });
 
