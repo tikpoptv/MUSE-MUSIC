@@ -31,6 +31,10 @@ CREATE TABLE Users (
     passwordResetToken VARCHAR(255),
     passwordResetTokenExpiry TIMESTAMP,
     
+    -- Two-Factor Authentication
+    twoFactorEnabled BOOLEAN DEFAULT FALSE,
+    twoFactorSetupCompleted BOOLEAN DEFAULT FALSE,
+    
     registerDate TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -228,6 +232,69 @@ CREATE TABLE UserSessions (
 );
 
 -- =========================
+-- Table: UserTwoFactorAuth (Two-Factor Authentication Settings)
+-- =========================
+CREATE TABLE UserTwoFactorAuth (
+    twoFactorID UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    userID UUID NOT NULL,
+    
+    -- 2FA Settings
+    isEnabled BOOLEAN DEFAULT FALSE,
+    secretKey VARCHAR(255), -- TOTP secret key (encrypted)
+    backupCodes TEXT[], -- Array of backup codes (encrypted)
+    
+    -- Recovery Settings
+    recoveryEmail VARCHAR(150),
+    recoveryPhone VARCHAR(20),
+    
+    -- Security & Status
+    lastUsedAt TIMESTAMP,
+    failedAttempts INT DEFAULT 0,
+    isLocked BOOLEAN DEFAULT FALSE,
+    lockedUntil TIMESTAMP,
+    
+    -- Setup Status
+    setupCompleted BOOLEAN DEFAULT FALSE,
+    setupStep VARCHAR(50) DEFAULT 'not_started', -- 'not_started', 'qr_generated', 'verified', 'backup_codes_generated'
+    
+    createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (userID) REFERENCES Users(userID) ON DELETE CASCADE,
+    UNIQUE(userID),
+    CONSTRAINT check_setup_step CHECK (setupStep IN ('not_started', 'qr_generated', 'verified', 'backup_codes_generated'))
+);
+
+-- =========================
+-- Table: TwoFactorVerification (2FA Verification Attempts)
+-- =========================
+CREATE TABLE TwoFactorVerification (
+    verificationID UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    userID UUID NOT NULL,
+    sessionID UUID,
+    
+    -- Verification Details
+    verificationType VARCHAR(20) NOT NULL, -- 'totp', 'backup_code', 'recovery_email', 'recovery_sms'
+    verificationCode VARCHAR(10), -- TOTP code or backup code
+    isSuccessful BOOLEAN DEFAULT FALSE,
+    
+    -- Security Info
+    ipAddress INET,
+    userAgent TEXT,
+    deviceInfo VARCHAR(200),
+    
+    -- Additional Info
+    attemptNumber INT DEFAULT 1, -- Track attempt number for rate limiting
+    errorMessage TEXT, -- Store error message if verification fails
+    
+    createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (userID) REFERENCES Users(userID) ON DELETE CASCADE,
+    FOREIGN KEY (sessionID) REFERENCES UserSessions(sessionID) ON DELETE SET NULL,
+    CONSTRAINT check_verification_type CHECK (verificationType IN ('totp', 'backup_code', 'recovery_email', 'recovery_sms'))
+);
+
+-- =========================
 -- Table: Notifications (User Notifications)
 -- =========================
 CREATE TABLE Notifications (
@@ -292,6 +359,8 @@ CREATE INDEX idx_users_login_status ON Users(loginStatus);
 CREATE INDEX idx_users_setup ON Users(setupCompleted);
 CREATE INDEX idx_users_setup_skipped ON Users(setupSkipped);
 CREATE INDEX idx_users_profile_picture ON Users(profilePicture) WHERE profilePicture IS NOT NULL;
+CREATE INDEX idx_users_2fa_enabled ON Users(twoFactorEnabled);
+CREATE INDEX idx_users_2fa_setup_completed ON Users(twoFactorSetupCompleted);
 
 -- Password reset indexes
 CREATE INDEX idx_users_password_reset_token ON Users(passwordResetToken) WHERE passwordResetToken IS NOT NULL;
@@ -365,6 +434,25 @@ CREATE INDEX idx_sessions_active ON UserSessions(isActive);
 CREATE INDEX idx_sessions_expires ON UserSessions(expiresAt);
 CREATE INDEX idx_sessions_device ON UserSessions(deviceInfo);
 
+-- UserTwoFactorAuth table indexes
+CREATE INDEX idx_2fa_user ON UserTwoFactorAuth(userID);
+CREATE INDEX idx_2fa_enabled ON UserTwoFactorAuth(isEnabled);
+CREATE INDEX idx_2fa_setup_completed ON UserTwoFactorAuth(setupCompleted);
+CREATE INDEX idx_2fa_setup_step ON UserTwoFactorAuth(setupStep);
+CREATE INDEX idx_2fa_locked ON UserTwoFactorAuth(isLocked);
+CREATE INDEX idx_2fa_locked_until ON UserTwoFactorAuth(lockedUntil);
+CREATE INDEX idx_2fa_failed_attempts ON UserTwoFactorAuth(failedAttempts);
+CREATE INDEX idx_2fa_last_used ON UserTwoFactorAuth(lastUsedAt);
+
+-- TwoFactorVerification table indexes
+CREATE INDEX idx_2fa_verification_user ON TwoFactorVerification(userID);
+CREATE INDEX idx_2fa_verification_session ON TwoFactorVerification(sessionID);
+CREATE INDEX idx_2fa_verification_type ON TwoFactorVerification(verificationType);
+CREATE INDEX idx_2fa_verification_successful ON TwoFactorVerification(isSuccessful);
+CREATE INDEX idx_2fa_verification_created ON TwoFactorVerification(createdAt);
+CREATE INDEX idx_2fa_verification_ip ON TwoFactorVerification(ipAddress);
+CREATE INDEX idx_2fa_verification_device ON TwoFactorVerification(deviceInfo);
+
 -- Notifications table indexes
 CREATE INDEX idx_notifications_user ON Notifications(userID);
 CREATE INDEX idx_notifications_type ON Notifications(type);
@@ -419,6 +507,9 @@ CREATE TRIGGER update_history_updated_at BEFORE UPDATE ON History
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 CREATE TRIGGER update_sessions_updated_at BEFORE UPDATE ON UserSessions
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_2fa_updated_at BEFORE UPDATE ON UserTwoFactorAuth
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 CREATE TRIGGER update_notifications_updated_at BEFORE UPDATE ON Notifications

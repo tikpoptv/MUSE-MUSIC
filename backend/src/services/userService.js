@@ -1,4 +1,4 @@
-const { pool } = require('../config/database');
+const DatabaseService = require('./databaseService');
 const bcrypt = require('bcrypt');
 const User = require('../models/User');
 
@@ -16,7 +16,7 @@ class UserService {
     `;
     
     const values = [username, email, hashedPassword, fullName, 'local', 'customer'];
-    const result = await pool.query(query, values);
+    const result = await DatabaseService.query(query, values);
     
     return new User(result.rows[0]);
   }
@@ -28,7 +28,7 @@ class UserService {
              setupCompleted, setupSkipped, registerDate, createdAt, updatedAt
       FROM Users WHERE username = $1
     `;
-    const result = await pool.query(query, [username]);
+    const result = await DatabaseService.query(query, [username]);
     
     if (result.rows.length === 0) {
       return null;
@@ -64,7 +64,7 @@ class UserService {
              setupCompleted, setupSkipped, registerDate, createdAt, updatedAt
       FROM Users WHERE email = $1
     `;
-    const result = await pool.query(query, [email]);
+    const result = await DatabaseService.query(query, [email]);
     
     if (result.rows.length === 0) {
       return null;
@@ -100,7 +100,7 @@ class UserService {
              setupCompleted, setupSkipped, registerDate, createdAt, updatedAt
       FROM Users WHERE userID = $1
     `;
-    const result = await pool.query(query, [userID]);
+    const result = await DatabaseService.query(query, [userID]);
     
     if (result.rows.length === 0) {
       return null;
@@ -131,13 +131,13 @@ class UserService {
 
   static async checkUsernameExists(username) {
     const query = 'SELECT userID FROM Users WHERE username = $1';
-    const result = await pool.query(query, [username]);
+    const result = await DatabaseService.query(query, [username]);
     return result.rows.length > 0;
   }
 
   static async checkEmailExists(email) {
     const query = 'SELECT userID FROM Users WHERE email = $1';
-    const result = await pool.query(query, [email]);
+    const result = await DatabaseService.query(query, [email]);
     return result.rows.length > 0;
   }
 
@@ -147,7 +147,7 @@ class UserService {
 
   static async updateLoginStatus(userID, status) {
     const query = 'UPDATE Users SET loginStatus = $1, updatedAt = CURRENT_TIMESTAMP WHERE userID = $2';
-    await pool.query(query, [status, userID]);
+    await DatabaseService.query(query, [status, userID]);
   }
 
   static async createCustomerProfile(userID) {
@@ -158,7 +158,7 @@ class UserService {
     `;
     
     const values = [userID, 'en', 'UTC', null];
-    const result = await pool.query(query, values);
+    const result = await DatabaseService.query(query, values);
     
     return result.rows[0].customerID;
   }
@@ -185,7 +185,7 @@ class UserService {
       SET passwordResetToken = $1, passwordResetTokenExpiry = $2, updatedAt = CURRENT_TIMESTAMP 
       WHERE userID = $3
     `;
-    await pool.query(query, [resetToken, resetTokenExpiry, userID]);
+    await DatabaseService.query(query, [resetToken, resetTokenExpiry, userID]);
   }
 
   static async findByResetToken(resetToken) {
@@ -194,7 +194,7 @@ class UserService {
       FROM Users 
       WHERE passwordResetToken = $1
     `;
-    const result = await pool.query(query, [resetToken]);
+    const result = await DatabaseService.query(query, [resetToken]);
     
     if (result.rows.length === 0) {
       return null;
@@ -213,7 +213,7 @@ class UserService {
       SET password = $1, updatedAt = CURRENT_TIMESTAMP 
       WHERE userID = $2
     `;
-    await pool.query(query, [hashedPassword, userID]);
+    await DatabaseService.query(query, [hashedPassword, userID]);
   }
 
   static async clearPasswordResetToken(userID) {
@@ -222,7 +222,7 @@ class UserService {
       SET passwordResetToken = NULL, passwordResetTokenExpiry = NULL, updatedAt = CURRENT_TIMESTAMP 
       WHERE userID = $1
     `;
-    await pool.query(query, [userID]);
+    await DatabaseService.query(query, [userID]);
   }
 
   static async getUserWithSetupStatus(userID) {
@@ -248,7 +248,7 @@ class UserService {
       WHERE u.userID = $1
     `;
 
-    const result = await pool.query(query, [userID]);
+    const result = await DatabaseService.query(query, [userID]);
     
     if (result.rows.length === 0) {
       return null;
