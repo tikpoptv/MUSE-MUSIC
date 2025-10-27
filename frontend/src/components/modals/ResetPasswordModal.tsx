@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import toast from 'react-hot-toast';
 import { userService } from '@/services/userService';
+import { passwordRules, validatePassword, validateFormData } from '@/utils/passwordValidation';
 
 interface ResetPasswordModalProps {
   isOpen: boolean;
@@ -14,12 +15,28 @@ export default function ResetPasswordModal({ isOpen, onClose }: ResetPasswordMod
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordValidation, setPasswordValidation] = useState<Record<string, boolean>>({});
+  const [isFormValid, setIsFormValid] = useState(false);
   const [showPasswords, setShowPasswords] = useState({
     current: false,
     new: false,
     confirm: false
   });
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    // Always validate password rules when new password changes
+    if (newPassword) {
+      const validation = validatePassword(newPassword);
+      setPasswordValidation(validation);
+    } else {
+      setPasswordValidation({});
+    }
+
+    // Check form validity using utility function
+    const { isFormValid } = validateFormData(newPassword, confirmPassword);
+    setIsFormValid(isFormValid && currentPassword.length > 0);
+  }, [newPassword, confirmPassword, currentPassword]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,13 +47,10 @@ export default function ResetPasswordModal({ isOpen, onClose }: ResetPasswordMod
       return;
     }
 
-    if (newPassword !== confirmPassword) {
-      toast.error('New passwords do not match');
-      return;
-    }
-
-    if (newPassword.length < 8) {
-      toast.error('New password must be at least 8 characters long');
+    // Check password validation using utility function
+    const { allRulesMet } = validateFormData(newPassword, confirmPassword);
+    if (!allRulesMet) {
+      toast.error('Password does not meet requirements');
       return;
     }
 
@@ -67,6 +81,8 @@ export default function ResetPasswordModal({ isOpen, onClose }: ResetPasswordMod
     setCurrentPassword('');
     setNewPassword('');
     setConfirmPassword('');
+    setPasswordValidation({});
+    setIsFormValid(false);
     setShowPasswords({ current: false, new: false, confirm: false });
     onClose();
   };
@@ -99,9 +115,7 @@ export default function ResetPasswordModal({ isOpen, onClose }: ResetPasswordMod
           </p>
         </div>
 
-        {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Current Password */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Current Password
@@ -130,7 +144,6 @@ export default function ResetPasswordModal({ isOpen, onClose }: ResetPasswordMod
             </div>
           </div>
 
-          {/* New Password */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               New Password
@@ -158,12 +171,8 @@ export default function ResetPasswordModal({ isOpen, onClose }: ResetPasswordMod
                 />
               </button>
             </div>
-            <p className="text-xs text-gray-500 mt-1">
-              Password must be at least 8 characters long
-            </p>
           </div>
 
-          {/* Confirm New Password */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Confirm New Password
@@ -193,7 +202,55 @@ export default function ResetPasswordModal({ isOpen, onClose }: ResetPasswordMod
             </div>
           </div>
 
-          {/* Action Buttons */}
+          <div className="mt-2 p-3 bg-gray-50 rounded-lg">
+            <p className="text-sm text-gray-600 mb-2 font-medium">Password Requirements:</p>
+            <div className="space-y-1">
+              {passwordRules.map((rule) => (
+                <div key={rule.id} className="flex items-center space-x-2">
+                  <div className={`w-4 h-4 rounded-full flex items-center justify-center ${
+                    passwordValidation[rule.id] 
+                      ? 'bg-green-500' 
+                      : 'bg-gray-300'
+                  }`}>
+                    {passwordValidation[rule.id] && (
+                      <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    )}
+                  </div>
+                  <span className={`text-sm ${
+                    passwordValidation[rule.id] 
+                      ? 'text-green-600' 
+                      : 'text-gray-500'
+                  }`}>
+                    {rule.text}
+                  </span>
+                </div>
+              ))}
+              
+              <div className="flex items-center space-x-2 pt-2 border-t border-gray-200">
+                <div className={`w-4 h-4 rounded-full flex items-center justify-center ${
+                  newPassword && confirmPassword && newPassword === confirmPassword
+                    ? 'bg-green-500' 
+                    : 'bg-gray-300'
+                }`}>
+                  {newPassword && confirmPassword && newPassword === confirmPassword && (
+                    <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  )}
+                </div>
+                <span className={`text-sm ${
+                  newPassword && confirmPassword && newPassword === confirmPassword
+                    ? 'text-green-600' 
+                    : 'text-gray-500'
+                }`}>
+                  Passwords match
+                </span>
+              </div>
+            </div>
+          </div>
+
           <div className="flex space-x-3 pt-4">
             <button
               type="button"
@@ -204,9 +261,9 @@ export default function ResetPasswordModal({ isOpen, onClose }: ResetPasswordMod
             </button>
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={isLoading || !isFormValid}
               className={`flex-1 px-4 py-3 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2 ${
-                isLoading 
+                isLoading || !isFormValid
                   ? 'bg-gray-400 cursor-not-allowed' 
                   : 'bg-[#7B61FF] hover:bg-[#6B51EF]'
               } text-white`}

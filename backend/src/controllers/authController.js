@@ -6,53 +6,8 @@ const EmailService = require('../services/emailService');
 const TwoFactorService = require('../services/twoFactorService');
 const { successResponse, errorResponse } = require('../utils/response');
 const { logger } = require('../middleware/logger');
+const { validatePassword } = require('../utils/passwordValidation');
 const crypto = require('crypto');
-
-// Password validation function
-const validatePassword = (password) => {
-  const errors = [];
-  
-  // Check minimum length
-  if (password.length < 8) {
-    errors.push('Password must be at least 8 characters long');
-  }
-  
-  // Check maximum length
-  if (password.length > 128) {
-    errors.push('Password must be no more than 128 characters long');
-  }
-  
-  // Check for uppercase letter
-  if (!/[A-Z]/.test(password)) {
-    errors.push('Password must contain at least one uppercase letter');
-  }
-  
-  // Check for lowercase letter
-  if (!/[a-z]/.test(password)) {
-    errors.push('Password must contain at least one lowercase letter');
-  }
-  
-  // Check for number
-  if (!/\d/.test(password)) {
-    errors.push('Password must contain at least one number');
-  }
-  
-  // Check for special character
-  if (!/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?~`]/.test(password)) {
-    errors.push('Password must contain at least one special character (!@#$%^&*()_+-=[]{}|;:,.<>?)');
-  }
-  
-  // Check for common weak passwords
-  const commonPasswords = ['password', '123456', 'password123', 'admin', 'qwerty', 'letmein'];
-  if (commonPasswords.some(weak => password.toLowerCase().includes(weak))) {
-    errors.push('Password contains common weak patterns');
-  }
-  
-  return {
-    isValid: errors.length === 0,
-    errors
-  };
-};
 
 const register = async (req, res) => {
   try {
