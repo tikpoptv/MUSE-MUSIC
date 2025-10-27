@@ -8,6 +8,15 @@ import { authService } from '@/services/authService';
 import { passwordRules, validatePassword, validateFormData } from '@/utils/passwordValidation';
 import toast from 'react-hot-toast';
 
+// Password validation rules
+const passwordRules = [
+  { id: 'length', text: 'At least 8 characters', test: (password: string) => password.length >= 8 },
+  { id: 'uppercase', text: 'One uppercase letter', test: (password: string) => /[A-Z]/.test(password) },
+  { id: 'lowercase', text: 'One lowercase letter', test: (password: string) => /[a-z]/.test(password) },
+  { id: 'number', text: 'One number', test: (password: string) => /\d/.test(password) },
+  { id: 'special', text: 'One special character', test: (password: string) => /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?~`]/.test(password) }
+];
+
 export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
