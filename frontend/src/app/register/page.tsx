@@ -5,16 +5,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import GoogleAuthButton from '@/components/GoogleAuthButton';
 import { authService } from '@/services/authService';
+import { passwordRules, validatePassword, validateFormData } from '@/utils/passwordValidation';
 import toast from 'react-hot-toast';
-
-// Password validation rules
-const passwordRules = [
-  { id: 'length', text: 'At least 8 characters', test: (password: string) => password.length >= 8 },
-  { id: 'uppercase', text: 'One uppercase letter', test: (password: string) => /[A-Z]/.test(password) },
-  { id: 'lowercase', text: 'One lowercase letter', test: (password: string) => /[a-z]/.test(password) },
-  { id: 'number', text: 'One number', test: (password: string) => /\d/.test(password) },
-  { id: 'special', text: 'One special character', test: (password: string) => /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?~`]/.test(password) }
-];
 
 export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
@@ -43,31 +35,15 @@ export default function RegisterPage() {
   useEffect(() => {
     // Always validate password rules when password changes
     if (formData.password) {
-      const validation: Record<string, boolean> = {};
-      passwordRules.forEach(rule => {
-        validation[rule.id] = rule.test(formData.password);
-      });
+      const validation = validatePassword(formData.password);
       setPasswordValidation(validation);
     } else {
       setPasswordValidation({});
     }
 
-    // Check form validity only when both passwords are present
-    if (!formData.password || !formData.confirmPassword) {
-      setIsFormValid(false);
-      return;
-    }
-    
-    // Check if all rules are met
-    const allRulesMet = passwordRules.every(rule => rule.test(formData.password));
-    const passwordsMatch = formData.password === formData.confirmPassword;
-    
-    if (!allRulesMet || !passwordsMatch) {
-      setIsFormValid(false);
-      return;
-    }
-    
-    setIsFormValid(true);
+    // Check form validity using utility function
+    const { isFormValid } = validateFormData(formData.password, formData.confirmPassword);
+    setIsFormValid(isFormValid);
   }, [formData.password, formData.confirmPassword]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -91,8 +67,8 @@ export default function RegisterPage() {
       return;
     }
 
-    // Check password validation
-    const allRulesMet = passwordRules.every(rule => rule.test(formData.password));
+    // Check password validation using utility function
+    const { allRulesMet } = validateFormData(formData.password, formData.confirmPassword);
     if (!allRulesMet) {
       toast.error('Password does not meet requirements');
       return;
