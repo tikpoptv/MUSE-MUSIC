@@ -7,7 +7,6 @@ interface ApiResponse<T = unknown> {
   error?: string;
 }
 
-// Import authService for auto refresh
 let authService: {
   refreshAccessToken: () => Promise<boolean>;
   logout: () => void;
@@ -25,13 +24,14 @@ class ApiService {
     };
   }
 
+  private isRedirectingToLogin = false;
+
   private async request<T>(
     endpoint: string,
     options: RequestInit = {}
   ): Promise<ApiResponse<T>> {
     const url = `${this.baseURL}${endpoint}`;
     
-    // Auto-set token from localStorage if not already set
     const token = localStorage.getItem('auth_token');
     if (token && !this.hasAuthToken()) {
       this.setAuthToken(token);
@@ -49,10 +49,25 @@ class ApiService {
       const response = await fetch(url, config);
       const data = await response.json();
 
-      // ตรวจสอบ 401 Unauthorized และพยายาม refresh token
-      if (response.status === 401 && this.hasAuthToken()) {
+      // Short-circuit: if user is gone, don't try to refresh; redirect once
+      if (response.status === 401 && (data?.message?.includes('User not found') || endpoint === '/api/auth/me')) {
+        if (!authService) {
+          const authServiceModule = await import('./authService');
+          authService = authServiceModule.authService;
+        }
+
+        authService.logout();
+
+        if (!this.isRedirectingToLogin && window.location.pathname !== '/login') {
+          this.isRedirectingToLogin = true;
+          window.location.href = '/login';
+        }
+
+        return { success: false, error: 'User not found, please login again' };
+      }
+
+      if (response.status === 401 && this.hasAuthToken() && endpoint !== '/api/auth/refresh') {
         
-        // Import authService dynamically to avoid circular dependency
         if (!authService) {
           const authServiceModule = await import('./authService');
           authService = authServiceModule.authService;
@@ -61,7 +76,6 @@ class ApiService {
         const refreshSuccess = await authService.refreshAccessToken();
         
         if (refreshSuccess) {
-          // Retry the original request with new token
           const retryConfig: RequestInit = {
             ...config,
             headers: {
@@ -85,9 +99,13 @@ class ApiService {
             data: retryData,
           };
         } else {
-          // Clear auth data and redirect to login
           authService.logout();
-          window.location.href = '/login';
+
+          if (!this.isRedirectingToLogin && window.location.pathname !== '/login') {
+            this.isRedirectingToLogin = true;
+            window.location.href = '/login';
+          }
+
           return {
             success: false,
             error: 'Session expired, please login again',
@@ -96,6 +114,25 @@ class ApiService {
       }
 
       if (!response.ok) {
+        if (response.status === 401 && data.message?.includes('User not found')) {
+          if (!authService) {
+            const authServiceModule = await import('./authService');
+            authService = authServiceModule.authService;
+          }
+          
+          authService.logout();
+
+          if (!this.isRedirectingToLogin && window.location.pathname !== '/login') {
+            this.isRedirectingToLogin = true;
+            window.location.href = '/login';
+          }
+          
+          return {
+            success: false,
+            error: 'User not found, please login again',
+          };
+        }
+        
         return {
           success: false,
           error: data.message || `HTTP ${response.status}`,
@@ -107,6 +144,28 @@ class ApiService {
         data,
       };
     } catch (error) {
+      if (error instanceof Error && (
+        error.message.includes('401') ||
+        error.message.includes('User not found') ||
+        error.message.includes('user')
+      )) {
+        if (!authService) {
+          const authServiceModule = await import('./authService');
+          authService = authServiceModule.authService;
+        }
+        
+        authService.logout();
+        
+        if (window.location.pathname !== '/login') {
+          window.location.href = '/login';
+        }
+        
+        return {
+          success: false,
+          error: 'User not found, please login again',
+        };
+      }
+      
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Network error',
