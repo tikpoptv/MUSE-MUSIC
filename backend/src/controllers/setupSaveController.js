@@ -31,6 +31,14 @@ const saveSetupStep = async (req, res) => {
       }
 
       case 'step2':
+        // 2FA step - no database save needed
+        res.json({
+          success: true,
+          message: `Step ${step} saved successfully`
+        });
+        return;
+
+      case 'step3':
         query = `
           INSERT INTO Customers (userID, DOB, createdAt, updatedAt)
           VALUES ($1, $2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
@@ -40,7 +48,7 @@ const saveSetupStep = async (req, res) => {
         values = [userId, data.birthday];
         break;
 
-      case 'step3':
+      case 'step4':
         query = `
           INSERT INTO Customers (userID, country, timezone, preferredLanguage, createdAt, updatedAt)
           VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
@@ -54,7 +62,7 @@ const saveSetupStep = async (req, res) => {
         values = [userId, data.country, data.timezone, data.language];
         break;
 
-      case 'step4':
+      case 'step5':
         query = `
           INSERT INTO Customers (userID, musicInterestTypes, createdAt, updatedAt)
           VALUES ($1, $2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)

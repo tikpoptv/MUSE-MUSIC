@@ -1,5 +1,6 @@
 const { OAuth2Client } = require('google-auth-library');
 const { config } = require('../config/env');
+const DatabaseService = require('./databaseService');
 const UserService = require('./userService');
 const SessionService = require('./sessionService');
 const JWTService = require('./jwtService');
@@ -79,8 +80,6 @@ class GoogleAuthService {
   }
 
   static async findByGoogleId(googleId) {
-    const { pool } = require('../config/database');
-    
     const query = `
       SELECT userID, username, email, password, fullName, profilePicture, 
              provider, providerID, providerEmail, role, loginStatus, 
@@ -88,7 +87,7 @@ class GoogleAuthService {
       FROM Users WHERE providerID = $1 AND provider = 'google'
     `;
     
-    const result = await pool.query(query, [googleId]);
+    const result = await DatabaseService.query(query, [googleId]);
     
     if (result.rows.length === 0) {
       return null;
@@ -118,8 +117,6 @@ class GoogleAuthService {
   }
 
   static async updateUserWithGoogleInfo(userID, googleId, email, picture) {
-    const { pool } = require('../config/database');
-    
     const query = `
       UPDATE Users 
       SET provider = 'google', 
@@ -131,7 +128,7 @@ class GoogleAuthService {
       RETURNING userID, username, email, fullName, profilePicture, provider, providerID, providerEmail, role, loginStatus, setupCompleted, setupSkipped, registerDate, createdAt, updatedAt
     `;
     
-    const result = await pool.query(query, [googleId, email, picture, userID]);
+    const result = await DatabaseService.query(query, [googleId, email, picture, userID]);
     
     if (result.rows.length === 0) {
       throw new Error('Failed to link Google account');
@@ -165,8 +162,6 @@ class GoogleAuthService {
     
     const username = email.split('@')[0] + '_' + Date.now();
     
-    const { pool } = require('../config/database');
-    
     const query = `
       INSERT INTO Users (username, email, fullName, profilePicture, provider, providerID, providerEmail, role)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
@@ -174,7 +169,7 @@ class GoogleAuthService {
     `;
     
     const values = [username, email, name, picture, 'google', googleId, email, 'customer'];
-    const result = await pool.query(query, values);
+    const result = await DatabaseService.query(query, values);
     
     const userData = result.rows[0];
     const normalizedData = {

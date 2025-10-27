@@ -46,33 +46,43 @@
  * @swagger
  * /api/auth/login:
  *   post:
- *     summary: Login user
+ *     summary: Login user (with optional 2FA)
  *     tags: [Authentication]
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/UserLogin'
+ *             $ref: '#/components/schemas/LoginWith2FARequest'
  *     responses:
  *       200:
- *         description: Login successful
+ *         description: Login successful (with or without 2FA)
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/LoginResponse'
+ *               oneOf:
+ *                 - $ref: '#/components/schemas/LoginWith2FAResponse'
+ *                 - $ref: '#/components/schemas/TwoFARequiredResponse'
  *       400:
- *         description: Bad request - missing credentials
+ *         description: Bad request - missing credentials or invalid 2FA code
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               oneOf:
+ *                 - $ref: '#/components/schemas/ErrorResponse'
+ *                 - $ref: '#/components/schemas/TwoFactorErrorResponse'
  *       401:
  *         description: Unauthorized - invalid credentials
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *       423:
+ *         description: Account locked due to too many failed 2FA attempts
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/TwoFactorLockedResponse'
  *       500:
  *         description: Internal server error
  *         content:

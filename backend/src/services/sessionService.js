@@ -1,4 +1,4 @@
-const { pool } = require('../config/database');
+const DatabaseService = require('./databaseService');
 
 class SessionService {
   static async createSession(userID, deviceInfo = 'desktop', ipAddress = null, userAgent = null) {
@@ -12,7 +12,7 @@ class SessionService {
     `;
     
     const values = [userID, deviceInfo, ipAddress, userAgent, expiresAt];
-    const result = await pool.query(query, values);
+    const result = await DatabaseService.query(query, values);
     
     return result.rows[0];
   }
@@ -24,7 +24,7 @@ class SessionService {
       WHERE sessionID = $1 AND isActive = true AND expiresAt > CURRENT_TIMESTAMP
     `;
     
-    const result = await pool.query(query, [sessionID]);
+    const result = await DatabaseService.query(query, [sessionID]);
     
     if (result.rows.length === 0) {
       return null;
@@ -41,7 +41,7 @@ class SessionService {
       ORDER BY createdAt DESC
     `;
     
-    const result = await pool.query(query, [userID]);
+    const result = await DatabaseService.query(query, [userID]);
     return result.rows;
   }
 
@@ -52,7 +52,7 @@ class SessionService {
       WHERE sessionID = $1
     `;
     
-    await pool.query(query, [sessionID]);
+    await DatabaseService.query(query, [sessionID]);
   }
 
   static async deactivateAllUserSessions(userID) {
@@ -62,7 +62,7 @@ class SessionService {
       WHERE userID = $1 AND isActive = true
     `;
     
-    await pool.query(query, [userID]);
+    await DatabaseService.query(query, [userID]);
   }
 
   static async cleanupExpiredSessions() {
@@ -72,7 +72,7 @@ class SessionService {
       WHERE expiresAt <= CURRENT_TIMESTAMP AND isActive = true
     `;
     
-    const result = await pool.query(query);
+    const result = await DatabaseService.query(query);
     return result.rowCount;
   }
 }
