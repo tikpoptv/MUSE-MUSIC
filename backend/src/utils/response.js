@@ -31,12 +31,18 @@ const successResponse = (message, data, statusCode = 200) => {
   };
 };
 
-const errorResponse = (message, statusCode = 500) => {
-  return {
+const errorResponse = (message, statusCode = 500, errors = null) => {
+  const response = {
     success: false,
     message,
     statusCode
   };
+  
+  if (errors) {
+    response.errors = errors;
+  }
+  
+  return response;
 };
 
 module.exports = {

@@ -72,6 +72,90 @@ const authSchemas = {
     }
   },
   
+  ResetPassword: {
+    type: 'object',
+    required: ['token', 'password'],
+    properties: {
+      token: {
+        type: 'string',
+        description: 'Password reset token from email',
+        example: 'a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0'
+      },
+      password: {
+        type: 'string',
+        minLength: 8,
+        maxLength: 128,
+        pattern: '^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[!@#$%^&*()_+\\-=\\[\\]{};\':"\\\\|,.<>\\/?~`]).{8,128}$',
+        description: 'New password must contain at least 8 characters, including uppercase, lowercase, number, and special character',
+        example: 'MyNewSecure123!'
+      }
+    }
+  },
+  
+  ResetPasswordResponse: {
+    type: 'object',
+    properties: {
+      success: {
+        type: 'boolean',
+        example: true
+      },
+      message: {
+        type: 'string',
+        example: 'Password reset successfully'
+      },
+      data: {
+        type: 'object',
+        properties: {
+          email: {
+            type: 'string',
+            format: 'email',
+            example: 'user@example.com'
+          }
+        }
+      }
+    }
+  },
+  
+  ValidateResetToken: {
+    type: 'object',
+    required: ['token'],
+    properties: {
+      token: {
+        type: 'string',
+        description: 'Password reset token to validate',
+        example: 'a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0'
+      }
+    }
+  },
+  
+  ValidateResetTokenResponse: {
+    type: 'object',
+    properties: {
+      success: {
+        type: 'boolean',
+        example: true
+      },
+      message: {
+        type: 'string',
+        example: 'Reset token is valid'
+      },
+      data: {
+        type: 'object',
+        properties: {
+          email: {
+            type: 'string',
+            format: 'email',
+            example: 'user@example.com'
+          },
+          username: {
+            type: 'string',
+            example: 'johndoe'
+          }
+        }
+      }
+    }
+  },
+  
   LoginResponse: {
     type: 'object',
     properties: {

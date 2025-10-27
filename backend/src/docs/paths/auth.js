@@ -23,11 +23,22 @@
  *                     data:
  *                       $ref: '#/components/schemas/User'
  *       400:
- *         description: Bad request - validation errors
+ *         description: Bad request - validation errors (username length, email format, password strength)
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *             examples:
+ *               password_validation:
+ *                 summary: Password validation errors
+ *                 value:
+ *                   success: false
+ *                   message: "Password validation failed"
+ *                   errors: [
+ *                     "Password must be at least 8 characters long",
+ *                     "Password must contain at least one uppercase letter",
+ *                     "Password must contain at least one special character"
+ *                   ]
  *       409:
  *         description: Conflict - username or email already exists
  *         content:
@@ -237,6 +248,74 @@
  *               $ref: '#/components/schemas/ErrorResponse'
  *       500:
  *         description: Internal server error or failed to send email
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+
+/**
+ * @swagger
+ * /api/auth/reset-password:
+ *   post:
+ *     summary: Reset password with token
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/ResetPassword'
+ *     responses:
+ *       200:
+ *         description: Password reset successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ResetPasswordResponse'
+ *       400:
+ *         description: Bad request - validation errors or invalid/expired token
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+
+/**
+ * @swagger
+ * /api/auth/validate-reset-token/{token}:
+ *   get:
+ *     summary: Validate password reset token
+ *     tags: [Authentication]
+ *     parameters:
+ *       - in: path
+ *         name: token
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Password reset token
+ *         example: 'a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0'
+ *     responses:
+ *       200:
+ *         description: Reset token is valid
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ValidateResetTokenResponse'
+ *       400:
+ *         description: Bad request - invalid or expired token
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Internal server error
  *         content:
  *           application/json:
  *             schema:
