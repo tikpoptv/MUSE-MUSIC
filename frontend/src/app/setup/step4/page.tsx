@@ -3,88 +3,57 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
-import Image from 'next/image';
 import { setupService } from '@/services/setupService';
-import { authService } from '@/services/authService';
 import { SetupLayout, SetupHeader, SetupNavigation, SetupButton } from '@/components/setup';
+import { countries, allTimezones, languages, handleCountryChangeStep3, Step3FormData } from '@/utils/countryUtils';
 
 export default function SetupStep4() {
   const router = useRouter();
-  const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
-  const [genreColors, setGenreColors] = useState<{ [key: string]: string }>({});
+  const [country, setCountry] = useState('Thailand');
+  const [timezone, setTimezone] = useState('Thailand (GMT+7)');
+  const [language, setLanguage] = useState('English');
   const [isLoading, setIsLoading] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const genres = [
-    'R&B / Soul', 'Pop', 'Lo-Fi / Chillhop', 'Indie / Alternative', 'EDM', 'Jazz',
-    'Hip-Hop / Rap', 'Country', 'Rock', 'Classical', 'Blues', 'K-Pop',
-    'Afrobeat', 'Folk / Acoustic', 'Latin / Reggaeton', 'J-Pop', 'T-Pop'
-  ];
+  const timezones = [...new Set([timezone, ...allTimezones])];
 
-  const getRandomColor = () => {
-    const colors = [
-      '#ef4444', '#f97316', '#eab308', '#22c55e', '#06b6d4', '#3b82f6', 
-      '#8b5cf6', '#ec4899', '#f43f5e', '#84cc16', '#06b6d4', '#6366f1',
-      '#a855f7', '#ec4899', '#f59e0b', '#10b981', '#14b8a6', '#0ea5e9',
-      '#6366f1', '#8b5cf6', '#d946ef', '#f43f5e', '#ef4444', '#f97316'
-    ];
-    return colors[Math.floor(Math.random() * colors.length)];
-  };
 
-  const handleGenreToggle = (genre: string) => {
-    setSelectedGenres(prev => {
-      if (prev.includes(genre)) {
-        // Remove genre and its color
-        setGenreColors(prevColors => {
-          const newColors = { ...prevColors };
-          delete newColors[genre];
-          return newColors;
-        });
-        return prev.filter(g => g !== genre);
-      } else {
-        // Add genre with random color
-        const newColor = getRandomColor();
-        setGenreColors(prevColors => ({ ...prevColors, [genre]: newColor }));
-        return [...prev, genre];
-      }
-    });
+  const handleCountryChangeLocal = (selectedCountry: string) => {
+    setCountry(selectedCountry);
+    
+    const formData: Step3FormData = { country: selectedCountry, timezone, language };
+    const setFormData = (updater: (prev: Step3FormData) => Step3FormData) => {
+      const newData = updater(formData);
+      setTimezone(newData.timezone);
+      setLanguage(newData.language);
+    };
+    
+    handleCountryChangeStep3(selectedCountry, setFormData, toast);
   };
 
   const handleNext = async () => {
-    if (selectedGenres.length === 0) {
-      toast.error('Please select at least one genre to continue');
-      return;
-    }
-    
-    setIsSubmitting(true);
-    
     try {
-      // Step 1: Save genres
-      toast.loading('Saving your music preferences...', { id: 'save-genres' });
-      await setupService.saveSetupStep('step4', { genres: selectedGenres });
-      toast.success('Genres saved!', { id: 'save-genres' });
+      await setupService.saveSetupStep('step4', { 
+        country, 
+        timezone, 
+        language 
+      });
       
-      // Step 2: Complete setup
-      toast.loading('Completing your setup...', { id: 'complete-setup' });
-      await setupService.completeSetup();
-      toast.success('Setup completed!', { id: 'complete-setup' });
+      const userData = localStorage.getItem('user_data');
+      if (userData) {
+        const user = JSON.parse(userData);
+        user.stepData = user.stepData || {};
+        user.stepData.step4 = { country, timezone, language };
+        user.stepStatus = user.stepStatus || {};
+        user.stepStatus.step4 = true;
+        localStorage.setItem('user_data', JSON.stringify(user));
+      }
       
-      // Step 3: Fetch latest data
-      toast.loading('Syncing your profile...', { id: 'sync-profile' });
-      const latestUserData = await authService.fetchUserData();
-      authService.setUserData(latestUserData);
-      toast.success('Profile synced!', { id: 'sync-profile' });
-      
-      // Final success
-      toast.success('🎉 Setup completed successfully! Welcome to MUSE Music!');
+      toast.success('Preferences saved successfully!');
       setTimeout(() => {
-        router.push('/');
-      }, 2000);
+        router.push('/setup/step5');
+      }, 1500);
     } catch {
-      toast.dismiss();
-      toast.error('Failed to complete setup. Please try again.');
-    } finally {
-      setIsSubmitting(false);
+      toast.error('Failed to save preferences. Please try again.');
     }
   };
 
@@ -108,18 +77,16 @@ export default function SetupStep4() {
             const data = await setupService.getSetupStatus();
         
         if (data.stepStatus && data.stepStatus.step4) {
-          if (data.stepData && data.stepData.step4?.genres) {
-            setSelectedGenres(data.stepData.step4.genres);
-            const colors: { [key: string]: string } = {};
-            data.stepData.step4.genres.forEach((genre: string) => {
-              colors[genre] = getRandomColor();
-            });
-            setGenreColors(colors);
-            toast.success('Genres loaded from previous setup!');
+          if (data.stepData && data.stepData.step4 && 'country' in data.stepData.step4) {
+            const step4Data = data.stepData.step4 as unknown as { country: string; timezone: string; language: string };
+            setCountry(step4Data.country);
+            setTimezone(step4Data.timezone);
+            setLanguage(step4Data.language);
+            toast.success('Preferences loaded from previous setup!');
           } else {
-            toast.success('Genres already set up! Redirecting to homepage...');
+            toast.success('Preferences already set up! Redirecting to next step...');
             setTimeout(() => {
-              router.push('/');
+              router.push('/setup/step5');
             }, 1500);
             return;
           }
@@ -141,89 +108,70 @@ export default function SetupStep4() {
   return (
     <SetupLayout isLoading={isLoading}>
       <SetupHeader 
-        title="Set up your profile"
-        description="Pick at least one genre to start shaping your music mood."
+        title="Preferences"
+        description="Set your location, timezone, and language preferences"
       />
 
-        <div className="mb-8">
-          <div style={{
-            display: 'flex',
-            flexWrap: 'wrap',
-            gap: '12px',
-            justifyContent: 'center',
-            maxWidth: '400px',
-            margin: '0 auto'
-          }}>
-            {genres.map((genre) => {
-              const isSelected = selectedGenres.includes(genre);
-              
-              return (
-                <button
-                  key={genre}
-                  onClick={() => handleGenreToggle(genre)}
-                  style={{
-                    padding: '12px 16px',
-                    height: '32px',
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                    fontWeight: '500',
-                    transition: 'colors 0.2s',
-                    whiteSpace: 'nowrap',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    backgroundColor: isSelected ? (genreColors[genre] || '#000000') : '#f3f4f6',
-                    color: isSelected ? '#ffffff' : '#374151',
-                    border: 'none',
-                    cursor: 'pointer',
-                    minWidth: 'fit-content',
-                    width: 'auto'
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!isSelected) {
-                      e.currentTarget.style.backgroundColor = '#e5e7eb';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!isSelected) {
-                      e.currentTarget.style.backgroundColor = '#f3f4f6';
-                    }
-                  }}
-                >
-                  {genre}
-                </button>
-              );
-            })}
+        <div className="mb-8 space-y-6">
+          <div>
+            <label className="block text-sm font-bold text-gray-900 mb-2">
+              Country
+            </label>
+            <select
+              value={country}
+                onChange={(e) => handleCountryChangeLocal(e.target.value)}
+              className="w-full px-4 py-3 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-600 rounded-lg"
+            >
+              {countries.map((country: string, index: number) => (
+                <option key={index} value={country}>
+                  {country}
+                </option>
+              ))}
+            </select>
           </div>
+
+          <div>
+            <label className="block text-sm font-bold text-gray-900 mb-2">
+              Timezone
+            </label>
+            <select
+              value={timezone}
+              onChange={(e) => setTimezone(e.target.value)}
+              className="w-full px-4 py-3 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-600 rounded-lg"
+            >
+              {timezones.map((tz: string, index: number) => (
+                <option key={index} value={tz}>
+                  {tz}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-bold text-gray-900 mb-2">
+              Language
+            </label>
+            <select
+              value={language}
+              onChange={(e) => setLanguage(e.target.value)}
+              className="w-full px-4 py-3 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-600 rounded-lg"
+            >
+              {languages.map((lang) => (
+                <option key={lang} value={lang}>
+                  {lang}
+                </option>
+              ))}
+            </select>
+          </div>
+
         </div>
 
         <div className="space-y-4">
-          <SetupButton
-            onClick={handleNext}
-            disabled={selectedGenres.length === 0 || isSubmitting}
-            variant="gradient"
-          >
-            {isSubmitting ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-                <span>Setting up your profile...</span>
-              </>
-            ) : (
-              <>
-                <span>Start Vibin&apos;</span>
-                <Image 
-                  src="/icons/star-icon.svg" 
-                  alt="Star" 
-                  width={16} 
-                  height={16}
-                  className={`w-4 h-4 ${
-                    selectedGenres.length === 0
-                      ? 'filter brightness-0 opacity-50'
-                      : 'filter brightness-0 invert'
-                  }`}
-                />
-              </>
-            )}
+          <SetupButton onClick={handleNext}>
+            <span>Next</span>
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
           </SetupButton>
           
           <SetupNavigation onBack={handleBack} />

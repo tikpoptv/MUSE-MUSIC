@@ -105,8 +105,61 @@ const updateUserSettings = async (req, res) => {
   }
 };
 
+const resetPassword = async (req, res) => {
+  try {
+    const userId = req.user.userID;
+    const { currentPassword, newPassword } = req.body;
+
+    // Validation
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json(
+        errorResponse('Current password and new password are required', 400)
+      );
+    }
+
+    if (newPassword.length < 8) {
+      return res.status(400).json(
+        errorResponse('New password must be at least 8 characters long', 400)
+      );
+    }
+
+    if (currentPassword === newPassword) {
+      return res.status(400).json(
+        errorResponse('New password must be different from current password', 400)
+      );
+    }
+
+    // Verify current password
+    const user = await UserService.findByID(userId);
+    if (!user) {
+      return res.status(404).json(
+        errorResponse('User not found', 404)
+      );
+    }
+
+    const isCurrentPasswordValid = await UserService.verifyPassword(currentPassword, user.password);
+    if (!isCurrentPasswordValid) {
+      return res.status(400).json(
+        errorResponse('Current password is incorrect', 400)
+      );
+    }
+
+    // Update password
+    await UserService.updatePassword(userId, newPassword);
+
+    res.json(successResponse('Password reset successfully'));
+
+  } catch (error) {
+    logger.error('Error resetting password:', error);
+    res.status(500).json(
+      errorResponse('Internal server error', 500)
+    );
+  }
+};
+
 module.exports = {
   getUserData,
   getUserSettings,
-  updateUserSettings
+  updateUserSettings,
+  resetPassword
 };

@@ -36,6 +36,16 @@ interface UpdateUserSettingsResponse {
   };
 }
 
+interface ResetPasswordRequest {
+  currentPassword: string;
+  newPassword: string;
+}
+
+interface ResetPasswordResponse {
+  success: boolean;
+  message: string;
+}
+
 export const userService = {
   async getUserSettings(): Promise<UserSettings> {
     const response = await apiService.get<UserSettingsResponse>('/api/user/settings');
@@ -55,5 +65,13 @@ export const userService = {
     }
     
     return response.data.data.settings;
+  },
+
+  async resetPassword(passwordData: ResetPasswordRequest): Promise<void> {
+    const response = await apiService.post<ResetPasswordResponse>('/api/user/reset-password', passwordData);
+    
+    if (!response.success) {
+      throw new Error(response.error || 'Failed to reset password');
+    }
   }
 };

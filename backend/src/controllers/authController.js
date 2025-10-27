@@ -3,6 +3,7 @@ const SessionService = require('../services/sessionService');
 const JWTService = require('../services/jwtService');
 const GoogleAuthService = require('../services/googleAuthService');
 const EmailService = require('../services/emailService');
+const TwoFactorService = require('../services/twoFactorService');
 const { successResponse, errorResponse } = require('../utils/response');
 const { logger } = require('../middleware/logger');
 const crypto = require('crypto');
@@ -88,7 +89,7 @@ const register = async (req, res) => {
 
 const login = async (req, res) => {
   try {
-    const { username, password } = req.body;
+    const { username, password, twoFactorToken } = req.body;
 
     if (!username || !password) {
       return res.status(400).json(
@@ -104,11 +105,41 @@ const login = async (req, res) => {
       );
     }
 
-    await UserService.updateLoginStatus(user.userID, 'online');
+    const twoFAStatus = await TwoFactorService.get2FAStatus(user.userID);
 
+    // Get device info once
     const deviceInfo = req.headers['user-agent']?.includes('Mobile') ? 'mobile' : 'desktop';
     const ipAddress = req.ip || req.connection.remoteAddress;
     const userAgent = req.headers['user-agent'];
+
+    if (twoFAStatus && twoFAStatus.twofactorenabled) {
+      if (!twoFactorToken) {
+        return res.status(200).json(
+          successResponse('2FA verification required', {
+            requires2FA: true,
+            userID: user.userID,
+            message: 'Please provide 2FA verification code'
+          })
+        );
+      }
+
+      const isValid2FA = await TwoFactorService.verifyToken(
+        user.userID,
+        twoFactorToken,
+        null,
+        ipAddress,
+        userAgent,
+        deviceInfo
+      );
+
+      if (!isValid2FA) {
+        return res.status(400).json(
+          errorResponse('Invalid 2FA verification code', 400)
+        );
+      }
+    }
+
+    await UserService.updateLoginStatus(user.userID, 'online');
 
     const session = await SessionService.createSession(
       user.userID,
@@ -147,9 +178,15 @@ const login = async (req, res) => {
 
   } catch (error) {
     logger.error('Login error:', error);
-    res.status(500).json(
-      errorResponse('Internal server error', 500)
-    );
+    if (error.message.includes('locked')) {
+      res.status(423).json(
+        errorResponse('Account temporarily locked due to too many failed attempts', 423)
+      );
+    } else {
+      res.status(500).json(
+        errorResponse('Internal server error', 500)
+      );
+    }
   }
 };
 
