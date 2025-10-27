@@ -31,4 +31,7 @@ router.use('/api/2fa', twoFactorRoutes);
 // Mount them
 router.use('/api/analysis', translateRoutes);
 
+// Mount them
+router.use('/api/analysis', translateRoutes);
+
 module.exports = router;
