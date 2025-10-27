@@ -2,6 +2,7 @@ const DatabaseService = require('./databaseService');
 const bcrypt = require('bcrypt');
 const User = require('../models/User');
 const TwoFactorService = require('./twoFactorService');
+const { logger } = require('../middleware/logger');
 
 class UserService {
   static async createUser(userData) {
@@ -357,6 +358,17 @@ class UserService {
       twoFAStatus
     };
   }
+
+  static async verifyPassword(plainPassword, hashedPassword) {
+    try {
+      const bcrypt = require('bcrypt');
+      return await bcrypt.compare(plainPassword, hashedPassword);
+    } catch (error) {
+      logger.error('Error verifying password:', error);
+      throw error;
+    }
+  }
+
 }
 
 module.exports = UserService;

@@ -9,7 +9,7 @@ import { userService } from '@/services/userService';
 import { twoFactorService } from '@/services/twoFactorService';
 import { countries, allTimezones, languages, handleCountryChange } from '@/utils/countryUtils';
 import GoogleSettingsButton from '@/components/GoogleSettingsButton';
-import { TwoFactorModal, TwoFAVerificationModal } from '@/components/modals';
+import { TwoFactorModal, TwoFAVerificationModal, ResetPasswordModal } from '@/components/modals';
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -50,6 +50,8 @@ export default function SettingsPage() {
   const [showTwoFAModal, setShowTwoFAModal] = useState(false);
   const [twoFAModalType, setTwoFAModalType] = useState<'setup' | 'manage' | 'disable'>('setup');
   const [show2FAVerification, setShow2FAVerification] = useState(false);
+  const [showResetPasswordModal, setShowResetPasswordModal] = useState(false);
+  const [resetPasswordAction, setResetPasswordAction] = useState<'reset' | null>(null);
 
   const handleCountryChangeLocal = (selectedCountry: string) => {
     handleCountryChange(selectedCountry, setFormData, toast);
@@ -94,9 +96,28 @@ export default function SettingsPage() {
     }
   };
 
+  const handleResetPasswordClick = () => {
+    if (twoFAStatus.twoFactorEnabled) {
+      // If 2FA is enabled, require verification first
+      setResetPasswordAction('reset');
+      setShow2FAVerification(true);
+    } else {
+      // If 2FA is not enabled, show reset password modal directly
+      setShowResetPasswordModal(true);
+    }
+  };
+
   const handle2FAVerificationSuccess = () => {
     setShow2FAVerification(false);
-    setShowTwoFAModal(true);
+    
+    if (resetPasswordAction === 'reset') {
+      // If it was for reset password, show reset password modal
+      setResetPasswordAction(null);
+      setShowResetPasswordModal(true);
+    } else {
+      // If it was for 2FA management, show 2FA modal
+      setShowTwoFAModal(true);
+    }
   };
 
   const handleTwoFAModalClose = () => {
@@ -356,7 +377,12 @@ export default function SettingsPage() {
 
             {/* Password */}
             {renderInputField('password', 'Password', 'password', 
-              <button className="text-[#7B61FF] text-sm hover:underline mt-1">Reset Password?</button>
+              <button 
+                onClick={handleResetPasswordClick}
+                className="text-[#7B61FF] text-sm hover:underline mt-1"
+              >
+                Reset Password?
+              </button>
             )}
 
             {/* Email */}
@@ -501,16 +527,31 @@ export default function SettingsPage() {
         {show2FAVerification && (
           <TwoFAVerificationModal
             isOpen={show2FAVerification}
-            onClose={() => setShow2FAVerification(false)}
+            onClose={() => {
+              setShow2FAVerification(false);
+              setResetPasswordAction(null);
+            }}
             onSuccess={handle2FAVerificationSuccess}
-            title={twoFAModalType === 'manage' 
-              ? 'Verify 2FA Code - Management'
-              : 'Verify 2FA Code - Disable'
+            title={resetPasswordAction === 'reset' 
+              ? 'Verify 2FA Code - Reset Password'
+              : twoFAModalType === 'manage' 
+                ? 'Verify 2FA Code - Management'
+                : 'Verify 2FA Code - Disable'
             }
-            description={twoFAModalType === 'manage' 
-              ? 'Enter your 6-digit authenticator code to access 2FA management.'
-              : 'Enter your 6-digit authenticator code to disable 2FA.'
+            description={resetPasswordAction === 'reset'
+              ? 'Enter your 6-digit authenticator code to reset your password.'
+              : twoFAModalType === 'manage' 
+                ? 'Enter your 6-digit authenticator code to access 2FA management.'
+                : 'Enter your 6-digit authenticator code to disable 2FA.'
             }
+          />
+        )}
+
+        {/* Reset Password Modal */}
+        {showResetPasswordModal && (
+          <ResetPasswordModal
+            isOpen={showResetPasswordModal}
+            onClose={() => setShowResetPasswordModal(false)}
           />
         )}
         </div>
