@@ -7,6 +7,15 @@ import GoogleAuthButton from '@/components/GoogleAuthButton';
 import { authService } from '@/services/authService';
 import toast from 'react-hot-toast';
 
+// Password validation rules
+const passwordRules = [
+  { id: 'length', text: 'At least 8 characters', test: (password: string) => password.length >= 8 },
+  { id: 'uppercase', text: 'One uppercase letter', test: (password: string) => /[A-Z]/.test(password) },
+  { id: 'lowercase', text: 'One lowercase letter', test: (password: string) => /[a-z]/.test(password) },
+  { id: 'number', text: 'One number', test: (password: string) => /\d/.test(password) },
+  { id: 'special', text: 'One special character', test: (password: string) => /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?~`]/.test(password) }
+];
+
 export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -16,7 +25,7 @@ export default function RegisterPage() {
     password: '',
     confirmPassword: ''
   });
-  const [passwordError, setPasswordError] = useState('');
+  const [passwordValidation, setPasswordValidation] = useState<Record<string, boolean>>({});
   const [isFormValid, setIsFormValid] = useState(false);
   const router = useRouter();
 
@@ -32,25 +41,32 @@ export default function RegisterPage() {
   }, [router]);
 
   useEffect(() => {
+    // Always validate password rules when password changes
+    if (formData.password) {
+      const validation: Record<string, boolean> = {};
+      passwordRules.forEach(rule => {
+        validation[rule.id] = rule.test(formData.password);
+      });
+      setPasswordValidation(validation);
+    } else {
+      setPasswordValidation({});
+    }
+
+    // Check form validity only when both passwords are present
     if (!formData.password || !formData.confirmPassword) {
-      setPasswordError('');
       setIsFormValid(false);
       return;
     }
     
-    if (formData.password.length < 6) {
-      setPasswordError('Password must be at least 6 characters');
+    // Check if all rules are met
+    const allRulesMet = passwordRules.every(rule => rule.test(formData.password));
+    const passwordsMatch = formData.password === formData.confirmPassword;
+    
+    if (!allRulesMet || !passwordsMatch) {
       setIsFormValid(false);
       return;
     }
     
-    if (formData.password !== formData.confirmPassword) {
-      setPasswordError('Passwords do not match');
-      setIsFormValid(false);
-      return;
-    }
-    
-    setPasswordError('');
     setIsFormValid(true);
   }, [formData.password, formData.confirmPassword]);
 
@@ -75,8 +91,10 @@ export default function RegisterPage() {
       return;
     }
 
-    if (formData.password.length < 6) {
-      toast.error('Password must be at least 6 characters');
+    // Check password validation
+    const allRulesMet = passwordRules.every(rule => rule.test(formData.password));
+    if (!allRulesMet) {
+      toast.error('Password does not meet requirements');
       return;
     }
 
@@ -107,7 +125,14 @@ export default function RegisterPage() {
           window.location.href = '/login';
         }, 1500);
       } else {
-        toast.error(data.message || 'Registration failed');
+        // Handle validation errors from backend
+        if (data.errors && Array.isArray(data.errors)) {
+          data.errors.forEach((error: string) => {
+            toast.error(error);
+          });
+        } else {
+          toast.error(data.message || 'Registration failed');
+        }
       }
     } catch (error) {
       console.error('Registration error:', error);
@@ -120,9 +145,9 @@ export default function RegisterPage() {
 
   return (
     <div 
-      className="min-h-screen flex items-start justify-center relative overflow-hidden" 
+      className="min-h-screen flex items-center justify-center relative overflow-hidden" 
       style={{ 
-        paddingTop: '80px', 
+        paddingTop: '0px', 
         paddingBottom: '0px',
         marginTop: '0px',
         backgroundImage: 'url(/login-background.svg)',
@@ -134,7 +159,7 @@ export default function RegisterPage() {
     >
       <div className="bg-white rounded-2xl p-8 mx-4 shadow-2xl relative z-10 flex flex-col justify-center" style={{
         boxShadow: '0 0 50px rgba(94, 7, 202, 0.1), 0 0 100px rgba(94, 7, 202, 0.05), 0 0 150px rgba(94, 7, 202, 0.03), 0 0 200px rgba(94, 7, 202, 0.02), 0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-        height: '650px',
+        minHeight: '650px',
         width: '480px'
       }}>
         <div className="text-center mb-8">
@@ -216,12 +241,57 @@ export default function RegisterPage() {
               )}
             </button>
           </div>
-          
-          {passwordError && (
-            <div className="text-red-500 text-sm mt-2">
-              {passwordError}
+
+          {/* Password Requirements and Match Check */}
+          <div className="mt-2 p-3 bg-gray-50 rounded-lg">
+            <p className="text-sm text-gray-600 mb-2 font-medium">Password Requirements:</p>
+            <div className="space-y-1">
+              {passwordRules.map((rule) => (
+                <div key={rule.id} className="flex items-center space-x-2">
+                  <div className={`w-4 h-4 rounded-full flex items-center justify-center ${
+                    passwordValidation[rule.id] 
+                      ? 'bg-green-500' 
+                      : 'bg-gray-300'
+                  }`}>
+                    {passwordValidation[rule.id] && (
+                      <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    )}
+                  </div>
+                  <span className={`text-sm ${
+                    passwordValidation[rule.id] 
+                      ? 'text-green-600' 
+                      : 'text-gray-500'
+                  }`}>
+                    {rule.text}
+                  </span>
+                </div>
+              ))}
+              
+              {/* Passwords Match Check */}
+              <div className="flex items-center space-x-2 pt-2 border-t border-gray-200">
+                <div className={`w-4 h-4 rounded-full flex items-center justify-center ${
+                  formData.password && formData.confirmPassword && formData.password === formData.confirmPassword
+                    ? 'bg-green-500' 
+                    : 'bg-gray-300'
+                }`}>
+                  {formData.password && formData.confirmPassword && formData.password === formData.confirmPassword && (
+                    <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  )}
+                </div>
+                <span className={`text-sm ${
+                  formData.password && formData.confirmPassword && formData.password === formData.confirmPassword
+                    ? 'text-green-600' 
+                    : 'text-gray-500'
+                }`}>
+                  Passwords match
+                </span>
+              </div>
             </div>
-          )}
+          </div>
 
           <button
             type="submit"
@@ -253,3 +323,4 @@ export default function RegisterPage() {
     </div>
   );
 }
+

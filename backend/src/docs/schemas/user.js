@@ -56,8 +56,11 @@ const userSchemas = {
       },
       password: {
         type: 'string',
-        minLength: 6,
-        example: 'password123'
+        minLength: 8,
+        maxLength: 128,
+        pattern: '^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[!@#$%^&*()_+\\-=\\[\\]{};\':"\\\\|,.<>\\/?~`]).{8,128}$',
+        description: 'Password must contain at least 8 characters, including uppercase, lowercase, number, and special character',
+        example: 'MySecure123!'
       },
       fullName: {
         type: 'string',

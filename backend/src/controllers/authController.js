@@ -8,6 +8,52 @@ const { successResponse, errorResponse } = require('../utils/response');
 const { logger } = require('../middleware/logger');
 const crypto = require('crypto');
 
+// Password validation function
+const validatePassword = (password) => {
+  const errors = [];
+  
+  // Check minimum length
+  if (password.length < 8) {
+    errors.push('Password must be at least 8 characters long');
+  }
+  
+  // Check maximum length
+  if (password.length > 128) {
+    errors.push('Password must be no more than 128 characters long');
+  }
+  
+  // Check for uppercase letter
+  if (!/[A-Z]/.test(password)) {
+    errors.push('Password must contain at least one uppercase letter');
+  }
+  
+  // Check for lowercase letter
+  if (!/[a-z]/.test(password)) {
+    errors.push('Password must contain at least one lowercase letter');
+  }
+  
+  // Check for number
+  if (!/\d/.test(password)) {
+    errors.push('Password must contain at least one number');
+  }
+  
+  // Check for special character
+  if (!/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?~`]/.test(password)) {
+    errors.push('Password must contain at least one special character (!@#$%^&*()_+-=[]{}|;:,.<>?)');
+  }
+  
+  // Check for common weak passwords
+  const commonPasswords = ['password', '123456', 'password123', 'admin', 'qwerty', 'letmein'];
+  if (commonPasswords.some(weak => password.toLowerCase().includes(weak))) {
+    errors.push('Password contains common weak patterns');
+  }
+  
+  return {
+    isValid: errors.length === 0,
+    errors
+  };
+};
+
 const register = async (req, res) => {
   try {
     const { username, email, password, fullName } = req.body;
@@ -33,9 +79,11 @@ const register = async (req, res) => {
       }
     }
 
-    if (password.length < 6) {
+    // Validate password strength
+    const passwordValidation = validatePassword(password);
+    if (!passwordValidation.isValid) {
       return res.status(400).json(
-        errorResponse('Password must be at least 6 characters', 400)
+        errorResponse('Password validation failed', 400, passwordValidation.errors)
       );
     }
 
@@ -413,9 +461,11 @@ const resetPassword = async (req, res) => {
       );
     }
 
-    if (password.length < 6) {
+    // Validate password strength
+    const passwordValidation = validatePassword(password);
+    if (!passwordValidation.isValid) {
       return res.status(400).json(
-        errorResponse('Password must be at least 6 characters', 400)
+        errorResponse('Password validation failed', 400, passwordValidation.errors)
       );
     }
 
