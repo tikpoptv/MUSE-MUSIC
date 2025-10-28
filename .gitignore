@@ -149,9 +149,7 @@ env/
 docker-compose.override.yml
 
 # CI/CD
-.github/workflows/
 .gitlab-ci.yml
-Jenkinsfile
 
 # Package manager lock files (keep package-lock.json for npm)
 # yarn.lock
