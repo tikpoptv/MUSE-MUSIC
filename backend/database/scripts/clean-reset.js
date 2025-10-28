@@ -7,13 +7,28 @@ const path = require('path');
 
 require('dotenv').config({ path: path.join(__dirname, '../../.env') });
 
-const dbConfig = {
-  user: process.env.DB_USER || 'postgres',
-  host: process.env.DB_HOST || 'localhost',
-  database: process.env.DB_NAME || 'muse_music',
-  password: process.env.DB_PASSWORD || 'password',
-  port: parseInt(process.env.DB_PORT) || 5432,
-};
+// Support both DATABASE_URL and individual env vars
+let dbConfig;
+if (process.env.DATABASE_URL) {
+  // Parse DATABASE_URL (format: postgresql://user:password@host:port/database)
+  const url = new URL(process.env.DATABASE_URL);
+  dbConfig = {
+    user: url.username,
+    password: url.password,
+    host: url.hostname,
+    port: parseInt(url.port) || 5432,
+    database: url.pathname.slice(1), // Remove leading '/'
+  };
+} else {
+  // Fallback to individual env vars
+  dbConfig = {
+    user: process.env.DB_USER || 'postgres',
+    host: process.env.DB_HOST || 'localhost',
+    database: process.env.DB_NAME || 'muse_music',
+    password: process.env.DB_PASSWORD || 'password',
+    port: parseInt(process.env.DB_PORT) || 5432,
+  };
+}
 
 const pool = new Pool(dbConfig);
 
