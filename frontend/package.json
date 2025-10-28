@@ -6,7 +6,21 @@
     "dev": "cross-env NEXT_PUBLIC_NODE_ENV=development next dev --turbopack -p 3000",
     "build": "cross-env NEXT_PUBLIC_NODE_ENV=production next build",
     "start": "cross-env NEXT_PUBLIC_NODE_ENV=production next start -p 3000",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:ci": "jest --ci --coverage --watchAll=false",
+    "test:unit": "jest --testPathIgnorePatterns=integration",
+    "test:integration": "jest --testPathPatterns=integration",
+    "test:integration:watch": "jest --testPathPatterns=integration --watch",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:debug": "playwright test --debug",
+    "test:e2e:report": "playwright show-report",
+    "test:all": "npm run test && npm run test:e2e",
+    "test:full": "npm run test:unit && npm run test:integration && npm run test:e2e"
   },
   "dependencies": {
     "@google-cloud/local-auth": "^3.0.1",
@@ -24,15 +38,29 @@
     "react-router-dom": "^7.9.4"
   },
   "devDependencies": {
+    "@babel/core": "^7.28.5",
+    "@babel/preset-env": "^7.28.5",
     "@eslint/eslintrc": "^3",
+    "@swc/jest": "^0.2.39",
     "@tailwindcss/postcss": "^4",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/jest": "^30.0.0",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "babel-jest": "^30.2.0",
     "cross-env": "^10.1.0",
     "eslint": "^9",
     "eslint-config-next": "15.5.4",
+    "jest": "^30.2.0",
+    "jest-environment-jsdom": "^30.2.0",
+    "jest-fetch-mock": "^3.0.3",
+    "msw": "^2.11.6",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "ts-jest": "^29.4.5",
+    "typescript": "^5",
+    "whatwg-fetch": "^3.6.20"
   }
 }
