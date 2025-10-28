@@ -118,8 +118,13 @@ pipeline {
                             nodejs('NodeJS_24') {
                                 sh '''
                                   echo "🧪 Running Frontend Unit Tests..."
-                                  npm run test:unit -- --passWithNoTests || true
-                                  echo "✅ Frontend unit tests completed"
+                                  export USE_TS_JEST=true
+                                  if npm run test:unit -- --passWithNoTests; then
+                                    echo "✅ Frontend unit tests passed"
+                                  else
+                                    echo "❌ Frontend unit tests failed"
+                                    exit 1
+                                  fi
                                 '''
                             }
                         }
@@ -137,8 +142,12 @@ pipeline {
                             nodejs('NodeJS_24') {
                                 sh '''
                                   echo "🧪 Running Backend Unit Tests..."
-                                  npm run test:unit -- --passWithNoTests || true
-                                  echo "✅ Backend unit tests completed"
+                                  if npm run test:unit -- --passWithNoTests; then
+                                    echo "✅ Backend unit tests passed"
+                                  else
+                                    echo "❌ Backend unit tests failed"
+                                    exit 1
+                                  fi
                                 '''
                             }
                         }
@@ -167,8 +176,13 @@ pipeline {
                             nodejs('NodeJS_24') {
                                 sh '''
                                   echo "🔗 Running Frontend Integration Tests..."
-                                  npm run test:integration -- --passWithNoTests || true
-                                  echo "✅ Frontend integration tests completed"
+                                  export USE_TS_JEST=true
+                                  if npm run test:integration -- --passWithNoTests; then
+                                    echo "✅ Frontend integration tests passed"
+                                  else
+                                    echo "❌ Frontend integration tests failed"
+                                    exit 1
+                                  fi
                                 '''
                             }
                         }
@@ -191,8 +205,12 @@ pipeline {
                             nodejs('NodeJS_24') {
                                 sh '''
                                   echo "🔗 Running Backend Integration Tests..."
-                                  npm run test:integration -- --passWithNoTests || true
-                                  echo "✅ Backend integration tests completed"
+                                  if npm run test:integration -- --passWithNoTests; then
+                                    echo "✅ Backend integration tests passed"
+                                  else
+                                    echo "❌ Backend integration tests failed"
+                                    exit 1
+                                  fi
                                 '''
                             }
                         }

@@ -15,7 +15,9 @@ const customJestConfig = {
     '^@/(.*)$': '<rootDir>/src/$1',
   },
   transform: {
-    '^.+\\.(ts|tsx)$': ['@swc/jest'],
+    '^.+\\.(ts|tsx)$': process.env.USE_TS_JEST 
+      ? ['ts-jest', { tsconfig: { jsx: 'react-jsx' } }]
+      : ['@swc/jest'],
     '^.+\\.(js|jsx)$': ['babel-jest', { presets: ['@babel/preset-env'] }],
   },
   // Ensure ESM modules in node_modules are transformed
