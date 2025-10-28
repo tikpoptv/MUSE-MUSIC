@@ -28,6 +28,8 @@ const customJestConfig = {
     '!src/**/*.d.ts',
     '!src/**/*.stories.{js,jsx,ts,tsx}',
     '!src/**/index.{js,jsx,ts,tsx}',
+    '!src/__tests__/**',
+    '!src/**/*.{test,spec}.{js,jsx,ts,tsx}',
   ],
   coverageThreshold: {
     global: {

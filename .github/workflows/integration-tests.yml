@@ -30,8 +30,7 @@ jobs:
         run: npm ci
 
       - name: Run integration tests
-        run: npm run test:integration:ci || exit 0
-        continue-on-error: true
+        run: npm run test:integration:ci
 
       - name: Upload coverage reports
         uses: codecov/codecov-action@v4
@@ -91,8 +90,7 @@ jobs:
         continue-on-error: true
 
       - name: Run integration tests
-        run: npm run test:integration:ci || exit 0
-        continue-on-error: true
+        run: npm run test:integration:ci
 
       - name: Upload coverage reports
         uses: codecov/codecov-action@v4
