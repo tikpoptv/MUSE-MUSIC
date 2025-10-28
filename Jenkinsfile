@@ -48,7 +48,7 @@ pipeline {
                                 dir('frontend') {
                                     nodejs('NodeJS_24') {
                                         sh '''
-                                          if npm run lint; then
+                                          if npm run lint:ci; then
                                             echo "✅ Frontend lint passed"
                                           else
                                             echo "❌ Frontend lint failed"
@@ -97,7 +97,7 @@ pipeline {
                                           if npm run lint; then
                                             echo "✅ Backend lint passed"
                                           else
-                                            echo "⚠️ No lint script or lint failed"
+                                            echo "❌ Backend lint failed"
                                             exit 1
                                           fi
                                         '''
