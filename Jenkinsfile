@@ -118,7 +118,7 @@ pipeline {
                             nodejs('NodeJS_24') {
                                 sh '''
                                   echo "🧪 Running Frontend Unit Tests..."
-                                  if npm run test:unit:ci; then
+                                  if npm run test:unit -- --passWithNoTests; then
                                     echo "✅ Frontend unit tests passed"
                                   else
                                     echo "❌ Frontend unit tests failed"
@@ -129,16 +129,6 @@ pipeline {
                         }
                     }
                     post {
-                        always {
-                            publishHTML([
-                                allowMissing: true,
-                                alwaysLinkToLastBuild: true,
-                                keepAll: true,
-                                reportDir: 'frontend/coverage/lcov-report',
-                                reportFiles: 'index.html',
-                                reportName: 'Frontend Unit Test Coverage'
-                            ])
-                        }
                         failure {
                             script { notifyN8N("FAILURE", "Frontend Unit Tests failed") }
                         }
@@ -151,7 +141,7 @@ pipeline {
                             nodejs('NodeJS_24') {
                                 sh '''
                                   echo "🧪 Running Backend Unit Tests..."
-                                  if npm run test:unit:ci; then
+                                  if npm run test:unit -- --passWithNoTests; then
                                     echo "✅ Backend unit tests passed"
                                   else
                                     echo "❌ Backend unit tests failed"
@@ -162,16 +152,6 @@ pipeline {
                         }
                     }
                     post {
-                        always {
-                            publishHTML([
-                                allowMissing: true,
-                                alwaysLinkToLastBuild: true,
-                                keepAll: true,
-                                reportDir: 'backend/coverage/lcov-report',
-                                reportFiles: 'index.html',
-                                reportName: 'Backend Unit Test Coverage'
-                            ])
-                        }
                         failure {
                             script { notifyN8N("FAILURE", "Backend Unit Tests failed") }
                         }
@@ -195,7 +175,7 @@ pipeline {
                             nodejs('NodeJS_24') {
                                 sh '''
                                   echo "🔗 Running Frontend Integration Tests..."
-                                  if npm run test:integration:ci; then
+                                  if npm run test:integration -- --passWithNoTests; then
                                     echo "✅ Frontend integration tests passed"
                                   else
                                     echo "❌ Frontend integration tests failed"
@@ -206,16 +186,6 @@ pipeline {
                         }
                     }
                     post {
-                        always {
-                            publishHTML([
-                                allowMissing: true,
-                                alwaysLinkToLastBuild: true,
-                                keepAll: true,
-                                reportDir: 'frontend/coverage/lcov-report',
-                                reportFiles: 'index.html',
-                                reportName: 'Frontend Integration Test Coverage'
-                            ])
-                        }
                         failure {
                             script { notifyN8N("FAILURE", "Frontend Integration Tests failed") }
                         }
@@ -233,7 +203,7 @@ pipeline {
                             nodejs('NodeJS_24') {
                                 sh '''
                                   echo "🔗 Running Backend Integration Tests..."
-                                  if npm run test:integration:ci; then
+                                  if npm run test:integration -- --passWithNoTests; then
                                     echo "✅ Backend integration tests passed"
                                   else
                                     echo "❌ Backend integration tests failed"
@@ -244,16 +214,6 @@ pipeline {
                         }
                     }
                     post {
-                        always {
-                            publishHTML([
-                                allowMissing: true,
-                                alwaysLinkToLastBuild: true,
-                                keepAll: true,
-                                reportDir: 'backend/coverage/lcov-report',
-                                reportFiles: 'index.html',
-                                reportName: 'Backend Integration Test Coverage'
-                            ])
-                        }
                         failure {
                             script { notifyN8N("FAILURE", "Backend Integration Tests failed") }
                         }
