@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { authService } from '@/services/authService';
 import toast from 'react-hot-toast';
+import { passwordRules, validatePassword, validateFormData } from '@/utils/passwordValidation';
 
 function ResetPasswordContent() {
   const [isLoading, setIsLoading] = useState(false);
@@ -14,6 +15,8 @@ function ResetPasswordContent() {
   const [isSuccess, setIsSuccess] = useState(false);
   const [token, setToken] = useState<string | null>(null);
   const [userInfo, setUserInfo] = useState<{ email: string; username: string } | null>(null);
+  const [passwordValidation, setPasswordValidation] = useState<Record<string, boolean>>({});
+  const [isFormValid, setIsFormValid] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -60,6 +63,19 @@ function ResetPasswordContent() {
     }
   }, []);
 
+  // Password validation effect
+  useEffect(() => {
+    if (password) {
+      const validation = validatePassword(password);
+      setPasswordValidation(validation);
+    } else {
+      setPasswordValidation({});
+    }
+
+    const { isFormValid } = validateFormData(password, confirmPassword);
+    setIsFormValid(isFormValid);
+  }, [password, confirmPassword]);
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     if (name === 'password') {
@@ -77,13 +93,10 @@ function ResetPasswordContent() {
       return;
     }
 
-    if (password.length < 6) {
-      toast.error('Password must be at least 6 characters');
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      toast.error('Passwords do not match');
+    // ใช้ password validation utility
+    const { isFormValid } = validateFormData(password, confirmPassword);
+    if (!isFormValid) {
+      toast.error('Password does not meet requirements');
       return;
     }
 
@@ -263,7 +276,7 @@ function ResetPasswordContent() {
     >
       <div className="bg-white rounded-2xl p-8 mx-4 shadow-2xl relative z-10 flex flex-col justify-center" style={{
         boxShadow: '0 0 50px rgba(94, 7, 202, 0.1), 0 0 100px rgba(94, 7, 202, 0.05), 0 0 150px rgba(94, 7, 202, 0.03), 0 0 200px rgba(94, 7, 202, 0.02), 0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-        height: '650px',
+        minHeight: '750px',
         width: '480px'
       }}>
         <div className="text-center mb-8">
@@ -282,7 +295,7 @@ function ResetPasswordContent() {
             </div>
           )}
           <p className="text-gray-500 text-sm">
-            Make sure it&apos;s at least 6 characters long
+            Make sure it&apos;s at least 8 characters long
           </p>
         </div>
 
@@ -315,13 +328,64 @@ function ResetPasswordContent() {
 
           <button
             type="submit"
-            disabled={isLoading}
+            disabled={isLoading || !isFormValid}
             className="w-full py-3 bg-gray-200 text-purple-600 font-medium hover:bg-gray-300 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             style={{ borderRadius: '14px' }}
           >
             {isLoading ? 'Resetting Password...' : 'Reset Password'}
           </button>
         </form>
+
+        {/* Password Requirements */}
+        <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+          <p className="text-sm text-gray-600 mb-2 font-medium">Password Requirements:</p>
+          <div className="space-y-1">
+            {passwordRules.map((rule) => (
+              <div key={rule.id} className="flex items-center space-x-2">
+                <div className={`w-4 h-4 rounded-full flex items-center justify-center ${
+                  passwordValidation[rule.id] 
+                    ? 'bg-green-500' 
+                    : 'bg-gray-300'
+                }`}>
+                  {passwordValidation[rule.id] && (
+                    <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  )}
+                </div>
+                <span className={`text-sm ${
+                  passwordValidation[rule.id] 
+                    ? 'text-green-600' 
+                    : 'text-gray-500'
+                }`}>
+                  {rule.text}
+                </span>
+              </div>
+            ))}
+            
+            {/* Passwords Match Check */}
+            <div className="flex items-center space-x-2 pt-2 border-t border-gray-200">
+              <div className={`w-4 h-4 rounded-full flex items-center justify-center ${
+                password && confirmPassword && password === confirmPassword
+                  ? 'bg-green-500' 
+                  : 'bg-gray-300'
+              }`}>
+                {password && confirmPassword && password === confirmPassword && (
+                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                )}
+              </div>
+              <span className={`text-sm ${
+                password && confirmPassword && password === confirmPassword
+                  ? 'text-green-600' 
+                  : 'text-gray-500'
+              }`}>
+                Passwords match
+              </span>
+            </div>
+          </div>
+        </div>
 
         <div className="flex justify-center items-center mt-6">
           <Link href="/login" className="text-gray-500 text-sm hover:text-gray-700 transition-colors duration-200">
