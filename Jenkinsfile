@@ -198,7 +198,8 @@ pipeline {
                     environment {
                         DATABASE_URL = credentials('TEST_DATABASE_URL')
                         JWT_SECRET = credentials('TEST_JWT_SECRET')
-                        JWT_REFRESH_SECRET = credentials('TEST_JWT_REFRESH_SECRET')
+                        // Use same secret for refresh token in test environment
+                        JWT_REFRESH_SECRET = credentials('TEST_JWT_SECRET')
                     }
                     steps {
                         dir('backend') {
