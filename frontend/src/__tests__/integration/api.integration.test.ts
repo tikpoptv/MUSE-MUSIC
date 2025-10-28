@@ -2,6 +2,20 @@ import apiService from '@/services/api'
 import { authService } from '@/services/authService'
 import { integrationTestData, mockApiResponse, mockApiError } from './test-utils'
 
+// Type definitions for test responses
+interface TestApiResponse {
+  data?: {
+    data?: {
+      status?: string
+      user?: {
+        userID: string
+        email: string
+      }
+      message?: string
+    }
+  }
+}
+
 describe('API Integration Tests', () => {
   beforeEach(() => {
     // Clear localStorage before each test
@@ -79,8 +93,8 @@ describe('API Integration Tests', () => {
       const response = await apiService.get('/api/health')
       
       expect(response.success).toBe(true)
-      expect(response.data?.data).toHaveProperty('status')
-      expect(response.data?.data?.status).toBe('healthy')
+      expect((response.data as TestApiResponse['data'])?.data).toHaveProperty('status')
+      expect((response.data as TestApiResponse['data'])?.data?.status).toBe('healthy')
     })
 
     it('should handle successful POST request', async () => {
@@ -94,7 +108,7 @@ describe('API Integration Tests', () => {
       const response = await apiService.post('/api/test', testData)
       
       expect(response.success).toBe(true)
-      expect(response.data?.data).toEqual(testData)
+      expect((response.data as TestApiResponse['data'])?.data).toEqual(testData)
     })
 
     it('should handle API errors', async () => {
@@ -151,8 +165,8 @@ describe('API Integration Tests', () => {
       const response = await apiService.get('/api/user/me')
       
       expect(response.success).toBe(true)
-      expect(response.data?.data?.user).toHaveProperty('userID')
-      expect(response.data?.data?.user?.email).toBe('test@example.com')
+      expect((response.data as TestApiResponse['data'])?.data?.user).toHaveProperty('userID')
+      expect((response.data as TestApiResponse['data'])?.data?.user?.email).toBe('test@example.com')
     })
 
     it('should handle user profile fetch failure', async () => {
@@ -177,7 +191,7 @@ describe('API Integration Tests', () => {
       const response = await apiService.post('/api/setup/step1', setupData)
       
       expect(response.success).toBe(true)
-      expect(response.data?.data?.message).toBe('Setup completed successfully')
+      expect((response.data as TestApiResponse['data'])?.data?.message).toBe('Setup completed successfully')
     })
 
     it('should complete setup step 2', async () => {
@@ -190,7 +204,7 @@ describe('API Integration Tests', () => {
       const response = await apiService.post('/api/setup/step2', setupData)
       
       expect(response.success).toBe(true)
-      expect(response.data?.data?.message).toBe('Setup completed successfully')
+      expect((response.data as TestApiResponse['data'])?.data?.message).toBe('Setup completed successfully')
     })
 
     it('should complete setup step 5', async () => {
@@ -203,7 +217,7 @@ describe('API Integration Tests', () => {
       const response = await apiService.post('/api/setup/step5', setupData)
       
       expect(response.success).toBe(true)
-      expect(response.data?.data?.message).toBe('Setup completed successfully')
+      expect((response.data as TestApiResponse['data'])?.data?.message).toBe('Setup completed successfully')
     })
   })
 

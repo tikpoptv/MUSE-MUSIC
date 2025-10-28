@@ -97,20 +97,28 @@ export const integrationTestData = {
   }
 }
 
+// Type definition for Playwright page
+interface PlaywrightPage {
+  fill: (selector: string, value: string) => Promise<void>
+  click: (selector: string) => Promise<void>
+  goto: (url: string) => Promise<void>
+  waitForLoadState: (state: string) => Promise<void>
+}
+
 // Helper to simulate user interactions
 export const simulateUserFlow = {
-  async login(page: unknown) {
+  async login(page: PlaywrightPage) {
     await page.fill('input[name="username"]', 'testuser')
     await page.fill('input[name="password"]', 'TestPassword123!')
     await page.click('button[type="submit"]')
   },
 
-  async navigateToSetup(page: unknown) {
+  async navigateToSetup(page: PlaywrightPage) {
     await page.goto('/setup/step1')
     await page.waitForLoadState('networkidle')
   },
 
-  async completeSetupStep1(page: unknown) {
+  async completeSetupStep1(page: PlaywrightPage) {
     await page.fill('input[name="password"]', integrationTestData.setupData.step1.password)
     await page.fill('input[name="confirmPassword"]', integrationTestData.setupData.step1.confirmPassword)
     await page.click('button:has-text("Next")')

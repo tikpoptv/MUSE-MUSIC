@@ -109,6 +109,7 @@ export const authService = {
           const parsedData = JSON.parse(userData);
           return parsedData;
         } catch (error) {
+          // eslint-disable-next-line no-console
           console.error('Error parsing user data from localStorage:', error);
           localStorage.removeItem('user_data');
           return null;
@@ -157,7 +158,7 @@ export const authService = {
   },
 
   async login(email: string, password: string): Promise<LoginResponse | null> {
-    const response = await apiService.post<{ success: boolean; data: LoginResponse }>('/api/auth/login', {
+    const response = await apiService.post<LoginResponse>('/api/auth/login', {
       email,
       password,
     });
@@ -195,6 +196,7 @@ export const authService = {
       this.removeToken();
       return { success: true };
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error('Logout API error:', error);
       this.removeToken(); // Still clear local storage even if API fails
       return { success: false, message: 'Logout failed but local session cleared' };
@@ -213,7 +215,7 @@ export const authService = {
       }
     }
 
-    const response = await apiService.get<{ success: boolean; data: User }>('/api/auth/me');
+    const response = await apiService.get<User>('/api/auth/me');
 
     if (response.success && response.data) {
       return response.data;
@@ -291,6 +293,7 @@ export const authService = {
         return true;
       }
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error('Refresh token failed:', error);
     }
 
@@ -329,6 +332,7 @@ export const authService = {
         };
       }
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error('Forgot password error:', error);
       return { 
         success: false, 
@@ -356,6 +360,7 @@ export const authService = {
         };
       }
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error('Reset password error:', error);
       return { 
         success: false, 
@@ -381,6 +386,7 @@ export const authService = {
         };
       }
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error('Validate reset token error:', error);
       return { 
         success: false, 
