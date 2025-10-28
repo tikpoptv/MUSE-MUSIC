@@ -87,7 +87,6 @@ jobs:
 
       - name: Run database migrations
         run: npm run migrate
-        continue-on-error: true
 
       - name: Run integration tests
         run: npm run test:integration:ci
