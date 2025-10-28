@@ -12,7 +12,13 @@
     "db:reset": "node database/scripts/clean-reset.js",
     "db:reset:dev": "NODE_ENV=development node database/scripts/clean-reset.js",
     "db:reset:prod": "NODE_ENV=production node database/scripts/clean-reset.js",
-    "test": "echo \"No tests available\" && exit 0",
+    "test": "jest --passWithNoTests",
+    "test:ci": "jest --ci --coverage --watchAll=false --passWithNoTests",
+    "test:coverage": "jest --coverage --passWithNoTests",
+    "test:unit": "jest --testPathIgnorePatterns=/src/__tests__/integration/ --passWithNoTests",
+    "test:unit:ci": "jest --testPathIgnorePatterns=/src/__tests__/integration/ --ci --coverage --watchAll=false --passWithNoTests",
+    "test:integration": "jest --testPathPatterns=src/__tests__/integration/ --passWithNoTests",
+    "test:integration:ci": "jest --testPathPatterns=src/__tests__/integration/ --ci --coverage --watchAll=false --passWithNoTests",
     "lint": "eslint . --ext .js"
   },
   "keywords": [
@@ -41,6 +47,8 @@
   },
   "devDependencies": {
     "eslint": "^8.57.1",
+    "jest": "^30.2.0",
+    "jest-environment-node": "^30.2.0",
     "nodemon": "^3.0.2"
   }
 }

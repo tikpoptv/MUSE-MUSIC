@@ -59,6 +59,22 @@ pipeline {
                                 }
                             }
                         }
+                        stage('Verify Test Structure') {
+                            steps {
+                                dir('frontend') {
+                                    nodejs('NodeJS_24') {
+                                        sh '''
+                                          if npm run test:verify-structure; then
+                                            echo "✅ Test structure verified"
+                                          else
+                                            echo "❌ Test structure verification failed"
+                                            exit 1
+                                          fi
+                                        '''
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
 
@@ -90,6 +106,206 @@ pipeline {
                             }
                         }
                     }
+                }
+            }
+        }
+
+        stage('Unit Tests') {
+            parallel {
+                stage('Frontend Unit Tests') {
+                    steps {
+                        dir('frontend') {
+                            nodejs('NodeJS_24') {
+                                sh '''
+                                  echo "🧪 Running Frontend Unit Tests..."
+                                  if npm run test:unit:ci; then
+                                    echo "✅ Frontend unit tests passed"
+                                  else
+                                    echo "❌ Frontend unit tests failed"
+                                    exit 1
+                                  fi
+                                '''
+                            }
+                        }
+                    }
+                    post {
+                        always {
+                            publishHTML([
+                                allowMissing: true,
+                                alwaysLinkToLastBuild: true,
+                                keepAll: true,
+                                reportDir: 'frontend/coverage/lcov-report',
+                                reportFiles: 'index.html',
+                                reportName: 'Frontend Unit Test Coverage'
+                            ])
+                        }
+                        failure {
+                            script { notifyN8N("FAILURE", "Frontend Unit Tests failed") }
+                        }
+                    }
+                }
+
+                stage('Backend Unit Tests') {
+                    steps {
+                        dir('backend') {
+                            nodejs('NodeJS_24') {
+                                sh '''
+                                  echo "🧪 Running Backend Unit Tests..."
+                                  if npm run test:unit:ci; then
+                                    echo "✅ Backend unit tests passed"
+                                  else
+                                    echo "❌ Backend unit tests failed"
+                                    exit 1
+                                  fi
+                                '''
+                            }
+                        }
+                    }
+                    post {
+                        always {
+                            publishHTML([
+                                allowMissing: true,
+                                alwaysLinkToLastBuild: true,
+                                keepAll: true,
+                                reportDir: 'backend/coverage/lcov-report',
+                                reportFiles: 'index.html',
+                                reportName: 'Backend Unit Test Coverage'
+                            ])
+                        }
+                        failure {
+                            script { notifyN8N("FAILURE", "Backend Unit Tests failed") }
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Integration Tests') {
+            when { 
+                anyOf { 
+                    branch 'main'
+                    branch 'develop'
+                    changeRequest()
+                }
+            }
+            parallel {
+                stage('Frontend Integration Tests') {
+                    steps {
+                        dir('frontend') {
+                            nodejs('NodeJS_24') {
+                                sh '''
+                                  echo "🔗 Running Frontend Integration Tests..."
+                                  if npm run test:integration:ci; then
+                                    echo "✅ Frontend integration tests passed"
+                                  else
+                                    echo "❌ Frontend integration tests failed"
+                                    exit 1
+                                  fi
+                                '''
+                            }
+                        }
+                    }
+                    post {
+                        always {
+                            publishHTML([
+                                allowMissing: true,
+                                alwaysLinkToLastBuild: true,
+                                keepAll: true,
+                                reportDir: 'frontend/coverage/lcov-report',
+                                reportFiles: 'index.html',
+                                reportName: 'Frontend Integration Test Coverage'
+                            ])
+                        }
+                        failure {
+                            script { notifyN8N("FAILURE", "Frontend Integration Tests failed") }
+                        }
+                    }
+                }
+
+                stage('Backend Integration Tests') {
+                    environment {
+                        DATABASE_URL = credentials('TEST_DATABASE_URL')
+                        JWT_SECRET = credentials('TEST_JWT_SECRET')
+                        JWT_REFRESH_SECRET = credentials('TEST_JWT_REFRESH_SECRET')
+                    }
+                    steps {
+                        dir('backend') {
+                            nodejs('NodeJS_24') {
+                                sh '''
+                                  echo "🔗 Running Backend Integration Tests..."
+                                  if npm run test:integration:ci; then
+                                    echo "✅ Backend integration tests passed"
+                                  else
+                                    echo "❌ Backend integration tests failed"
+                                    exit 1
+                                  fi
+                                '''
+                            }
+                        }
+                    }
+                    post {
+                        always {
+                            publishHTML([
+                                allowMissing: true,
+                                alwaysLinkToLastBuild: true,
+                                keepAll: true,
+                                reportDir: 'backend/coverage/lcov-report',
+                                reportFiles: 'index.html',
+                                reportName: 'Backend Integration Test Coverage'
+                            ])
+                        }
+                        failure {
+                            script { notifyN8N("FAILURE", "Backend Integration Tests failed") }
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('E2E Tests') {
+            when { 
+                anyOf { 
+                    branch 'main'
+                    branch 'develop'
+                }
+            }
+            steps {
+                script {
+                    notifyN8N("INFO", "Starting E2E Tests...")
+                }
+                dir('frontend') {
+                    nodejs('NodeJS_24') {
+                        sh '''
+                          echo "🎭 Installing Playwright browsers..."
+                          npx playwright install --with-deps chromium
+                          
+                          echo "🎭 Running E2E Tests..."
+                          if npm run test:e2e; then
+                            echo "✅ E2E tests passed"
+                          else
+                            echo "❌ E2E tests failed"
+                            exit 1
+                          fi
+                        '''
+                    }
+                }
+            }
+            post {
+                always {
+                    publishHTML([
+                        allowMissing: true,
+                        alwaysLinkToLastBuild: true,
+                        keepAll: true,
+                        reportDir: 'frontend/playwright-report',
+                        reportFiles: 'index.html',
+                        reportName: 'Playwright E2E Test Report'
+                    ])
+                }
+                failure {
+                    script { notifyN8N("FAILURE", "E2E Tests failed") }
+                }
+                success {
+                    script { notifyN8N("SUCCESS", "E2E Tests passed") }
                 }
             }
         }
