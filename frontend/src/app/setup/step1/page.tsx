@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 import Image from 'next/image';
 import { setupService } from '@/services/setupService';
 import { SetupLayout, SetupHeader, SetupNavigation, SetupButton } from '@/components/setup';
+import { passwordRules, validatePassword, validateFormData } from '@/utils/passwordValidation';
 
 // Import interface type
 type SetupStatusData = Awaited<ReturnType<typeof setupService.getSetupStatus>>;
@@ -18,6 +19,7 @@ export default function SetupStep1() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [passwordError, setPasswordError] = useState('');
   const [isValid, setIsValid] = useState(false);
+  const [passwordValidation, setPasswordValidation] = useState<Record<string, boolean>>({});
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -69,45 +71,44 @@ export default function SetupStep1() {
   }, [router]);
 
   useEffect(() => {
-    console.log('Password validation triggered:', { password, confirmPassword, isValid });
-    
-    if (!password || !confirmPassword) {
-      setPasswordError('');
-      setIsValid(false);
-      return;
-    }
+    console.log('Password validation triggered:', { password, confirmPassword });
     
     if (password === '*****') {
       // Password already set up, skip validation
       console.log('Password is *****, setting valid to true');
       setPasswordError('');
       setIsValid(true);
+      setPasswordValidation({});
       return;
     }
     
-    if (password.length < 6) {
-      setPasswordError('Password must be at least 6 characters');
+    // ใช้ password validation utility สำหรับ password
+    if (password) {
+      const validation = validatePassword(password);
+      setPasswordValidation(validation);
+    } else {
+      setPasswordValidation({});
+    }
+    
+    // ตรวจสอบ form validity
+    if (password && confirmPassword) {
+      const { isFormValid } = validateFormData(password, confirmPassword);
+      setIsValid(isFormValid);
+      
+      if (!isFormValid) {
+        setPasswordError('Password does not meet requirements');
+      } else {
+        setPasswordError('');
+      }
+    } else {
       setIsValid(false);
-      return;
+      setPasswordError('');
     }
-    
-    if (password !== confirmPassword) {
-      setPasswordError('Passwords do not match');
-      setIsValid(false);
-      return;
-    }
-    
-    setPasswordError('');
-    setIsValid(true);
-  }, [password, confirmPassword, isValid]);
+  }, [password, confirmPassword]);
 
-  const validatePassword = () => {
+  const validatePasswordForm = () => {
     if (!password || !confirmPassword) {
       setPasswordError('Please fill in both password fields');
-      return false;
-    }
-    if (password !== confirmPassword) {
-      setPasswordError('Passwords do not match');
       return false;
     }
     if (password === '*****') {
@@ -115,16 +116,20 @@ export default function SetupStep1() {
       setPasswordError('');
       return true;
     }
-    if (password.length < 6) {
-      setPasswordError('Password must be at least 6 characters');
+    
+    // ใช้ password validation utility
+    const { isFormValid } = validateFormData(password, confirmPassword);
+    if (!isFormValid) {
+      setPasswordError('Password does not meet requirements');
       return false;
     }
+    
     setPasswordError('');
     return true;
   };
 
   const handleNext = async () => {
-    if (validatePassword()) {
+    if (validatePasswordForm()) {
       if (password === '*****') {
         // Password already set up, just proceed
         toast.success('Proceeding to next step...');
@@ -217,6 +222,57 @@ export default function SetupStep1() {
               {passwordError}
             </div>
           )}
+
+          {/* Password Requirements */}
+          <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+            <p className="text-sm text-gray-600 mb-2 font-medium">Password Requirements:</p>
+            <div className="space-y-1">
+              {passwordRules.map((rule) => (
+                <div key={rule.id} className="flex items-center space-x-2">
+                  <div className={`w-4 h-4 rounded-full flex items-center justify-center ${
+                    passwordValidation[rule.id] 
+                      ? 'bg-green-500' 
+                      : 'bg-gray-300'
+                  }`}>
+                    {passwordValidation[rule.id] && (
+                      <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    )}
+                  </div>
+                  <span className={`text-sm ${
+                    passwordValidation[rule.id] 
+                      ? 'text-green-600' 
+                      : 'text-gray-500'
+                  }`}>
+                    {rule.text}
+                  </span>
+                </div>
+              ))}
+              
+              {/* Passwords Match Check */}
+              <div className="flex items-center space-x-2 pt-2 border-t border-gray-200">
+                <div className={`w-4 h-4 rounded-full flex items-center justify-center ${
+                  password && confirmPassword && password === confirmPassword
+                    ? 'bg-green-500' 
+                    : 'bg-gray-300'
+                }`}>
+                  {password && confirmPassword && password === confirmPassword && (
+                    <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  )}
+                </div>
+                <span className={`text-sm ${
+                  password && confirmPassword && password === confirmPassword
+                    ? 'text-green-600' 
+                    : 'text-gray-500'
+                }`}>
+                  Passwords match
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div className="space-y-4">

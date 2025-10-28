@@ -2,12 +2,11 @@
 
 import { useState } from 'react';
 import toast from 'react-hot-toast';
-import { twoFactorService } from '@/services/twoFactorService';
 
 interface TwoFAVerificationModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (token: string) => void;
   title: string;
   description: string;
 }
@@ -36,17 +35,11 @@ export default function TwoFAVerificationModal({
 
     setIsVerifying(true);
     try {
-      const response = await twoFactorService.verifyToken(twoFACode);
-      
-      if (response.success) {
-        onSuccess();
-        setTwoFACode('');
-        toast.success('Verification successful');
-      } else {
-        toast.error('Invalid code');
-      }
+      // ส่ง token ไปยัง parent component เพื่อจัดการ login
+      onSuccess(twoFACode);
+      setTwoFACode('');
     } catch {
-      toast.error('Invalid code');
+      toast.error('An error occurred during verification');
     } finally {
       setIsVerifying(false);
     }
