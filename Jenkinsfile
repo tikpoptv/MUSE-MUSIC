@@ -204,46 +204,48 @@ pipeline {
                     steps {
                         dir('backend') {
                             nodejs('NodeJS_24') {
-                                sh '''
+                                sh '''#!/bin/bash
+                                  set +e  # Don't exit on error for checks
                                   echo "🔗 Running Backend Integration Tests..."
                                   
                                   # Check if PostgreSQL is available
                                   echo "Checking PostgreSQL availability..."
-                                  if command -v pg_isready &> /dev/null; then
-                                    if pg_isready -h localhost -p 5432 -U test_user &> /dev/null; then
-                                      echo "✅ PostgreSQL is ready"
+                                  HAS_POSTGRES=false
+                                  
+                                  if command -v pg_isready > /dev/null 2>&1; then
+                                    if pg_isready -h localhost -p 5432 -U test_user > /dev/null 2>&1; then
+                                      echo "✅ PostgreSQL is ready (pg_isready)"
                                       HAS_POSTGRES=true
                                     else
-                                      echo "⚠️  PostgreSQL is not responding"
-                                      HAS_POSTGRES=false
+                                      echo "⚠️  PostgreSQL is not responding (pg_isready check failed)"
                                     fi
                                   else
                                     echo "⚠️  pg_isready command not found, trying psql..."
-                                    if command -v psql &> /dev/null; then
-                                      if PGPASSWORD=test_password psql -h localhost -p 5432 -U test_user -d test_db -c "SELECT 1" &> /dev/null; then
-                                        echo "✅ PostgreSQL is ready"
+                                    if command -v psql > /dev/null 2>&1; then
+                                      if PGPASSWORD=test_password psql -h localhost -p 5432 -U test_user -d test_db -c "SELECT 1" > /dev/null 2>&1; then
+                                        echo "✅ PostgreSQL is ready (psql)"
                                         HAS_POSTGRES=true
                                       else
-                                        echo "⚠️  PostgreSQL connection failed"
-                                        HAS_POSTGRES=false
+                                        echo "⚠️  PostgreSQL connection failed (psql check failed)"
                                       fi
                                     else
-                                      echo "⚠️  PostgreSQL client not found"
-                                      HAS_POSTGRES=false
+                                      echo "⚠️  PostgreSQL client tools not found"
                                     fi
                                   fi
                                   
                                   if [ "$HAS_POSTGRES" = "true" ]; then
+                                    set -e  # Exit on error for actual tests
                                     echo "Environment Check:"
                                     echo "NODE_ENV: ${NODE_ENV}"
-                                    echo "DATABASE_URL: ${DATABASE_URL:0:20}..."
-                                    echo "JWT_SECRET: ${JWT_SECRET:0:10}..."
-                                    echo "JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:0:10}..."
+                                    echo "DATABASE_URL: $(echo $DATABASE_URL | cut -c1-25)..."
+                                    echo "JWT_SECRET: $(echo $JWT_SECRET | cut -c1-10)..."
+                                    echo "JWT_REFRESH_SECRET: $(echo $JWT_REFRESH_SECRET | cut -c1-10)..."
                                     
                                     # Run migrations first (like in GitHub Actions)
                                     echo "Running database migrations..."
                                     npm run migrate || echo "⚠️  Migration warning (continuing...)"
                                     
+                                    echo "Running integration tests..."
                                     if npm run test:integration -- --passWithNoTests; then
                                       echo "✅ Backend integration tests passed"
                                     else
