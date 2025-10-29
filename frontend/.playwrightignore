@@ -1,0 +1,15 @@
+# Playwright test results
+test-results/
+playwright-report/
+playwright/.cache/
+
+# Test artifacts
+screenshots/
+videos/
+traces/
+
+# Coverage reports
+coverage/
+
+# Test data
+test-data/

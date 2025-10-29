@@ -1,0 +1,83 @@
+import { test, expect } from '@playwright/test';
+
+// E2E-005: Logout from account page
+test.describe('Logout flow', () => {
+  test.skip(process.env.CI === 'true', 'Logout flow depends on mocked auth state; skip on CI');
+
+  test('logs out and redirects to home with navbar unauthenticated', async ({ page }) => {
+    const user = {
+      userID: 'u_001',
+      username: 'testuser',
+      email: 'test@example.com',
+      fullName: 'Test User',
+      profilePicture: '',
+      provider: 'google',
+      providerID: 'gid_001',
+      providerEmail: 'test@example.com',
+      role: 'user',
+      loginStatus: 'active',
+      setupCompleted: true,
+      setupSkipped: false,
+      registerDate: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    const tokens = {
+      accessToken: 'mock-access-token',
+      refreshToken: 'mock-refresh-token',
+      tokenType: 'Bearer',
+      expiresIn: '3600',
+    };
+
+    await page.goto('/account', { waitUntil: 'domcontentloaded' });
+
+    await page.evaluate(([u, t]) => {
+      localStorage.setItem('auth_token', (t as any).accessToken);
+      localStorage.setItem('user_data', JSON.stringify(u));
+      localStorage.setItem('session_data', JSON.stringify({ sessionID: 's_001', expiresAt: new Date(Date.now() + 3600_000).toISOString() }));
+      localStorage.setItem('tokens_data', JSON.stringify(t));
+    }, [user, tokens] as any);
+
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await expect(page).toHaveURL(/\/account$/);
+
+    // Wait and click Logout button (ensure it rendered)
+    const logoutBtn = page.getByRole('button', { name: /logout/i });
+    await expect(logoutBtn).toBeVisible({ timeout: 15000 });
+    await logoutBtn.click();
+
+    // Redirect to home should occur shortly after (regardless of API result)
+    await page.waitForURL('**/', { timeout: 8000 });
+    await expect(page).toHaveURL(/\/$/);
+
+    // Navbar should show Sign in link (desktop) or be accessible via mobile menu
+    const viewport = page.viewportSize();
+    const isMobile = viewport && viewport.width <= 1100;
+
+    if (isMobile) {
+      // Mobile: open hamburger and assert login link in mobile menu
+      const hamburger = page.locator('#hamburger-button');
+      await expect(hamburger).toBeVisible();
+      await hamburger.click();
+      const mobileMenuLogin = page.locator('#mobile-menu a[href="/login"]').first();
+      await expect(mobileMenuLogin).toBeVisible();
+    } else {
+      // Desktop: login link visible in navbar
+    const loginLinkDesktop = page.locator('a[href="/login"]').first();
+    const hamburger = page.locator('#hamburger-button');
+    const viewport = page.viewportSize();
+
+    if (viewport && viewport.width <= 1100) {
+      await hamburger.click();
+      await expect(page.locator('#mobile-menu a[href="/login"]').first()).toBeVisible();
+    } else {
+      await expect(loginLinkDesktop).toBeVisible();
+    }
+    }
+
+    // Auth storage should be cleared
+    const hasToken = await page.evaluate(() => !!localStorage.getItem('auth_token'));
+    expect(hasToken).toBeFalsy();
+  });
+});

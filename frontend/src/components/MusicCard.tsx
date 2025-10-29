@@ -25,7 +25,6 @@ const MusicCard: React.FC<MusicCardProps> = ({ image, title, artist, href }) => 
           width={195} 
           height={192}
           className="w-full h-[192px] object-cover rounded-xl"
-          priority={false}
           loading="lazy"
         />
         <div className="absolute bottom-[46px] right-[8px] bg-white/80 p-1.5 rounded-lg shadow-sm">

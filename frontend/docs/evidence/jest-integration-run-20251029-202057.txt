@@ -1,0 +1,83 @@
+------------------------------|---------|----------|---------|---------|----------------------------------------------------------------------------
+File                          | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s                                                          
+------------------------------|---------|----------|---------|---------|----------------------------------------------------------------------------
+All files                     |    6.24 |      8.7 |    7.03 |    6.32 |                                                                            
+ src                          |       0 |        0 |       0 |       0 |                                                                            
+  test-utils.tsx              |       0 |        0 |       0 |       0 | 1-74                                                                       
+ src/app                      |       0 |        0 |       0 |       0 |                                                                            
+  layout.tsx                  |       0 |        0 |       0 |       0 | 2-60                                                                       
+  not-found.tsx               |       0 |      100 |       0 |       0 | 1                                                                          
+  page.tsx                    |       0 |        0 |       0 |       0 | 3-71                                                                       
+  robots.ts                   |       0 |        0 |       0 |       0 | 3-18                                                                       
+  sitemap.ts                  |       0 |        0 |       0 |       0 | 3-20                                                                       
+ src/app/account              |       0 |        0 |       0 |       0 |                                                                            
+  page.tsx                    |       0 |        0 |       0 |       0 | 3-375                                                                      
+ src/app/account/settings     |       0 |        0 |       0 |       0 |                                                                            
+  page.tsx                    |       0 |        0 |       0 |       0 | 3-554                                                                      
+ src/app/admin                |       0 |      100 |       0 |       0 |                                                                            
+  page.tsx                    |       0 |      100 |       0 |       0 | 1-3                                                                        
+ src/app/adminanalysis        |       0 |      100 |       0 |       0 |                                                                            
+  page.tsx                    |       0 |      100 |       0 |       0 | 2                                                                          
+ src/app/admindashboard       |       0 |      100 |       0 |       0 |                                                                            
+  page.tsx                    |       0 |      100 |       0 |       0 | 1-3                                                                        
+ src/app/auth/google/callback |       0 |        0 |       0 |       0 |                                                                            
+  page.tsx                    |       0 |        0 |       0 |       0 | 3-156                                                                      
+ src/app/forgot-password      |       0 |        0 |       0 |       0 |                                                                            
+  page.tsx                    |       0 |        0 |       0 |       0 | 3-104                                                                      
+ src/app/login                |       0 |        0 |       0 |       0 |                                                                            
+  page.tsx                    |       0 |        0 |       0 |       0 | 3-190                                                                      
+ src/app/register             |       0 |        0 |       0 |       0 |                                                                            
+  page.tsx                    |       0 |        0 |       0 |       0 | 3-226                                                                      
+ src/app/reset-password       |       0 |        0 |       0 |       0 |                                                                            
+  page.tsx                    |       0 |        0 |       0 |       0 | 3-400                                                                      
+ src/app/setup/step1          |       0 |        0 |       0 |       0 |                                                                            
+  page.tsx                    |       0 |        0 |       0 |       0 | 3-231                                                                      
+ src/app/setup/step2          |       0 |        0 |       0 |       0 |                                                                            
+  page.tsx                    |       0 |        0 |       0 |       0 | 3-181                                                                      
+ src/app/setup/step3          |       0 |        0 |       0 |       0 |                                                                            
+  page.tsx                    |       0 |        0 |       0 |       0 | 3-213                                                                      
+ src/app/setup/step4          |       0 |        0 |       0 |       0 |                                                                            
+  page.tsx                    |       0 |        0 |       0 |       0 | 3-160                                                                      
+ src/app/setup/step5          |       0 |        0 |       0 |       0 |                                                                            
+  page.tsx                    |       0 |        0 |       0 |       0 | 3-193                                                                      
+ src/app/test                 |       0 |        0 |       0 |       0 |                                                                            
+  page.tsx                    |       0 |        0 |       0 |       0 | 3-91                                                                       
+ src/components               |    9.28 |    14.01 |    8.33 |    9.77 |                                                                            
+  AdminMenu.tsx               |       0 |      100 |       0 |       0 | 3-21                                                                       
+  AuthGuard.tsx               |     100 |       88 |     100 |     100 | 15,31,33                                                                   
+  Footer.tsx                  |       0 |      100 |       0 |       0 | 3                                                                          
+  GoogleAuthButton.tsx        |       0 |        0 |       0 |       0 | 3-55                                                                       
+  GoogleSettingsButton.tsx    |       0 |        0 |       0 |       0 | 3-66                                                                       
+  MusicCard.tsx               |       0 |      100 |       0 |       0 | 1-42                                                                       
+  NavMenuItem.tsx             |       0 |      100 |       0 |       0 | 1-10                                                                       
+  Navbar.tsx                  |       0 |        0 |       0 |       0 | 3-264                                                                      
+  SetupNotification.tsx       |       0 |        0 |       0 |       0 | 3-23                                                                       
+  SetupRedirect.tsx           |       0 |        0 |       0 |       0 | 3-140                                                                      
+  TermsModal.tsx              |       0 |        0 |       0 |       0 | 3-19                                                                       
+ src/components/modals        |       0 |        0 |       0 |       0 |                                                                            
+  Disable2FA.tsx              |       0 |        0 |       0 |       0 | 3-25                                                                       
+  Manage2FA.tsx               |       0 |        0 |       0 |       0 | 3-139                                                                      
+  ResetPasswordModal.tsx      |       0 |        0 |       0 |       0 | 3-209                                                                      
+  Setup2FA.tsx                |       0 |        0 |       0 |       0 | 3-263                                                                      
+  TwoFAVerificationModal.tsx  |       0 |        0 |       0 |       0 | 3-116                                                                      
+  TwoFactorModal.tsx          |       0 |        0 |       0 |       0 | 3-29                                                                       
+ src/components/setup         |       0 |        0 |       0 |       0 |                                                                            
+  SetupButton.tsx             |       0 |        0 |       0 |       0 | 13-22                                                                      
+  SetupHeader.tsx             |       0 |      100 |       0 |       0 | 8                                                                          
+  SetupLayout.tsx             |       0 |        0 |       0 |       0 | 10-11                                                                      
+  SetupNavigation.tsx         |       0 |        0 |       0 |       0 | 3-10                                                                       
+  SkipSetupButton.tsx         |       0 |        0 |       0 |       0 | 3-53                                                                       
+ src/services                 |   37.31 |    30.24 |   43.63 |   36.92 |                                                                            
+  api.ts                      |      74 |    57.77 |   81.81 |   74.46 | 37,62-80,92-93,154,178-179                                                 
+  authService.ts              |   36.15 |    35.51 |      48 |   35.65 | 84-100,113-115,120-128,136,153,181-202,208,212-214,224-234,244-265,275-391 
+  healthService.ts            |       0 |        0 |       0 |       0 | 1-32                                                                       
+  setupService.ts             |       0 |        0 |       0 |       0 | 1-81                                                                       
+  twoFactorService.ts         |       0 |        0 |       0 |       0 | 1-144                                                                      
+  userService.ts              |   88.88 |    68.75 |     100 |   88.23 | 58,72                                                                      
+ src/songs                    |       0 |      100 |       0 |       0 |                                                                            
+  fetchRecommendedAlbums.ts   |       0 |      100 |       0 |       0 | 3-6                                                                        
+ src/utils                    |       0 |        0 |       0 |       0 |                                                                            
+  countryUtils.ts             |       0 |        0 |       0 |       0 | 2-227                                                                      
+  passwordValidation.ts       |       0 |        0 |       0 |       0 | 1-80                                                                       
+  setupAuth.ts                |       0 |        0 |       0 |       0 | 1-46                                                                       
+------------------------------|---------|----------|---------|---------|----------------------------------------------------------------------------

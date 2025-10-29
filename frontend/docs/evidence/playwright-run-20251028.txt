@@ -1,0 +1,19 @@
+Command: npm run test:e2e -- --project=chromium --reporter=line
+Timestamp: 2025-10-29T05:58:54Z
+
+Running 13 tests using 4 workers
+[chromium] tests/authentication/auth-elements.spec.ts › Authentication Tests › should show login form elements
+[chromium] tests/auth/protected-route.spec.ts › Protected route access control › redirects unauthenticated visitor from account to login
+[chromium] tests/authentication/auth-elements.spec.ts › Authentication Tests › should show register form elements
+[chromium] tests/authentication/auth-elements.spec.ts › Authentication Tests › should show Google Auth button
+[chromium] tests/forms/form-validation.spec.ts › Form Validation Tests › should handle form validation on login page
+[chromium] tests/forms/form-validation.spec.ts › Form Validation Tests › should handle form validation on register page
+[chromium] tests/forms/form-validation.spec.ts › Form Validation Tests › should show password visibility toggle
+[chromium] tests/navigation/navigation.spec.ts › Navigation Tests › should load home page with correct content
+[chromium] tests/navigation/navigation.spec.ts › Navigation Tests › should navigate to login page
+[chromium] tests/navigation/navigation.spec.ts › Navigation Tests › should navigate to register page
+[chromium] tests/navigation/navigation.spec.ts › Navigation Tests › should show navbar with correct elements
+[chromium] tests/navigation/navigation.spec.ts › Navigation Tests › should handle navigation between pages
+[chromium] tests/navigation/navigation.spec.ts › Navigation Tests › should show responsive mobile menu
+
+Result: PASSED in 12.1s
