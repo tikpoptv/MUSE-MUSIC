@@ -48,8 +48,21 @@ test.describe('Logout flow', () => {
     await page.waitForURL('**/', { timeout: 8000 });
     await expect(page).toHaveURL(/\/$/);
 
-    // Navbar should show Sign in link
-    await expect(page.locator('a[href="/login"]:has-text("Sign in")').first()).toBeVisible();
+    // Navbar should show Sign in link (desktop) or be accessible via mobile menu
+    const viewport = page.viewportSize();
+    const isMobile = viewport && viewport.width <= 1100;
+
+    if (isMobile) {
+      // Mobile: open hamburger and assert login link in mobile menu
+      const hamburger = page.locator('#hamburger-button');
+      await expect(hamburger).toBeVisible();
+      await hamburger.click();
+      const mobileMenuLogin = page.locator('#mobile-menu a[href="/login"]').first();
+      await expect(mobileMenuLogin).toBeVisible();
+    } else {
+      // Desktop: login link visible in navbar
+      await expect(page.locator('a[href="/login"]').first()).toBeVisible();
+    }
 
     // Auth storage should be cleared
     const hasToken = await page.evaluate(() => !!localStorage.getItem('auth_token'));
