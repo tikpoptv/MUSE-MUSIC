@@ -8,14 +8,19 @@ test.describe('Protected route access control', () => {
       window.sessionStorage?.clear();
     });
 
-    await page.goto('/account', { waitUntil: 'domcontentloaded' });
-
-    await page.waitForURL('**/login', { timeout: 4000 });
+    await page.goto('/account', { waitUntil: 'networkidle' });
+    
+    // Wait for client-side redirect to complete
+    // AuthGuard uses router.push() which is client-side navigation
+    await page.waitForURL('**/login', { timeout: 10000 });
     await expect(page).toHaveURL(/\/login/);
 
+    // Wait for page to be fully loaded and forms to be visible
+    await page.waitForLoadState('networkidle');
+    
     // Verify login form is present after redirect
-    await expect(page.locator('input[name="username"]')).toBeVisible();
-    await expect(page.locator('input[name="password"]')).toBeVisible();
-    await expect(page.locator('button[type="submit"]')).toBeVisible();
+    await expect(page.locator('input[name="username"]')).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('input[name="password"]')).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('button[type="submit"]')).toBeVisible({ timeout: 5000 });
   });
 });

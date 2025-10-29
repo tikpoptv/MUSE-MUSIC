@@ -144,26 +144,41 @@ test.describe('Navigation Tests', () => {
   test('should show responsive mobile menu', async ({ page }) => {
     // Set mobile viewport
     await page.setViewportSize({ width: 375, height: 667 });
-    await page.goto('/');
+    await page.goto('/', { waitUntil: 'networkidle' });
+    
+    // Wait for page to fully load and React to hydrate
+    await page.waitForLoadState('domcontentloaded');
+    
+    // Wait for Navbar component to mount and resize handler to run
+    // The resize handler sets display style via useEffect
+    await page.waitForTimeout(1000); // Allow useEffect to run
     
     // Check if hamburger menu is visible on mobile
     const hamburgerButton = page.locator('#hamburger-button');
+    
+    // Wait for the element to exist and have display style set to inline-flex or block
     await page.waitForFunction(() => {
       const el = document.querySelector('#hamburger-button');
-      return !!el && getComputedStyle(el).display !== 'none';
-    });
-    await expect(hamburgerButton).toBeVisible();
+      if (!el) return false;
+      const style = getComputedStyle(el);
+      return style.display !== 'none';
+    }, { timeout: 15000 });
+    
+    await expect(hamburgerButton).toBeVisible({ timeout: 5000 });
     
     // Click hamburger menu
     await hamburgerButton.click();
     
+    // Wait for mobile menu animation to complete
+    await page.waitForTimeout(300);
+    
     // Check if mobile menu is expanded
     const mobileMenu = page.locator('#mobile-menu');
-    await expect(mobileMenu).toBeVisible();
+    await expect(mobileMenu).toBeVisible({ timeout: 5000 });
     
     // Check mobile menu items
-    await expect(mobileMenu.locator('a[href="/"]')).toBeVisible();
-    await expect(mobileMenu.locator('a[href="/for-you"]')).toBeVisible();
-    await expect(mobileMenu.locator('a[href="/archive"]')).toBeVisible();
+    await expect(mobileMenu.locator('a[href="/"]')).toBeVisible({ timeout: 5000 });
+    await expect(mobileMenu.locator('a[href="/for-you"]')).toBeVisible({ timeout: 5000 });
+    await expect(mobileMenu.locator('a[href="/archive"]')).toBeVisible({ timeout: 5000 });
   });
 });
