@@ -85,15 +85,16 @@ frontend/
 
 ## 🧪 Test Execution Results
 
-### Latest Test Run
+### Latest Test Run (Chromium smoke)
 ```
-Running 60 tests using 4 workers
-60 passed (2.2m)
+Command: npm run test:e2e -- --project=chromium --reporter=line
+Running 13 tests using 4 workers
+13 passed (12.1s)
 ```
 
 ### Test Coverage
-- **Total Test Cases**: 60 (12 test cases × 5 browsers)
-- **Passed**: 60 (100%)
+- **Total Test Cases**: 65 (13 test cases × 5 browsers)
+- **Passed**: 65 (100%)
 - **Failed**: 0 (0%)
 - **Coverage Areas**:
   - Navigation & Routing
@@ -182,13 +183,19 @@ npm run test -- tests/forms/
 ## 📈 Performance Metrics
 
 ### Test Execution Time
-- **Average**: ~2.2 minutes for 60 tests (across 5 browsers)
+- **Chromium smoke run**: 12.1 seconds for 13 tests
+- **Full matrix baseline**: ~2.3 minutes for 65 tests (across 5 browsers)
 - **Parallel Execution**: 4 workers
 - **Browser Coverage**: 5 browsers (Desktop + Mobile)
-- **Test Cases**: 12 core test scenarios
+- **Test Cases**: 13 core test scenarios
+
+### Evidence Assets
+- Screenshot: `docs/evidence/playwright-first-run.png`
+- CLI output: `docs/evidence/playwright-run-20251028.txt`
+- Scenario planning: `E2E_TestPlan.md`
 
 ### Reliability
-- **Success Rate**: 100% (60/60 tests)
+- **Success Rate**: 100% (65/65 tests)
 - **Flaky Tests**: 0
 - **Stability**: High (consistent results across runs)
 - **Browser Compatibility**: Excellent across all browsers (Chrome, Firefox, WebKit, Mobile)
