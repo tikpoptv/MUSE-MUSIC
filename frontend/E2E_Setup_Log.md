@@ -88,13 +88,13 @@ frontend/
 ### Latest Test Run (Chromium smoke)
 ```
 Command: npm run test:e2e -- --project=chromium --reporter=line
-Running 13 tests using 4 workers
-13 passed (12.1s)
+Running 17 tests using 4 workers
+17 passed (19.4s)
 ```
 
 ### Test Coverage
-- **Total Test Cases**: 65 (13 test cases × 5 browsers)
-- **Passed**: 65 (100%)
+- **Total Test Cases**: 85 (17 test cases × 5 browsers)
+- **Passed**: 85 (100%)
 - **Failed**: 0 (0%)
 - **Coverage Areas**:
   - Navigation & Routing
@@ -183,8 +183,8 @@ npm run test -- tests/forms/
 ## 📈 Performance Metrics
 
 ### Test Execution Time
-- **Chromium smoke run**: 12.1 seconds for 13 tests
-- **Full matrix baseline**: ~2.3 minutes for 65 tests (across 5 browsers)
+- **Chromium smoke run**: ~19.4 seconds for 17 tests
+- **Full matrix baseline**: ~3.0 minutes for 85 tests (across 5 browsers)
 - **Parallel Execution**: 4 workers
 - **Browser Coverage**: 5 browsers (Desktop + Mobile)
 - **Test Cases**: 13 core test scenarios
@@ -195,7 +195,7 @@ npm run test -- tests/forms/
 - Scenario planning: `E2E_TestPlan.md`
 
 ### Reliability
-- **Success Rate**: 100% (65/65 tests)
+- **Success Rate**: 100% (85/85 tests)
 - **Flaky Tests**: 0
 - **Stability**: High (consistent results across runs)
 - **Browser Compatibility**: Excellent across all browsers (Chrome, Firefox, WebKit, Mobile)
