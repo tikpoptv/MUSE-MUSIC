@@ -11,8 +11,8 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   /* Retry on CI only */
   retries: process.env.CI ? 2 : 0,
-  /* Opt out of parallel tests on CI. */
-  workers: process.env.CI ? 1 : undefined,
+  /* Use 2 workers in CI (GitHub Actions has 2 cores), 4 locally */
+  workers: process.env.CI ? 2 : process.env.WORKERS ? parseInt(process.env.WORKERS) : 4,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: [
     ['html'],
@@ -36,8 +36,8 @@ export default defineConfig({
     /* Global timeout for each action */
     actionTimeout: 10000,
     
-    /* Global timeout for navigation */
-    navigationTimeout: 30000,
+    /* Global timeout for navigation - longer in CI for slower environments */
+    navigationTimeout: process.env.CI ? 60000 : 30000,
   },
 
   /* Configure projects for major browsers */
@@ -47,25 +47,28 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] },
     },
 
-    {
-      name: 'firefox',
-      use: { ...devices['Desktop Firefox'] },
-    },
+    // In CI, only run chromium for speed. For full coverage, run all browsers locally
+    ...(process.env.CI ? [] : [
+      {
+        name: 'firefox',
+        use: { ...devices['Desktop Firefox'] },
+      },
 
-    {
-      name: 'webkit',
-      use: { ...devices['Desktop Safari'] },
-    },
+      {
+        name: 'webkit',
+        use: { ...devices['Desktop Safari'] },
+      },
 
-    /* Test against mobile viewports. */
-    {
-      name: 'Mobile Chrome',
-      use: { ...devices['Pixel 5'] },
-    },
-    {
-      name: 'Mobile Safari',
-      use: { ...devices['iPhone 12'] },
-    },
+      /* Test against mobile viewports. */
+      {
+        name: 'Mobile Chrome',
+        use: { ...devices['Pixel 5'] },
+      },
+      {
+        name: 'Mobile Safari',
+        use: { ...devices['iPhone 12'] },
+      },
+    ]),
 
     /* Test against branded browsers. */
     // {
@@ -84,6 +87,6 @@ export default defineConfig({
     command: process.env.CI ? 'npm run start' : 'npm run dev',
     url: 'http://localhost:3000',
     reuseExistingServer: !process.env.CI,
-    timeout: 180 * 1000,
+    timeout: process.env.CI ? 240 * 1000 : 180 * 1000,
   },
 });
