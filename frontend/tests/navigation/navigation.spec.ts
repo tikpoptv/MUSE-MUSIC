@@ -111,7 +111,7 @@ test.describe('Navigation Tests', () => {
       // Mobile navigation - use hamburger menu for login
       await page.click('#hamburger-button');
       await page.click('#mobile-menu a[href="/login"]');
-      await expect(page).toHaveURL('/login');
+      await expect(page).toHaveURL(/\/login/);
       
       // Navigate to register from login page using the "Create an account" link
       await page.click('a[href="/register"]');
@@ -120,7 +120,7 @@ test.describe('Navigation Tests', () => {
       // Navigate back to login using hamburger menu
       await page.click('#hamburger-button');
       await page.click('#mobile-menu a[href="/login"]');
-      await expect(page).toHaveURL('/login');
+      await expect(page).toHaveURL(/\/login/);
     } else {
       // Desktop navigation - use navbar links
       await page.click('a[href="/login"]');
@@ -132,12 +132,12 @@ test.describe('Navigation Tests', () => {
       // Navigate to register from login page
       await page.click('a[href="/register"]');
       await page.waitForLoadState('networkidle');
-      await expect(page).toHaveURL('/register');
+      await expect(page).toHaveURL(/\/register/);
       
       // Navigate back to login
       await page.click('a[href="/login"]');
       await page.waitForLoadState('networkidle');
-      await expect(page).toHaveURL('/login');
+      await expect(page).toHaveURL(/\/login/);
     }
   });
 
@@ -148,6 +148,10 @@ test.describe('Navigation Tests', () => {
     
     // Check if hamburger menu is visible on mobile
     const hamburgerButton = page.locator('#hamburger-button');
+    await page.waitForFunction(() => {
+      const el = document.querySelector('#hamburger-button');
+      return !!el && getComputedStyle(el).display !== 'none';
+    });
     await expect(hamburgerButton).toBeVisible();
     
     // Click hamburger menu

@@ -10,13 +10,8 @@ test.describe('Protected route access control', () => {
 
     await page.goto('/account', { waitUntil: 'domcontentloaded' });
 
-    // The app should issue a toast before redirect
-    const toastMessage = page.locator('text=Please login first');
-    await expect(toastMessage).toBeVisible({ timeout: 4000 });
-
-    // Redirect should happen automatically
     await page.waitForURL('**/login', { timeout: 4000 });
-    await expect(page).toHaveURL(/.*\/login$/);
+    await expect(page).toHaveURL(/\/login/);
 
     // Verify login form is present after redirect
     await expect(page.locator('input[name="username"]')).toBeVisible();

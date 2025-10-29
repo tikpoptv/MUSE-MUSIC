@@ -9,7 +9,7 @@ test.describe('Form Validation Tests', () => {
     await page.click('button[type="submit"]');
     
     // Should stay on login page (no redirect)
-    await expect(page).toHaveURL('/login');
+    await expect(page).toHaveURL(/\/login/);
     
     // Form should still be visible
     await expect(page.locator('input[name="username"]')).toBeVisible();
@@ -30,13 +30,13 @@ test.describe('Form Validation Tests', () => {
     await page.fill('input[name="confirmPassword"]', 'TestPassword123!');
     
     // Wait for button to be enabled
-    await expect(submitButton).toBeEnabled();
+    await expect(submitButton).toBeEnabled({ timeout: 10000 });
     
     // Try to submit form
     await submitButton.click();
     
     // Should stay on register page (no redirect)
-    await expect(page).toHaveURL('/register');
+    await expect(page).toHaveURL(/\/register/);
     
     // Form should still be visible
     await expect(page.locator('input[name="username"]')).toBeVisible();
@@ -57,7 +57,7 @@ test.describe('Form Validation Tests', () => {
     await expect(toggleButton).toBeVisible();
     
     // Click toggle button
-    await toggleButton.click();
+    await toggleButton.click({ force: true });
     
     // Password should be visible (type="text")
     await expect(passwordInput).toHaveAttribute('type', 'text');

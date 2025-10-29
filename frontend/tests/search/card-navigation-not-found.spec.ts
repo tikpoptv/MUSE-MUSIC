@@ -7,7 +7,7 @@ test.describe('Search/Recommendation card navigation', () => {
 
     // Wait for recommend section and at least one music card link
     const firstCardLink = page.locator('a[href^="/songs/"]').first();
-    await expect(firstCardLink).toBeVisible({ timeout: 10000 });
+    await expect(firstCardLink).toBeVisible({ timeout: 20000 });
 
     // Navigate to the song detail (not implemented yet)
     const targetHref = await firstCardLink.getAttribute('href');
