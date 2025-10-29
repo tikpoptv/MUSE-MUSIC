@@ -1,0 +1,264 @@
+<testsuites id="" name="" tests="85" failures="0" skipped="2" errors="0" time="99.815242">
+<testsuite name="auth/login-mock.spec.ts" timestamp="2025-10-29T12:22:27.899Z" hostname="chromium" tests="1" failures="0" skipped="0" time="2.163" errors="0">
+<testcase name="Login (mocked) and account access › shows account page for authenticated user via storage state" classname="auth/login-mock.spec.ts" time="2.163">
+</testcase>
+</testsuite>
+<testsuite name="auth/logout.spec.ts" timestamp="2025-10-29T12:22:27.899Z" hostname="chromium" tests="1" failures="0" skipped="0" time="4.376" errors="0">
+<testcase name="Logout flow › logs out and redirects to home with navbar unauthenticated" classname="auth/logout.spec.ts" time="4.376">
+</testcase>
+</testsuite>
+<testsuite name="auth/protected-route.spec.ts" timestamp="2025-10-29T12:22:27.899Z" hostname="chromium" tests="1" failures="0" skipped="0" time="2.983" errors="0">
+<testcase name="Protected route access control › redirects unauthenticated visitor from account to login" classname="auth/protected-route.spec.ts" time="2.983">
+</testcase>
+</testsuite>
+<testsuite name="authentication/auth-elements.spec.ts" timestamp="2025-10-29T12:22:27.899Z" hostname="chromium" tests="3" failures="0" skipped="0" time="5.456" errors="0">
+<testcase name="Authentication Tests › should show login form elements" classname="authentication/auth-elements.spec.ts" time="2.327">
+</testcase>
+<testcase name="Authentication Tests › should show register form elements" classname="authentication/auth-elements.spec.ts" time="1.82">
+</testcase>
+<testcase name="Authentication Tests › should show Google Auth button" classname="authentication/auth-elements.spec.ts" time="1.309">
+</testcase>
+</testsuite>
+<testsuite name="forms/form-validation.spec.ts" timestamp="2025-10-29T12:22:27.899Z" hostname="chromium" tests="3" failures="0" skipped="0" time="6.5" errors="0">
+<testcase name="Form Validation Tests › should handle form validation on login page" classname="forms/form-validation.spec.ts" time="1.601">
+</testcase>
+<testcase name="Form Validation Tests › should handle form validation on register page" classname="forms/form-validation.spec.ts" time="2.625">
+</testcase>
+<testcase name="Form Validation Tests › should show password visibility toggle" classname="forms/form-validation.spec.ts" time="2.274">
+</testcase>
+</testsuite>
+<testsuite name="navigation/navigation.spec.ts" timestamp="2025-10-29T12:22:27.899Z" hostname="chromium" tests="6" failures="0" skipped="0" time="13.455" errors="0">
+<testcase name="Navigation Tests › should load home page with correct content" classname="navigation/navigation.spec.ts" time="1.067">
+</testcase>
+<testcase name="Navigation Tests › should navigate to login page" classname="navigation/navigation.spec.ts" time="1.516">
+</testcase>
+<testcase name="Navigation Tests › should navigate to register page" classname="navigation/navigation.spec.ts" time="1.558">
+</testcase>
+<testcase name="Navigation Tests › should show navbar with correct elements" classname="navigation/navigation.spec.ts" time="1.584">
+</testcase>
+<testcase name="Navigation Tests › should handle navigation between pages" classname="navigation/navigation.spec.ts" time="4.083">
+</testcase>
+<testcase name="Navigation Tests › should show responsive mobile menu" classname="navigation/navigation.spec.ts" time="3.647">
+</testcase>
+</testsuite>
+<testsuite name="search/card-navigation-not-found.spec.ts" timestamp="2025-10-29T12:22:27.899Z" hostname="chromium" tests="1" failures="0" skipped="0" time="5.359" errors="0">
+<testcase name="Search/Recommendation card navigation › clicking a music card navigates to /songs/:id and shows not-found" classname="search/card-navigation-not-found.spec.ts" time="5.359">
+</testcase>
+</testsuite>
+<testsuite name="setup/wizard.spec.ts" timestamp="2025-10-29T12:22:27.899Z" hostname="chromium" tests="1" failures="0" skipped="0" time="12.157" errors="0">
+<testcase name="Setup Wizard › completes steps 1-4 with API stubs" classname="setup/wizard.spec.ts" time="12.157">
+</testcase>
+</testsuite>
+<testsuite name="auth/login-mock.spec.ts" timestamp="2025-10-29T12:22:27.899Z" hostname="firefox" tests="1" failures="0" skipped="0" time="5.082" errors="0">
+<testcase name="Login (mocked) and account access › shows account page for authenticated user via storage state" classname="auth/login-mock.spec.ts" time="5.082">
+</testcase>
+</testsuite>
+<testsuite name="auth/logout.spec.ts" timestamp="2025-10-29T12:22:27.899Z" hostname="firefox" tests="1" failures="0" skipped="0" time="6.551" errors="0">
+<testcase name="Logout flow › logs out and redirects to home with navbar unauthenticated" classname="auth/logout.spec.ts" time="6.551">
+</testcase>
+</testsuite>
+<testsuite name="auth/protected-route.spec.ts" timestamp="2025-10-29T12:22:27.899Z" hostname="firefox" tests="1" failures="0" skipped="0" time="5.829" errors="0">
+<testcase name="Protected route access control › redirects unauthenticated visitor from account to login" classname="auth/protected-route.spec.ts" time="5.829">
+</testcase>
+</testsuite>
+<testsuite name="authentication/auth-elements.spec.ts" timestamp="2025-10-29T12:22:27.899Z" hostname="firefox" tests="3" failures="0" skipped="0" time="9.805" errors="0">
+<testcase name="Authentication Tests › should show login form elements" classname="authentication/auth-elements.spec.ts" time="4.902">
+</testcase>
+<testcase name="Authentication Tests › should show register form elements" classname="authentication/auth-elements.spec.ts" time="2.376">
+</testcase>
+<testcase name="Authentication Tests › should show Google Auth button" classname="authentication/auth-elements.spec.ts" time="2.527">
+</testcase>
+</testsuite>
+<testsuite name="forms/form-validation.spec.ts" timestamp="2025-10-29T12:22:27.899Z" hostname="firefox" tests="3" failures="0" skipped="0" time="9.525" errors="0">
+<testcase name="Form Validation Tests › should handle form validation on login page" classname="forms/form-validation.spec.ts" time="3.067">
+</testcase>
+<testcase name="Form Validation Tests › should handle form validation on register page" classname="forms/form-validation.spec.ts" time="3.543">
+</testcase>
+<testcase name="Form Validation Tests › should show password visibility toggle" classname="forms/form-validation.spec.ts" time="2.915">
+</testcase>
+</testsuite>
+<testsuite name="navigation/navigation.spec.ts" timestamp="2025-10-29T12:22:27.899Z" hostname="firefox" tests="6" failures="0" skipped="0" time="18.84" errors="0">
+<testcase name="Navigation Tests › should load home page with correct content" classname="navigation/navigation.spec.ts" time="1.231">
+</testcase>
+<testcase name="Navigation Tests › should navigate to login page" classname="navigation/navigation.spec.ts" time="2.102">
+</testcase>
+<testcase name="Navigation Tests › should navigate to register page" classname="navigation/navigation.spec.ts" time="3.521">
+</testcase>
+<testcase name="Navigation Tests › should show navbar with correct elements" classname="navigation/navigation.spec.ts" time="2.648">
+</testcase>
+<testcase name="Navigation Tests › should handle navigation between pages" classname="navigation/navigation.spec.ts" time="5.279">
+</testcase>
+<testcase name="Navigation Tests › should show responsive mobile menu" classname="navigation/navigation.spec.ts" time="4.059">
+</testcase>
+</testsuite>
+<testsuite name="search/card-navigation-not-found.spec.ts" timestamp="2025-10-29T12:22:27.899Z" hostname="firefox" tests="1" failures="0" skipped="0" time="4.783" errors="0">
+<testcase name="Search/Recommendation card navigation › clicking a music card navigates to /songs/:id and shows not-found" classname="search/card-navigation-not-found.spec.ts" time="4.783">
+</testcase>
+</testsuite>
+<testsuite name="setup/wizard.spec.ts" timestamp="2025-10-29T12:22:27.899Z" hostname="firefox" tests="1" failures="0" skipped="0" time="10.625" errors="0">
+<testcase name="Setup Wizard › completes steps 1-4 with API stubs" classname="setup/wizard.spec.ts" time="10.625">
+</testcase>
+</testsuite>
+<testsuite name="auth/login-mock.spec.ts" timestamp="2025-10-29T12:22:27.899Z" hostname="webkit" tests="1" failures="0" skipped="0" time="2.082" errors="0">
+<testcase name="Login (mocked) and account access › shows account page for authenticated user via storage state" classname="auth/login-mock.spec.ts" time="2.082">
+</testcase>
+</testsuite>
+<testsuite name="auth/logout.spec.ts" timestamp="2025-10-29T12:22:27.899Z" hostname="webkit" tests="1" failures="0" skipped="0" time="5.267" errors="0">
+<testcase name="Logout flow › logs out and redirects to home with navbar unauthenticated" classname="auth/logout.spec.ts" time="5.267">
+</testcase>
+</testsuite>
+<testsuite name="auth/protected-route.spec.ts" timestamp="2025-10-29T12:22:27.899Z" hostname="webkit" tests="1" failures="0" skipped="0" time="2.924" errors="0">
+<testcase name="Protected route access control › redirects unauthenticated visitor from account to login" classname="auth/protected-route.spec.ts" time="2.924">
+</testcase>
+</testsuite>
+<testsuite name="authentication/auth-elements.spec.ts" timestamp="2025-10-29T12:22:27.899Z" hostname="webkit" tests="3" failures="0" skipped="0" time="6.636" errors="0">
+<testcase name="Authentication Tests › should show login form elements" classname="authentication/auth-elements.spec.ts" time="1.936">
+</testcase>
+<testcase name="Authentication Tests › should show register form elements" classname="authentication/auth-elements.spec.ts" time="2.403">
+</testcase>
+<testcase name="Authentication Tests › should show Google Auth button" classname="authentication/auth-elements.spec.ts" time="2.297">
+</testcase>
+</testsuite>
+<testsuite name="forms/form-validation.spec.ts" timestamp="2025-10-29T12:22:27.899Z" hostname="webkit" tests="3" failures="0" skipped="0" time="9.118" errors="0">
+<testcase name="Form Validation Tests › should handle form validation on login page" classname="forms/form-validation.spec.ts" time="2.464">
+</testcase>
+<testcase name="Form Validation Tests › should handle form validation on register page" classname="forms/form-validation.spec.ts" time="4.148">
+</testcase>
+<testcase name="Form Validation Tests › should show password visibility toggle" classname="forms/form-validation.spec.ts" time="2.506">
+</testcase>
+</testsuite>
+<testsuite name="navigation/navigation.spec.ts" timestamp="2025-10-29T12:22:27.899Z" hostname="webkit" tests="6" failures="0" skipped="0" time="16.133" errors="0">
+<testcase name="Navigation Tests › should load home page with correct content" classname="navigation/navigation.spec.ts" time="1.915">
+</testcase>
+<testcase name="Navigation Tests › should navigate to login page" classname="navigation/navigation.spec.ts" time="1.589">
+</testcase>
+<testcase name="Navigation Tests › should navigate to register page" classname="navigation/navigation.spec.ts" time="1.926">
+</testcase>
+<testcase name="Navigation Tests › should show navbar with correct elements" classname="navigation/navigation.spec.ts" time="2.566">
+</testcase>
+<testcase name="Navigation Tests › should handle navigation between pages" classname="navigation/navigation.spec.ts" time="4.123">
+</testcase>
+<testcase name="Navigation Tests › should show responsive mobile menu" classname="navigation/navigation.spec.ts" time="4.014">
+</testcase>
+</testsuite>
+<testsuite name="search/card-navigation-not-found.spec.ts" timestamp="2025-10-29T12:22:27.899Z" hostname="webkit" tests="1" failures="0" skipped="0" time="4.737" errors="0">
+<testcase name="Search/Recommendation card navigation › clicking a music card navigates to /songs/:id and shows not-found" classname="search/card-navigation-not-found.spec.ts" time="4.737">
+</testcase>
+</testsuite>
+<testsuite name="setup/wizard.spec.ts" timestamp="2025-10-29T12:22:27.899Z" hostname="webkit" tests="1" failures="0" skipped="1" time="0.01" errors="0">
+<testcase name="Setup Wizard › completes steps 1-4 with API stubs" classname="setup/wizard.spec.ts" time="0.01">
+<properties>
+<property name="skip" value="Skipping on WebKit pending stabilization of setup redirects">
+</property>
+</properties>
+<skipped>
+</skipped>
+</testcase>
+</testsuite>
+<testsuite name="auth/login-mock.spec.ts" timestamp="2025-10-29T12:22:27.899Z" hostname="Mobile Chrome" tests="1" failures="0" skipped="0" time="0.917" errors="0">
+<testcase name="Login (mocked) and account access › shows account page for authenticated user via storage state" classname="auth/login-mock.spec.ts" time="0.917">
+</testcase>
+</testsuite>
+<testsuite name="auth/logout.spec.ts" timestamp="2025-10-29T12:22:27.899Z" hostname="Mobile Chrome" tests="1" failures="0" skipped="0" time="4.543" errors="0">
+<testcase name="Logout flow › logs out and redirects to home with navbar unauthenticated" classname="auth/logout.spec.ts" time="4.543">
+</testcase>
+</testsuite>
+<testsuite name="auth/protected-route.spec.ts" timestamp="2025-10-29T12:22:27.899Z" hostname="Mobile Chrome" tests="1" failures="0" skipped="0" time="1.936" errors="0">
+<testcase name="Protected route access control › redirects unauthenticated visitor from account to login" classname="auth/protected-route.spec.ts" time="1.936">
+</testcase>
+</testsuite>
+<testsuite name="authentication/auth-elements.spec.ts" timestamp="2025-10-29T12:22:27.899Z" hostname="Mobile Chrome" tests="3" failures="0" skipped="0" time="4.262" errors="0">
+<testcase name="Authentication Tests › should show login form elements" classname="authentication/auth-elements.spec.ts" time="1.342">
+</testcase>
+<testcase name="Authentication Tests › should show register form elements" classname="authentication/auth-elements.spec.ts" time="1.172">
+</testcase>
+<testcase name="Authentication Tests › should show Google Auth button" classname="authentication/auth-elements.spec.ts" time="1.748">
+</testcase>
+</testsuite>
+<testsuite name="forms/form-validation.spec.ts" timestamp="2025-10-29T12:22:27.899Z" hostname="Mobile Chrome" tests="3" failures="0" skipped="0" time="5.857" errors="0">
+<testcase name="Form Validation Tests › should handle form validation on login page" classname="forms/form-validation.spec.ts" time="1.683">
+</testcase>
+<testcase name="Form Validation Tests › should handle form validation on register page" classname="forms/form-validation.spec.ts" time="2.566">
+</testcase>
+<testcase name="Form Validation Tests › should show password visibility toggle" classname="forms/form-validation.spec.ts" time="1.608">
+</testcase>
+</testsuite>
+<testsuite name="navigation/navigation.spec.ts" timestamp="2025-10-29T12:22:27.899Z" hostname="Mobile Chrome" tests="6" failures="0" skipped="0" time="12.395" errors="0">
+<testcase name="Navigation Tests › should load home page with correct content" classname="navigation/navigation.spec.ts" time="1.619">
+</testcase>
+<testcase name="Navigation Tests › should navigate to login page" classname="navigation/navigation.spec.ts" time="1.295">
+</testcase>
+<testcase name="Navigation Tests › should navigate to register page" classname="navigation/navigation.spec.ts" time="0.754">
+</testcase>
+<testcase name="Navigation Tests › should show navbar with correct elements" classname="navigation/navigation.spec.ts" time="1.453">
+</testcase>
+<testcase name="Navigation Tests › should handle navigation between pages" classname="navigation/navigation.spec.ts" time="3.573">
+</testcase>
+<testcase name="Navigation Tests › should show responsive mobile menu" classname="navigation/navigation.spec.ts" time="3.701">
+</testcase>
+</testsuite>
+<testsuite name="search/card-navigation-not-found.spec.ts" timestamp="2025-10-29T12:22:27.899Z" hostname="Mobile Chrome" tests="1" failures="0" skipped="0" time="4.128" errors="0">
+<testcase name="Search/Recommendation card navigation › clicking a music card navigates to /songs/:id and shows not-found" classname="search/card-navigation-not-found.spec.ts" time="4.128">
+</testcase>
+</testsuite>
+<testsuite name="setup/wizard.spec.ts" timestamp="2025-10-29T12:22:27.899Z" hostname="Mobile Chrome" tests="1" failures="0" skipped="0" time="6.943" errors="0">
+<testcase name="Setup Wizard › completes steps 1-4 with API stubs" classname="setup/wizard.spec.ts" time="6.943">
+</testcase>
+</testsuite>
+<testsuite name="auth/login-mock.spec.ts" timestamp="2025-10-29T12:22:27.899Z" hostname="Mobile Safari" tests="1" failures="0" skipped="0" time="1.382" errors="0">
+<testcase name="Login (mocked) and account access › shows account page for authenticated user via storage state" classname="auth/login-mock.spec.ts" time="1.382">
+</testcase>
+</testsuite>
+<testsuite name="auth/logout.spec.ts" timestamp="2025-10-29T12:22:27.899Z" hostname="Mobile Safari" tests="1" failures="0" skipped="0" time="5.232" errors="0">
+<testcase name="Logout flow › logs out and redirects to home with navbar unauthenticated" classname="auth/logout.spec.ts" time="5.232">
+</testcase>
+</testsuite>
+<testsuite name="auth/protected-route.spec.ts" timestamp="2025-10-29T12:22:27.899Z" hostname="Mobile Safari" tests="1" failures="0" skipped="0" time="1.949" errors="0">
+<testcase name="Protected route access control › redirects unauthenticated visitor from account to login" classname="auth/protected-route.spec.ts" time="1.949">
+</testcase>
+</testsuite>
+<testsuite name="authentication/auth-elements.spec.ts" timestamp="2025-10-29T12:22:27.899Z" hostname="Mobile Safari" tests="3" failures="0" skipped="0" time="4.651" errors="0">
+<testcase name="Authentication Tests › should show login form elements" classname="authentication/auth-elements.spec.ts" time="1.813">
+</testcase>
+<testcase name="Authentication Tests › should show register form elements" classname="authentication/auth-elements.spec.ts" time="1.45">
+</testcase>
+<testcase name="Authentication Tests › should show Google Auth button" classname="authentication/auth-elements.spec.ts" time="1.388">
+</testcase>
+</testsuite>
+<testsuite name="forms/form-validation.spec.ts" timestamp="2025-10-29T12:22:27.899Z" hostname="Mobile Safari" tests="3" failures="0" skipped="0" time="5.711" errors="0">
+<testcase name="Form Validation Tests › should handle form validation on login page" classname="forms/form-validation.spec.ts" time="1.534">
+</testcase>
+<testcase name="Form Validation Tests › should handle form validation on register page" classname="forms/form-validation.spec.ts" time="2.047">
+</testcase>
+<testcase name="Form Validation Tests › should show password visibility toggle" classname="forms/form-validation.spec.ts" time="2.13">
+</testcase>
+</testsuite>
+<testsuite name="navigation/navigation.spec.ts" timestamp="2025-10-29T12:22:27.899Z" hostname="Mobile Safari" tests="6" failures="0" skipped="0" time="18.139" errors="0">
+<testcase name="Navigation Tests › should load home page with correct content" classname="navigation/navigation.spec.ts" time="3.123">
+</testcase>
+<testcase name="Navigation Tests › should navigate to login page" classname="navigation/navigation.spec.ts" time="1.484">
+</testcase>
+<testcase name="Navigation Tests › should navigate to register page" classname="navigation/navigation.spec.ts" time="1.069">
+</testcase>
+<testcase name="Navigation Tests › should show navbar with correct elements" classname="navigation/navigation.spec.ts" time="3.018">
+</testcase>
+<testcase name="Navigation Tests › should handle navigation between pages" classname="navigation/navigation.spec.ts" time="4.299">
+</testcase>
+<testcase name="Navigation Tests › should show responsive mobile menu" classname="navigation/navigation.spec.ts" time="5.146">
+</testcase>
+</testsuite>
+<testsuite name="search/card-navigation-not-found.spec.ts" timestamp="2025-10-29T12:22:27.899Z" hostname="Mobile Safari" tests="1" failures="0" skipped="0" time="3.662" errors="0">
+<testcase name="Search/Recommendation card navigation › clicking a music card navigates to /songs/:id and shows not-found" classname="search/card-navigation-not-found.spec.ts" time="3.662">
+</testcase>
+</testsuite>
+<testsuite name="setup/wizard.spec.ts" timestamp="2025-10-29T12:22:27.899Z" hostname="Mobile Safari" tests="1" failures="0" skipped="1" time="0.001" errors="0">
+<testcase name="Setup Wizard › completes steps 1-4 with API stubs" classname="setup/wizard.spec.ts" time="0.001">
+<properties>
+<property name="skip" value="Skipping on WebKit pending stabilization of setup redirects">
+</property>
+</properties>
+<skipped>
+</skipped>
+</testcase>
+</testsuite>
+</testsuites>
