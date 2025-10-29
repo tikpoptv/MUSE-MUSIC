@@ -82,25 +82,25 @@ test.describe('Setup Wizard', () => {
     });
 
     // Seed auth before any app code runs
-    await page.addInitScript((u, t) => {
+    await page.addInitScript((data: any) => {
       try {
-        localStorage.setItem('auth_token', (t as any).accessToken);
-        localStorage.setItem('user_data', JSON.stringify(u));
+        localStorage.setItem('auth_token', data.tokens.accessToken);
+        localStorage.setItem('user_data', JSON.stringify(data.user));
         localStorage.setItem('session_data', JSON.stringify({ sessionID: 's_002', expiresAt: new Date(Date.now()+3600_000).toISOString() }));
-        localStorage.setItem('tokens_data', JSON.stringify(t));
+        localStorage.setItem('tokens_data', JSON.stringify(data.tokens));
       } catch {}
-    }, user as any, tokens as any);
+    }, { user, tokens });
 
     // Navigate straight to step1 to avoid redirect flakiness across engines
     await page.goto('/setup/step1', { waitUntil: 'domcontentloaded' });
 
     // Set auth data after navigation to ensure it's available
-    await page.evaluate(([u, t]) => {
-      localStorage.setItem('auth_token', (t as any).accessToken);
-      localStorage.setItem('user_data', JSON.stringify(u));
+    await page.evaluate((data: any) => {
+      localStorage.setItem('auth_token', data.tokens.accessToken);
+      localStorage.setItem('user_data', JSON.stringify(data.user));
       localStorage.setItem('session_data', JSON.stringify({ sessionID: 's_002', expiresAt: new Date(Date.now()+3600_000).toISOString() }));
-      localStorage.setItem('tokens_data', JSON.stringify(t));
-    }, [user, tokens] as any);
+      localStorage.setItem('tokens_data', JSON.stringify(data.tokens));
+    }, { user, tokens });
 
     // Reload page to pick up auth data
     await page.reload({ waitUntil: 'domcontentloaded' });
