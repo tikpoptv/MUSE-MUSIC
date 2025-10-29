@@ -59,4 +59,3 @@ jobs:
           name: playwright-test-results
           path: frontend/test-results/
           retention-days: 30
-

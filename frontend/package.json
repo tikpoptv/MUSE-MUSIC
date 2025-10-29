@@ -25,6 +25,11 @@
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:debug": "playwright test --debug",
     "test:e2e:report": "playwright show-report",
+    "ci:evidence:prepare": "mkdir -p docs/evidence",
+    "ci:e2e:smoke:evidence": "npm run ci:evidence:prepare && outfile=docs/evidence/playwright-run-$(date +%Y%m%d-%H%M%S).txt && playwright test --project=chromium --reporter=line | tee \"$outfile\"",
+    "ci:e2e:full:evidence": "npm run ci:evidence:prepare && outfile=docs/evidence/playwright-full-run-$(date +%Y%m%d-%H%M%S).txt && playwright test | tee \"$outfile\"",
+    "ci:unit:evidence": "npm run ci:evidence:prepare && outfile=docs/evidence/jest-unit-run-$(date +%Y%m%d-%H%M%S).txt && jest --ci --coverage --watchAll=false | tee \"$outfile\"",
+    "ci:integration:evidence": "npm run ci:evidence:prepare && outfile=docs/evidence/jest-integration-run-$(date +%Y%m%d-%H%M%S).txt && jest --ci --coverage --watchAll=false --testPathPatterns=src/__tests__/integration/ | tee \"$outfile\"",
     "test:all": "npm run test && npm run test:e2e",
     "test:full": "npm run test:unit && npm run test:integration && npm run test:e2e"
   },
