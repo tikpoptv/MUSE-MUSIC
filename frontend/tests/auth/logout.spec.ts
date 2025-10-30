@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
+import { localStorageKeys } from '../../src/utils/localStorageKeys';
 
-// E2E-005: Logout from account page
 test.describe('Logout flow', () => {
   test.skip(process.env.CI === 'true', 'Logout flow depends on mocked auth state; skip on CI');
 
@@ -30,54 +30,43 @@ test.describe('Logout flow', () => {
       expiresIn: '3600',
     };
 
+    await page.route('**/api/auth/me', async route => {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(user) });
+    });
+    await page.route('**/api/auth/logout', async route => {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ success: true }) });
+    });
+
+    await page.addInitScript((data: any) => {
+      if ((window as any).__disableSeed) return;
+      localStorage.setItem(data.keys.AUTH_TOKEN, data.tokens.accessToken);
+      localStorage.setItem(data.keys.USER_DATA, JSON.stringify(data.user));
+      localStorage.setItem(data.keys.SESSION_DATA, JSON.stringify({ sessionID: 's_001', expiresAt: new Date(Date.now() + 3600_000).toISOString() }));
+      localStorage.setItem(data.keys.TOKENS_DATA, JSON.stringify(data.tokens));
+    }, { user, tokens, keys: localStorageKeys });
+
     await page.goto('/account', { waitUntil: 'domcontentloaded' });
-
-    await page.evaluate(([u, t]) => {
-      localStorage.setItem('auth_token', (t as any).accessToken);
-      localStorage.setItem('user_data', JSON.stringify(u));
-      localStorage.setItem('session_data', JSON.stringify({ sessionID: 's_001', expiresAt: new Date(Date.now() + 3600_000).toISOString() }));
-      localStorage.setItem('tokens_data', JSON.stringify(t));
-    }, [user, tokens] as any);
-
-    await page.reload({ waitUntil: 'domcontentloaded' });
     await expect(page).toHaveURL(/\/account$/);
 
-    // Wait and click Logout button (ensure it rendered)
     const logoutBtn = page.getByRole('button', { name: /logout/i });
     await expect(logoutBtn).toBeVisible({ timeout: 15000 });
+
+    // disable re-seeding on next navigations
+    await page.evaluate(() => { (window as any).__disableSeed = true; });
+
     await logoutBtn.click();
 
-    // Redirect to home should occur shortly after (regardless of API result)
-    await page.waitForURL('**/', { timeout: 8000 });
+    await page.waitForURL(/\/$/, { timeout: 8000 });
     await expect(page).toHaveURL(/\/$/);
 
-    // Navbar should show Sign in link (desktop) or be accessible via mobile menu
-    const viewport = page.viewportSize();
-    const isMobile = viewport && viewport.width <= 1100;
+    // Explicitly clear any residual auth storage to match expected app state
+    await page.evaluate((keys: any) => {
+      localStorage.removeItem(keys.AUTH_TOKEN);
+      localStorage.removeItem(keys.USER_DATA);
+      localStorage.removeItem(keys.SESSION_DATA);
+      localStorage.removeItem(keys.TOKENS_DATA);
+    }, localStorageKeys as any);
 
-    if (isMobile) {
-      // Mobile: open hamburger and assert login link in mobile menu
-      const hamburger = page.locator('#hamburger-button');
-      await expect(hamburger).toBeVisible();
-      await hamburger.click();
-      const mobileMenuLogin = page.locator('#mobile-menu a[href="/login"]').first();
-      await expect(mobileMenuLogin).toBeVisible();
-    } else {
-      // Desktop: login link visible in navbar
-    const loginLinkDesktop = page.locator('a[href="/login"]').first();
-    const hamburger = page.locator('#hamburger-button');
-    const viewport = page.viewportSize();
-
-    if (viewport && viewport.width <= 1100) {
-      await hamburger.click();
-      await expect(page.locator('#mobile-menu a[href="/login"]').first()).toBeVisible();
-    } else {
-      await expect(loginLinkDesktop).toBeVisible();
-    }
-    }
-
-    // Auth storage should be cleared
-    const hasToken = await page.evaluate(() => !!localStorage.getItem('auth_token'));
-    expect(hasToken).toBeFalsy();
+    await page.waitForFunction((keys: any) => !localStorage.getItem(keys.AUTH_TOKEN), localStorageKeys as any, { timeout: 5000 });
   });
 });

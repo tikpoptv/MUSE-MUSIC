@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import { localStorageKeys } from '../utils/localStorageKeys';
 import { LocalStorageManager } from '../utils/localStorageManager';
 
@@ -48,9 +49,23 @@ export default function GoogleAuthButton({
     }
   };
 
+  const baseClasses = "py-3 border border-gray-300 flex items-center justify-center space-x-3 hover:bg-gray-50 transition-colors duration-200 mx-auto disabled:opacity-50 disabled:cursor-not-allowed";
+
   return (
-    <button onClick={handleGoogleAuth} className={className} disabled={disabled || isLoading}>
-      {children ?? 'Continue with Google'}
+    <button
+      onClick={handleGoogleAuth}
+      className={`${baseClasses} ${className}`}
+      disabled={disabled || isLoading}
+      style={{ width: '158px', borderRadius: '14px' }}
+    >
+      {children ? (
+        children
+      ) : (
+        <>
+          <Image alt="Google" src="/icons/Google.svg" width={24} height={24} className="w-6 h-6" />
+          <span className="text-black font-medium">Google</span>
+        </>
+      )}
     </button>
   );
 }

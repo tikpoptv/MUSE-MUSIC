@@ -17,9 +17,13 @@ export class LocalStorageManager {
     try {
       const item = localStorage.getItem(key);
       if (!item || item === 'undefined' || item === 'null') return null;
-      return JSON.parse(item) as T;
+      try {
+        return JSON.parse(item) as T;
+      } catch {
+        // Not JSON, return raw string value
+        return (item as unknown) as T;
+      }
     } catch {
-      this.remove(key);
       return null;
     }
   }
