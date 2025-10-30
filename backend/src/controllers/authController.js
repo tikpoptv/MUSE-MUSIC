@@ -8,6 +8,7 @@ const { successResponse, errorResponse } = require('../utils/response');
 const { logger } = require('../middleware/logger');
 const { validatePassword } = require('../utils/passwordValidation');
 const crypto = require('crypto');
+const { config } = require('../config/env');
 
 const register = async (req, res) => {
   try {
@@ -78,9 +79,39 @@ const register = async (req, res) => {
       }
     }
 
-    res.status(201).json(
-      successResponse('User registered successfully', newUser.toJSON())
+    const deviceInfo = req.headers['user-agent']?.includes('Mobile') ? 'mobile' : 'desktop';
+    const ipAddress = req.ip || req.connection.remoteAddress;
+    const userAgent = req.headers['user-agent'];
+
+    // Update login status
+    await UserService.updateLoginStatus(newUser.userID, 'online');
+    const session = await SessionService.createSession(
+      newUser.userID,
+      deviceInfo,
+      ipAddress,
+      userAgent
     );
+    const accessToken = JWTService.generateAccessToken(newUser.userID, newUser.username, newUser.role);
+    const refreshToken = JWTService.generateRefreshToken(newUser.userID);
+    const responseData = {
+      user: newUser.toJSON(),
+      session: {
+        sessionID: session.sessionid,
+        expiresAt: session.expiresat,
+        deviceInfo: session.deviceinfo,
+        ipAddress: session.ipaddress,
+        userAgent: session.useragent,
+        isActive: session.isactive,
+        createdAt: session.createdat
+      },
+      tokens: {
+        accessToken,
+        refreshToken,
+        tokenType: 'Bearer',
+        expiresIn: config.jwt.accessExpiresIn
+      }
+    };
+    res.status(201).json(successResponse('User registered successfully', responseData));
 
   } catch (error) {
     logger.error('Register error:', error);
@@ -171,7 +202,7 @@ const login = async (req, res) => {
         accessToken,
         refreshToken,
         tokenType: 'Bearer',
-        expiresIn: '7d'
+        expiresIn: config.jwt.accessExpiresIn
       }
     };
 
@@ -225,7 +256,12 @@ const googleLogin = async (req, res) => {
         isActive: result.session.isactive,
         createdAt: result.session.createdat
       },
-      tokens: result.tokens
+      tokens: {
+        accessToken: result.tokens.accessToken,
+        refreshToken: result.tokens.refreshToken,
+        tokenType: 'Bearer',
+        expiresIn: config.jwt.accessExpiresIn
+      }
     };
 
     res.status(200).json(
@@ -249,7 +285,6 @@ const googleLogin = async (req, res) => {
           );
         }
 
-        const { config } = require('../config/env');
         const redirectUri = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/auth/google/callback`;
         
         const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
@@ -332,7 +367,7 @@ const refreshToken = async (req, res) => {
       tokens: {
         accessToken: newAccessToken,
         tokenType: 'Bearer',
-        expiresIn: '7d'
+        expiresIn: config.jwt.accessExpiresIn
       }
     };
 

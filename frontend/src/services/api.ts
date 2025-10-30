@@ -1,3 +1,6 @@
+import { LocalStorageManager } from '../utils/localStorageManager';
+import { localStorageKeys } from '../utils/localStorageKeys';
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:7662';
 
 interface ApiResponse<T = unknown> {
@@ -32,7 +35,7 @@ class ApiService {
   ): Promise<ApiResponse<T>> {
     const url = `${this.baseURL}${endpoint}`;
     
-    const token = typeof window !== 'undefined' && window.localStorage ? localStorage.getItem('auth_token') : null;
+    const token = LocalStorageManager.get<string>(localStorageKeys.AUTH_TOKEN);
     if (token && !this.hasAuthToken()) {
       this.setAuthToken(token);
     }
@@ -50,7 +53,6 @@ class ApiService {
       const data = await response.json();
 
       if (response.status === 401 && this.hasAuthToken() && endpoint !== '/api/auth/refresh') {
-        
         if (!authService) {
           const authServiceModule = await import('./authService');
           authService = authServiceModule.authService;

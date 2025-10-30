@@ -2,6 +2,7 @@ import { render, RenderOptions, waitFor } from '@testing-library/react'
 import { ReactElement } from 'react'
 import '@testing-library/jest-dom'
 import type { MockResponseInit } from 'jest-fetch-mock'
+import { localStorageKeys } from '@/utils/localStorageKeys'
 
 // Setup default fetch mocks for integration tests
 beforeEach(() => {
@@ -13,6 +14,9 @@ const IntegrationProviders = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>
 }
 
+/**
+ * Renders a React element wrapped in integration test providers
+ */
 const integrationRender = (
   ui: ReactElement,
   options?: Omit<RenderOptions, 'wrapper'>,
@@ -22,7 +26,9 @@ const integrationRender = (
 export * from '@testing-library/react'
 export { integrationRender as render }
 
-// Integration test utilities
+/**
+ * Waits for an API call (promise function) and returns result after assertion
+ */
 export const waitForApiCall = async (apiCall: () => Promise<unknown>) => {
   const result = await apiCall()
   await waitFor(() => {
@@ -31,8 +37,11 @@ export const waitForApiCall = async (apiCall: () => Promise<unknown>) => {
   return result
 }
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:7662'
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:7662'
 
+/**
+ * Mocks a successful API response for a given endpoint
+ */
 export const mockApiResponse = (endpoint: string, response: unknown, init?: MockResponseInit) => {
   fetchMock.mockIf((req) => req.url === `${API_BASE_URL}${endpoint}`, async () => ({
     body: JSON.stringify(response),
@@ -41,12 +50,34 @@ export const mockApiResponse = (endpoint: string, response: unknown, init?: Mock
   }))
 }
 
+/**
+ * Mocks an error API response for a given endpoint
+ */
 export const mockApiError = (endpoint: string, status: number = 500, errorMessage: string = 'Mock error') => {
   fetchMock.mockIf((req) => req.url === `${API_BASE_URL}${endpoint}`, async () => ({
     body: JSON.stringify({ success: false, error: errorMessage }),
     status,
     headers: { 'content-type': 'application/json' },
   }))
+}
+
+/**
+ * Seeds authentication tokens and user/session into localStorage for testing.
+ */
+export const seedAuth = (token: string, user?: unknown, tokensObj?: unknown) => {
+  localStorage.setItem(localStorageKeys.AUTH_TOKEN, token)
+  if (user) localStorage.setItem(localStorageKeys.USER_DATA, JSON.stringify(user))
+  if (tokensObj) localStorage.setItem(localStorageKeys.TOKENS_DATA, JSON.stringify(tokensObj))
+}
+
+/**
+ * Clears authentication/session related keys from localStorage.
+ */
+export const clearAuth = () => {
+  localStorage.removeItem(localStorageKeys.AUTH_TOKEN)
+  localStorage.removeItem(localStorageKeys.USER_DATA)
+  localStorage.removeItem(localStorageKeys.SESSION_DATA)
+  localStorage.removeItem(localStorageKeys.TOKENS_DATA)
 }
 
 // Add a dummy test to prevent "no tests" error
@@ -105,7 +136,9 @@ interface PlaywrightPage {
   waitForLoadState: (state: string) => Promise<void>
 }
 
-// Helper to simulate user interactions
+/**
+ * Simulates basic user flows for Playwright-based tests
+ */
 export const simulateUserFlow = {
   async login(page: PlaywrightPage) {
     await page.fill('input[name="username"]', 'testuser')

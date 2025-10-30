@@ -1,39 +1,5 @@
 import apiService from './api';
-
-// API Response Structure จาก Backend
-interface SetupStatusResponse {
-  success: boolean;
-  data: {
-    allStatus: boolean;
-    stepStatus: {
-      step1: boolean;
-      step2: boolean;
-      step3: boolean;
-      step4: boolean;
-    };
-    stepData: {
-      step1: {
-        hasPassword: boolean;
-      } | null;
-      step2: {
-        birthday: string;
-      } | null;
-      step3: {
-        country: string;
-        timezone: string;
-        language: string;
-      } | null;
-      step4: {
-        genres: string[];
-      } | null;
-    };
-    setupCompleted: boolean;
-    setupSkipped: boolean;
-    provider: string;
-  };
-}
-
-// ไม่ต้องมี SetupStatusResponse interface แยก
+import { SetupStatusResponse } from '../types/setup';
 
 export const setupService = {
   async getSetupStatus(): Promise<SetupStatusResponse['data']> {
