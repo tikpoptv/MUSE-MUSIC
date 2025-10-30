@@ -1,4 +1,5 @@
 const { pool } = require('../config/database');
+const { successResponse, errorResponse } = require('../utils/response');
 
 const getHealth = async (req, res) => {
   const healthData = {
@@ -25,8 +26,11 @@ const getHealth = async (req, res) => {
     }
   }
 
-  const statusCode = healthData.database ? 200 : 503;
-  res.status(statusCode).json(healthData);
+  if (healthData.database) {
+    res.status(200).json(successResponse('MUSE Music API is running', healthData, 200));
+  } else {
+    res.status(503).json(errorResponse('API running but database connection failed', 503, healthData));
+  }
 };
 
 module.exports = {
