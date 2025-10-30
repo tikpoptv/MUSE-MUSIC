@@ -1,91 +1,56 @@
 import apiService from './api';
 import { AuthData, SessionData, TokensData } from '../types/auth';
+import { UserData } from '../types/user';
+import { LocalStorageManager } from '../utils/localStorageManager';
+import { localStorageKeys } from '../utils/localStorageKeys';
 
 export const authService = {
   setToken(token: string) {
     apiService.setAuthToken(token);
-    if (typeof window !== 'undefined' && window.localStorage) {
-      localStorage.setItem('auth_token', token);
-    }
+    LocalStorageManager.set(localStorageKeys.AUTH_TOKEN, token);
   },
 
-  setUserData(userData: AuthData['user']) {
-    if (typeof window !== 'undefined' && window.localStorage) {
-      localStorage.setItem('user_data', JSON.stringify(userData));
-    }
+  setUserData(userData: UserData) {
+    LocalStorageManager.set(localStorageKeys.USER_DATA, userData);
   },
 
-  setSessionData(sessionData: AuthData['session']) {
-    if (typeof window !== 'undefined' && window.localStorage) {
-      localStorage.setItem('session_data', JSON.stringify(sessionData));
-    }
+  setSessionData(sessionData: SessionData) {
+    LocalStorageManager.set(localStorageKeys.SESSION_DATA, sessionData);
   },
 
-  setTokensData(tokensData: AuthData['tokens']) {
-    if (typeof window !== 'undefined' && window.localStorage) {
-      localStorage.setItem('tokens_data', JSON.stringify(tokensData));
-    }
+  setTokensData(tokensData: TokensData) {
+    LocalStorageManager.set(localStorageKeys.TOKENS_DATA, tokensData);
   },
 
   setAuthData(authData: AuthData) {
-    // เก็บทุกอย่างที่ response ออกมา
     this.setToken(authData.tokens.accessToken);
     this.setUserData(authData.user);
     this.setSessionData(authData.session);
     this.setTokensData(authData.tokens);
   },
 
-  getUserData(): AuthData['user'] | null {
-    if (typeof window !== 'undefined' && window.localStorage) {
-      const userData = localStorage.getItem('user_data');
-      
-      if (userData && userData !== 'undefined' && userData !== 'null') {
-        try {
-          const parsedData = JSON.parse(userData);
-          return parsedData;
-        } catch (error) {
-          // eslint-disable-next-line no-console
-          console.error('Error parsing user data from localStorage:', error);
-          localStorage.removeItem('user_data');
-          return null;
-        }
-      }
-      return null;
-    }
-    return null;
+  getUserData(): UserData | null {
+    return LocalStorageManager.get<UserData>(localStorageKeys.USER_DATA);
   },
 
   getSessionData(): SessionData | null {
-    if (typeof window !== 'undefined' && window.localStorage) {
-      const sessionData = localStorage.getItem('session_data');
-      return sessionData ? JSON.parse(sessionData) : null;
-    }
-    return null;
+    return LocalStorageManager.get<SessionData>(localStorageKeys.SESSION_DATA);
   },
 
   getTokensData(): TokensData | null {
-    if (typeof window !== 'undefined' && window.localStorage) {
-      const tokensData = localStorage.getItem('tokens_data');
-      return tokensData ? JSON.parse(tokensData) : null;
-    }
-    return null;
+    return LocalStorageManager.get<TokensData>(localStorageKeys.TOKENS_DATA);
   },
 
   removeToken() {
     apiService.removeAuthToken();
-    if (typeof window !== 'undefined' && window.localStorage) {
-      localStorage.removeItem('auth_token');
-      localStorage.removeItem('user_data');
-      localStorage.removeItem('session_data');
-      localStorage.removeItem('tokens_data');
-    }
+    LocalStorageManager.remove(localStorageKeys.AUTH_TOKEN);
+    LocalStorageManager.remove(localStorageKeys.USER_DATA);
+    LocalStorageManager.remove(localStorageKeys.SESSION_DATA);
+    LocalStorageManager.remove(localStorageKeys.TOKENS_DATA);
   },
 
   getStoredToken(): string | null {
-    if (typeof window !== 'undefined' && window.localStorage) {
-      return localStorage.getItem('auth_token');
-    }
-    return null;
+    return LocalStorageManager.get<string>(localStorageKeys.AUTH_TOKEN);
   },
 
   hasToken(): boolean {
@@ -115,7 +80,6 @@ export const authService = {
 
   async logout(): Promise<{ success: boolean; message?: string }> {
     try {
-      // In test environment, avoid real network calls and side effects timing
       if (process.env.NODE_ENV === 'test') {
         this.removeToken();
         return { success: true };
@@ -129,45 +93,39 @@ export const authService = {
             'Content-Type': 'application/json'
           }
         });
-        
         if (!response.ok) {
           throw new Error('Logout API failed');
         }
       }
-      
       this.removeToken();
       return { success: true };
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('Logout API error:', error);
-      this.removeToken(); // Still clear local storage even if API fails
+      this.removeToken();
       return { success: false, message: 'Logout failed but local session cleared' };
     }
   },
 
-  async validateToken(): Promise<AuthData['user'] | null> {
+  async validateToken(): Promise<UserData | null> {
     if (!this.hasToken()) {
       return null;
     }
-
     if (!apiService.hasAuthToken()) {
       const storedToken = this.getStoredToken();
       if (storedToken) {
         apiService.setAuthToken(storedToken);
       }
     }
-
-    const response = await apiService.get<AuthData['user']>('/api/auth/me');
-
+    const response = await apiService.get<UserData>('/api/auth/me');
     if (response.success && response.data) {
       return response.data;
     }
-
     this.removeToken();
     return null;
   },
 
-  async autoLogin(): Promise<AuthData['user'] | null> {
+  async autoLogin(): Promise<UserData | null> {
     const storedToken = this.getStoredToken();
     if (storedToken) {
       apiService.setAuthToken(storedToken);
@@ -182,7 +140,7 @@ export const authService = {
     return !!(token && userData);
   },
 
-  getCurrentUser(): AuthData['user'] | null {
+  getCurrentUser(): UserData | null {
     return this.getUserData();
   },
 
@@ -227,98 +185,59 @@ export const authService = {
     return false;
   },
 
-  async fetchUserData(): Promise<AuthData['user']> {
-    const response = await apiService.get<{success: boolean, data: {user: AuthData['user']}}>('/api/user/me');
-    
+  async fetchUserData(): Promise<UserData> {
+    const response = await apiService.get<{success: boolean, data: {user: UserData}}>('/api/user/me');
     if (!response.success) {
       throw new Error(response.error || 'Failed to fetch user data');
     }
-    
     if (!response.data?.data?.user) {
       throw new Error('No user data received from API');
     }
-    
     return response.data.data.user;
   },
 
   async forgotPassword(email: string): Promise<{ success: boolean; message?: string }> {
     try {
-      const response = await apiService.post<{ success: boolean; message: string; data: { email: string } }>('/api/auth/forgot-password', {
-        email
-      });
-
+      const response = await apiService.post<{ success: boolean; message: string; data: { email: string } }>('/api/auth/forgot-password', { email });
       if (response.success) {
-        return { 
-          success: true, 
-          message: response.data?.message || 'Password reset link sent to your email' 
-        };
+        return { success: true, message: response.data?.message || 'Password reset link sent to your email' };
       } else {
-        return { 
-          success: false, 
-          message: response.error || 'Failed to send password reset email' 
-        };
+        return { success: false, message: response.error || 'Failed to send password reset email' };
       }
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('Forgot password error:', error);
-      return { 
-        success: false, 
-        message: 'An error occurred while sending password reset email' 
-      };
+      return { success: false, message: 'An error occurred while sending password reset email' };
     }
   },
 
   async resetPassword(token: string, password: string): Promise<{ success: boolean; message?: string }> {
     try {
-      const response = await apiService.post<{ success: boolean; message: string }>('/api/auth/reset-password', {
-        token,
-        password
-      });
-
+      const response = await apiService.post<{ success: boolean; message: string }>('/api/auth/reset-password', { token, password });
       if (response.success) {
-        return { 
-          success: true, 
-          message: response.data?.message || 'Password reset successfully' 
-        };
+        return { success: true, message: response.data?.message || 'Password reset successfully' };
       } else {
-        return { 
-          success: false, 
-          message: response.error || 'Failed to reset password' 
-        };
+        return { success: false, message: response.error || 'Failed to reset password' };
       }
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('Reset password error:', error);
-      return { 
-        success: false, 
-        message: 'An error occurred while resetting password' 
-      };
+      return { success: false, message: 'An error occurred while resetting password' };
     }
   },
 
   async validateResetToken(token: string): Promise<{ success: boolean; message?: string; data?: { email: string; username: string } }> {
     try {
       const response = await apiService.get<{ success: boolean; message: string; data: { email: string; username: string } }>(`/api/auth/validate-reset-token/${token}`);
-
       if (response.success) {
-        return { 
-          success: true, 
-          message: response.data?.message || 'Reset token is valid',
-          data: response.data?.data
-        };
+        return { success: true, message: response.data?.message || 'Reset token is valid', data: response.data?.data };
       } else {
-        return { 
-          success: false, 
-          message: response.error || 'Invalid or expired reset token' 
-        };
+        return { success: false, message: response.error || 'Invalid or expired reset token' };
       }
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('Validate reset token error:', error);
-      return { 
-        success: false, 
-        message: 'An error occurred while validating reset token' 
-      };
+      return { success: false, message: 'An error occurred while validating reset token' };
     }
   }
 };

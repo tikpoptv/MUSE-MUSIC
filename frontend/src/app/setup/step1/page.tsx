@@ -7,9 +7,7 @@ import Image from 'next/image';
 import { setupService } from '@/services/setupService';
 import { SetupLayout, SetupHeader, SetupNavigation, SetupButton } from '@/components/setup';
 import { passwordRules, validatePassword, validateFormData } from '@/utils/passwordValidation';
-
-// Import interface type
-type SetupStatusData = Awaited<ReturnType<typeof setupService.getSetupStatus>>;
+import { SetupStatusData } from '@/types/setup';
 
 export default function SetupStep1() {
   const router = useRouter();
@@ -38,28 +36,22 @@ export default function SetupStep1() {
         
 
         if (data.stepStatus && data.stepStatus.step1) {
-          console.log('Step 1 is completed, checking for password data...');
           if (data.stepData && data.stepData.step1?.hasPassword) {
-            console.log('Auto-filling password fields...');
             setPassword('*****');
             setConfirmPassword('*****');
             setIsValid(true);
             toast.success('Password already set up! Auto-filled with *****. You can proceed to next step.');
           } else {
-            console.log('No password data, redirecting...');
             toast.success('Password already set up! Redirecting to next step...');
             setTimeout(() => {
               router.push('/setup/step2');
             }, 1500);
             return;
           }
-        } else {
-          console.log('Step 1 not completed yet');
         }
         
         setIsLoading(false);
-      } catch (error) {
-        console.error('Error fetching setup status:', error);
+      } catch {
         toast.error('Authentication failed. Please login again.');
         setTimeout(() => {
           router.push('/login');
@@ -71,11 +63,9 @@ export default function SetupStep1() {
   }, [router]);
 
   useEffect(() => {
-    console.log('Password validation triggered:', { password, confirmPassword });
     
     if (password === '*****') {
       // Password already set up, skip validation
-      console.log('Password is *****, setting valid to true');
       setPasswordError('');
       setIsValid(true);
       setPasswordValidation({});

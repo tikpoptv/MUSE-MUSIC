@@ -23,3 +23,15 @@ export interface SetupStatusResponse {
     provider: string;
   }
 }
+
+export interface TwoFAStatus {
+  twofactorenabled: boolean;
+  twoFactorSetupCompleted: boolean;
+  setupStep: string;
+  failedAttempts: number;
+  isLocked: boolean;
+  lockedUntil: string | null;
+  backupCodesCount: number;
+}
+
+export type SetupStatusData = Awaited<ReturnType<typeof import('../services/setupService').setupService.getSetupStatus>>;
