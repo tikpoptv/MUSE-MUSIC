@@ -4,9 +4,9 @@ test.describe('Navigation Tests', () => {
   test('should load home page with correct content', async ({ page }) => {
     await page.goto('/');
     await expect(page).toHaveTitle(/MUSE MUSIC/);
-    await expect(page.locator('h1')).toContainText('MUSE');
-    await expect(page.locator('h2').first()).toContainText('Music');
-    await expect(page.locator('text=Coming Soon')).toBeVisible();
+    await expect(page.locator('h1')).toContainText('Discover the soul of music!');
+    await expect(page.locator('h2').first()).toContainText(/English|Korean|Happy|Sad/);
+    await expect(page.locator('text=Coming Soon')).toHaveCount(0);
   });
 
   test('should navigate to login page', async ({ page }) => {
@@ -54,13 +54,13 @@ test.describe('Navigation Tests', () => {
       await expect(mobileMenu.locator('a[href="/"]')).toBeVisible();
       await expect(mobileMenu.locator('a[href="/for-you"]')).toBeVisible();
       await expect(mobileMenu.locator('a[href="/archive"]')).toBeVisible();
-      await expect(page.locator('input[placeholder*="Search song"]').first()).toBeVisible();
-      await expect(mobileMenu.locator('a[href="/login"]')).toBeVisible();
+      await expect(page.locator('input[placeholder*="Find song or paste YouTube link"]').first()).toBeVisible();
+      await expect(mobileMenu.locator('a[href="/login"]').first()).toBeVisible();
     } else {
       await expect(page.locator('a[href="/"]').first()).toBeVisible();
       await expect(page.locator('a[href="/for-you"]').first()).toBeVisible();
       await expect(page.locator('a[href="/archive"]').first()).toBeVisible();
-      await expect(page.locator('input[placeholder*="Search song"]').first()).toBeVisible();
+      await expect(page.locator('input[placeholder*="Find song or paste YouTube link"]').first()).toBeVisible();
       await expect(page.locator('a[href="/login"]').first()).toBeVisible();
     }
   });
