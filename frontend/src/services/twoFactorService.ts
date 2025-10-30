@@ -1,51 +1,11 @@
 import apiService from './api';
-
-interface TwoFactorSetupResponse {
-  success: boolean;
-  message: string;
-  data: {
-    qrCode: string;
-    manualEntryKey: string;
-  };
-}
-
-interface TwoFactorVerifyResponse {
-  success: boolean;
-  message: string;
-  data: {
-    verified: boolean;
-  };
-}
-
-interface TwoFactorBackupCodesResponse {
-  success: boolean;
-  message: string;
-  data: {
-    backupCodes: string[];
-  };
-}
-
-interface TwoFactorStatusResponse {
-  success: boolean;
-  message: string;
-  data: {
-    twofactorenabled: boolean;
-    twoFactorSetupCompleted: boolean;
-    setupStep: string;
-    failedAttempts: number;
-    isLocked: boolean;
-    lockedUntil: string | null;
-    backupCodesCount: number;
-  };
-}
-
-interface TwoFactorDisableResponse {
-  success: boolean;
-  message: string;
-  data: {
-    disabled: boolean;
-  };
-}
+import {
+  TwoFactorSetupResponse,
+  TwoFactorVerifyResponse,
+  TwoFactorBackupCodesResponse,
+  TwoFactorStatusResponse,
+  TwoFactorDisableResponse
+} from '../types/2fa';
 
 export const twoFactorService = {
   async setup2FA(): Promise<TwoFactorSetupResponse['data']> {

@@ -53,3 +53,49 @@ export interface RecommendedAlbum {
   mood: string;
   genre: string;
 }
+
+export interface UserSettings {
+  username: string;
+  email: string;
+  fullName: string;
+  profilePicture: string | null;
+  country: string;
+  timezone: string;
+  language: string;
+  provider: string;
+}
+
+export interface UserSettingsResponse {
+  success: boolean;
+  message: string;
+  data: {
+    settings: UserSettings;
+  };
+}
+
+export interface UpdateUserSettingsRequest {
+  username?: string;
+  email?: string;
+  fullName?: string;
+  country?: string;
+  timezone?: string;
+  language?: string;
+}
+
+export interface UpdateUserSettingsResponse {
+  success: boolean;
+  message: string;
+  data: {
+    settings: UserSettings;
+  };
+}
+
+export interface ResetPasswordRequest {
+  currentPassword: string;
+  newPassword: string;
+}
+
+export interface ResetPasswordResponse {
+  success: boolean;
+  message: string;
+}

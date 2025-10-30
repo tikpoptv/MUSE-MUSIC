@@ -1,50 +1,12 @@
 import apiService from './api';
-
-interface UserSettings {
-  username: string;
-  email: string;
-  fullName: string;
-  profilePicture: string | null;
-  country: string;
-  timezone: string;
-  language: string;
-  provider: string;
-}
-
-interface UserSettingsResponse {
-  success: boolean;
-  message: string;
-  data: {
-    settings: UserSettings;
-  };
-}
-
-interface UpdateUserSettingsRequest {
-  username?: string;
-  email?: string;
-  fullName?: string;
-  country?: string;
-  timezone?: string;
-  language?: string;
-}
-
-interface UpdateUserSettingsResponse {
-  success: boolean;
-  message: string;
-  data: {
-    settings: UserSettings;
-  };
-}
-
-interface ResetPasswordRequest {
-  currentPassword: string;
-  newPassword: string;
-}
-
-interface ResetPasswordResponse {
-  success: boolean;
-  message: string;
-}
+import {
+  UserSettings,
+  UserSettingsResponse,
+  UpdateUserSettingsRequest,
+  UpdateUserSettingsResponse,
+  ResetPasswordRequest,
+  ResetPasswordResponse,
+} from '../types/user';
 
 export const userService = {
   async getUserSettings(): Promise<UserSettings> {

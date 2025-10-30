@@ -1,70 +1,5 @@
 import apiService from './api';
-
-interface LoginResponse {
-  token: string;
-  user: {
-    id: string;
-    email: string;
-    name: string;
-  };
-}
-
-interface User {
-  id: string;
-  email: string;
-  name: string;
-}
-
-interface GoogleAuthResponse {
-  user: User;
-  tokens: {
-    accessToken: string;
-    refreshToken: string;
-    tokenType: string;
-    expiresIn: string;
-  };
-}
-
-interface UserData {
-  userID: string;
-  username: string;
-  email: string;
-  fullName: string;
-  profilePicture: string;
-  provider: string;
-  providerID: string;
-  providerEmail: string;
-  role: string;
-  loginStatus: string;
-  setupCompleted: boolean;
-  setupSkipped: boolean;
-  registerDate: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface SessionData {
-  sessionID: string;
-  expiresAt: string;
-  deviceInfo: string;
-  ipAddress: string;
-  userAgent: string;
-  isActive: boolean;
-  createdAt: string;
-}
-
-interface TokensData {
-  accessToken: string;
-  refreshToken: string;
-  tokenType: string;
-  expiresIn: string;
-}
-
-interface AuthData {
-  user: UserData;
-  session: SessionData;
-  tokens: TokensData;
-}
+import { AuthData, SessionData, TokensData } from '../types/auth';
 
 export const authService = {
   setToken(token: string) {
@@ -74,19 +9,19 @@ export const authService = {
     }
   },
 
-  setUserData(userData: UserData) {
+  setUserData(userData: AuthData['user']) {
     if (typeof window !== 'undefined' && window.localStorage) {
       localStorage.setItem('user_data', JSON.stringify(userData));
     }
   },
 
-  setSessionData(sessionData: SessionData) {
+  setSessionData(sessionData: AuthData['session']) {
     if (typeof window !== 'undefined' && window.localStorage) {
       localStorage.setItem('session_data', JSON.stringify(sessionData));
     }
   },
 
-  setTokensData(tokensData: TokensData) {
+  setTokensData(tokensData: AuthData['tokens']) {
     if (typeof window !== 'undefined' && window.localStorage) {
       localStorage.setItem('tokens_data', JSON.stringify(tokensData));
     }
@@ -100,7 +35,7 @@ export const authService = {
     this.setTokensData(authData.tokens);
   },
 
-  getUserData(): UserData | null {
+  getUserData(): AuthData['user'] | null {
     if (typeof window !== 'undefined' && window.localStorage) {
       const userData = localStorage.getItem('user_data');
       
@@ -157,17 +92,24 @@ export const authService = {
     return apiService.hasAuthToken() || !!this.getStoredToken();
   },
 
-  async login(email: string, password: string): Promise<LoginResponse | null> {
-    const response = await apiService.post<LoginResponse>('/api/auth/login', {
+  async login(email: string, password: string): Promise<AuthData | null> {
+    const response = await apiService.post<{success: boolean, data: AuthData}>('/api/auth/login', {
       email,
       password,
     });
-
-    if (response.success && response.data) {
-      this.setToken(response.data.token);
-      return response.data;
+    if (response.success && response.data && response.data.data) {
+      this.setAuthData(response.data.data);
+      return response.data.data;
     }
+    return null;
+  },
 
+  async register(payload: Record<string, unknown>): Promise<AuthData | null> {
+    const response = await apiService.post<{success: boolean, data: AuthData}>('/api/auth/register', payload);
+    if (response.success && response.data && response.data.data) {
+      this.setAuthData(response.data.data);
+      return response.data.data;
+    }
     return null;
   },
 
@@ -203,7 +145,7 @@ export const authService = {
     }
   },
 
-  async validateToken(): Promise<User | null> {
+  async validateToken(): Promise<AuthData['user'] | null> {
     if (!this.hasToken()) {
       return null;
     }
@@ -215,7 +157,7 @@ export const authService = {
       }
     }
 
-    const response = await apiService.get<User>('/api/auth/me');
+    const response = await apiService.get<AuthData['user']>('/api/auth/me');
 
     if (response.success && response.data) {
       return response.data;
@@ -225,7 +167,7 @@ export const authService = {
     return null;
   },
 
-  async autoLogin(): Promise<User | null> {
+  async autoLogin(): Promise<AuthData['user'] | null> {
     const storedToken = this.getStoredToken();
     if (storedToken) {
       apiService.setAuthToken(storedToken);
@@ -240,7 +182,7 @@ export const authService = {
     return !!(token && userData);
   },
 
-  getCurrentUser(): UserData | null {
+  getCurrentUser(): AuthData['user'] | null {
     return this.getUserData();
   },
 
@@ -252,56 +194,41 @@ export const authService = {
     return this.getTokensData();
   },
 
-  async googleAuth(googleToken: string): Promise<GoogleAuthResponse | null> {
-    const response = await apiService.post<GoogleAuthResponse>('/api/auth/google', {
+  async googleAuth(googleToken: string): Promise<AuthData | null> {
+    const response = await apiService.post<{success: boolean, data: AuthData}>('/api/auth/google', {
       token: googleToken,
     });
-
-    if (response.success && response.data) {
-      this.setToken(response.data.tokens.accessToken);
-      return response.data;
+    if (response.success && response.data && response.data.data) {
+      this.setAuthData(response.data.data);
+      return response.data.data;
     }
-
     return null;
   },
 
   async refreshAccessToken(): Promise<boolean> {
     const tokensData = this.getTokensData();
-    
     if (!tokensData?.refreshToken) {
       return false;
     }
-
     try {
-      const response = await apiService.post<{ tokens: { accessToken: string; tokenType: string; expiresIn: string } }>('/api/auth/refresh', {
-        refreshToken: tokensData.refreshToken,
-      });
-
-      if (response.success && response.data) {
-        // อัปเดต access token ใหม่
-        this.setToken(response.data.tokens.accessToken);
-        
-        // อัปเดต tokens data
-        const updatedTokensData = {
-          ...tokensData,
-          accessToken: response.data.tokens.accessToken,
-          tokenType: response.data.tokens.tokenType,
-          expiresIn: response.data.tokens.expiresIn,
-        };
-        this.setTokensData(updatedTokensData);
-        
+      const response = await apiService.post<{success: boolean, data: { tokens: TokensData }}>(
+        '/api/auth/refresh',
+        { refreshToken: tokensData.refreshToken }
+      );
+      if (response.success && response.data && response.data.data) {
+        const { tokens } = response.data.data;
+        this.setToken(tokens.accessToken);
+        this.setTokensData(tokens);
         return true;
       }
-    } catch (error) {
-      // eslint-disable-next-line no-console
-      console.error('Refresh token failed:', error);
+    } catch {
+      // ...
     }
-
     return false;
   },
 
-  async fetchUserData(): Promise<UserData> {
-    const response = await apiService.get<{success: boolean, data: {user: UserData}}>('/api/user/me');
+  async fetchUserData(): Promise<AuthData['user']> {
+    const response = await apiService.get<{success: boolean, data: {user: AuthData['user']}}>('/api/user/me');
     
     if (!response.success) {
       throw new Error(response.error || 'Failed to fetch user data');
