@@ -34,12 +34,12 @@ class ApiService {
     options: RequestInit = {}
   ): Promise<ApiResponse<T>> {
     const url = `${this.baseURL}${endpoint}`;
-
+    
     const token = LocalStorageManager.get<string>(localStorageKeys.AUTH_TOKEN);
     if (token && !this.hasAuthToken()) {
       this.setAuthToken(token);
     }
-
+    
     const config: RequestInit = {
       ...options,
       headers: {
@@ -57,9 +57,9 @@ class ApiService {
           const authServiceModule = await import('./authService');
           authService = authServiceModule.authService;
         }
-
+        
         const refreshSuccess = await authService.refreshAccessToken();
-
+        
         if (refreshSuccess) {
           const retryConfig: RequestInit = {
             ...config,
@@ -68,17 +68,17 @@ class ApiService {
               'Authorization': `Bearer ${this.getAuthToken()}`,
             },
           };
-
+          
           const retryResponse = await fetch(url, retryConfig);
           const retryData = await retryResponse.json();
-
+          
           if (!retryResponse.ok) {
             return {
               success: false,
               error: retryData.error || retryData.message || 'Request failed',
             };
           }
-
+          
           return {
             success: true,
             data: retryData,

@@ -1,7 +1,6 @@
 import { test, expect } from '@playwright/test';
+import { localStorageKeys } from '../../src/utils/localStorageKeys';
 
-// E2E-001: User completes login and lands on account dashboard (mocked)
-// Strategy: seed localStorage with minimal auth values, reload, and assert account UI
 test.describe('Login (mocked) and account access', () => {
   test.skip(process.env.CI === 'true', 'Synthetic login seed relies on local storage timing; skip on CI');
 
@@ -31,16 +30,18 @@ test.describe('Login (mocked) and account access', () => {
       expiresIn: '3600',
     };
 
+    await page.route('**/api/auth/me', async route => {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(user) });
+    });
+
+    await page.addInitScript((data: any) => {
+      localStorage.setItem(data.keys.AUTH_TOKEN, data.tokens.accessToken);
+      localStorage.setItem(data.keys.USER_DATA, JSON.stringify(data.user));
+      localStorage.setItem(data.keys.SESSION_DATA, JSON.stringify({ sessionID: 's_001', expiresAt: new Date(Date.now() + 3600_000).toISOString() }));
+      localStorage.setItem(data.keys.TOKENS_DATA, JSON.stringify(data.tokens));
+    }, { user, tokens, keys: localStorageKeys });
+
     await page.goto('/account', { waitUntil: 'domcontentloaded' });
-
-    await page.evaluate(([u, t]) => {
-      localStorage.setItem('auth_token', (t as any).accessToken);
-      localStorage.setItem('user_data', JSON.stringify(u));
-      localStorage.setItem('session_data', JSON.stringify({ sessionID: 's_001', expiresAt: new Date(Date.now() + 3600_000).toISOString() }));
-      localStorage.setItem('tokens_data', JSON.stringify(t));
-    }, [user, tokens] as any);
-
-    await page.reload({ waitUntil: 'domcontentloaded' });
 
     await expect(page).toHaveURL(/\/account$/);
     await expect(page.getByText(/Profile/i)).toBeVisible({ timeout: 15000 });
