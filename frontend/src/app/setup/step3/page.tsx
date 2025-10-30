@@ -18,6 +18,7 @@ import {
 } from 'date-fns';
 import toast from 'react-hot-toast';
 import { SetupLayout, SetupHeader, SetupNavigation, SetupButton } from '@/components/setup';
+import { SetupStatusResponse } from '@/types/setup';
 
 export default function SetupStep2() {
   const router = useRouter();
@@ -70,15 +71,12 @@ export default function SetupStep2() {
           return;
         }
 
-            const data = await setupService.getSetupStatus();
+            const data: SetupStatusResponse['data'] = await setupService.getSetupStatus();
         
-        if (data.stepStatus && (data.stepStatus as Record<string, boolean>).step3) {
-          if (data.stepData && (data.stepData as Record<string, unknown>).step3 && 
-              typeof (data.stepData as Record<string, unknown>).step3 === 'object' && 
-              (data.stepData as Record<string, unknown>).step3 !== null &&
-              'birthday' in ((data.stepData as Record<string, unknown>).step3 as Record<string, unknown>)) {
-            const step3Data = (data.stepData as Record<string, unknown>).step3 as { birthday: string };
-            const birthdayDate = new Date(step3Data.birthday);
+        if (data.stepStatus?.step3) {
+          const step3Data = data.stepData?.step3;
+          if (step3Data && typeof step3Data === 'object' && 'birthday' in step3Data) {
+            const birthdayDate = new Date((step3Data as { birthday: string }).birthday);
             setSelectedDate(birthdayDate);
             setCurrentMonth(birthdayDate);
             toast.success('Birthday loaded from previous setup!');

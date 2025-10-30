@@ -7,6 +7,7 @@ import Image from 'next/image';
 import { setupService } from '@/services/setupService';
 import { authService } from '@/services/authService';
 import { SetupLayout, SetupHeader, SetupNavigation, SetupButton } from '@/components/setup';
+import { SetupStatusResponse } from '@/types/setup';
 
 export default function SetupStep5() {
   const router = useRouter();
@@ -105,17 +106,14 @@ export default function SetupStep5() {
           return;
         }
 
-            const data = await setupService.getSetupStatus();
+            const data: SetupStatusResponse['data'] = await setupService.getSetupStatus();
         
-        if (data.stepStatus && (data.stepStatus as Record<string, boolean>).step5) {
-          if (data.stepData && (data.stepData as Record<string, unknown>).step5 && 
-              typeof (data.stepData as Record<string, unknown>).step5 === 'object' && 
-              (data.stepData as Record<string, unknown>).step5 !== null &&
-              'genres' in ((data.stepData as Record<string, unknown>).step5 as Record<string, unknown>)) {
-            const step5Data = (data.stepData as Record<string, unknown>).step5 as { genres: string[] };
-            setSelectedGenres(step5Data.genres);
+        if (data.stepStatus?.step5) {
+          const step5Data = data.stepData?.step5;
+          if (step5Data && typeof step5Data === 'object' && 'genres' in step5Data) {
+            setSelectedGenres((step5Data as { genres: string[] }).genres);
             const colors: { [key: string]: string } = {};
-            step5Data.genres.forEach((genre: string) => {
+            (step5Data as { genres: string[] }).genres.forEach((genre: string) => {
               colors[genre] = getRandomColor();
             });
             setGenreColors(colors);
