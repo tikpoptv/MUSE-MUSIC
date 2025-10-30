@@ -33,6 +33,11 @@ const config = {
     clientSecret: process.env.GOOGLE_CLIENT_SECRET
   },
   
+  lrclib: {
+    baseUrl: process.env.LRCLIB_BASE_URL || 'https://lrclib.net',
+    userAgent: process.env.LRCLIB_USER_AGENT || 'MUSE-MUSIC Backend (https://github.com/tikpoptv/MUSE-MUSIC)'
+  },
+  
   frontend: {
     url: process.env.FRONTEND_URL || 'http://localhost:3000'
   },

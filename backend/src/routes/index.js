@@ -8,6 +8,7 @@ const setupRoutes = require('./setup');
 const setupSaveRoutes = require('./setupSave');
 const translateRoutes = require('./analysis');
 const twoFactorRoutes = require('./twoFactor');
+const lyricsRoutes = require('./lyrics');
 
 router.get('/', (req, res) => {
   res.json({
@@ -27,11 +28,9 @@ router.use('/api/user', userRoutes);
 router.use('/api/setup', setupRoutes);
 router.use('/api/setup', setupSaveRoutes);
 router.use('/api/2fa', twoFactorRoutes);
+router.use('/api/lyrics', lyricsRoutes);
 
-// Mount them
-router.use('/api/analysis', translateRoutes);
-
-// Mount them
+// Mount analysis
 router.use('/api/analysis', translateRoutes);
 
 module.exports = router;

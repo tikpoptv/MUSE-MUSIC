@@ -58,7 +58,10 @@ const requireRole = (roles) => {
   };
 };
 
+const requireAccessToken = authenticateToken; // alias for clarity in routes
+
 module.exports = {
   authenticateToken,
-  requireRole
+  requireRole,
+  requireAccessToken
 };
