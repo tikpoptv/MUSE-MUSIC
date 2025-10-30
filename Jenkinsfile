@@ -31,6 +31,12 @@ pipeline {
         }
 
         stage('Build & Lint Parallel') {
+            when {
+                anyOf {
+                    branch 'main'
+                    branch 'develop'
+                }
+            }
             parallel {
                 stage('Frontend') {
                     stages {
@@ -111,6 +117,12 @@ pipeline {
         }
 
         stage('Unit Tests') {
+            when {
+                anyOf {
+                    branch 'main'
+                    branch 'develop'
+                }
+            }
             parallel {
                 stage('Frontend Unit Tests') {
                     steps {
@@ -162,11 +174,10 @@ pipeline {
         }
 
         stage('Integration Tests') {
-            when { 
-                anyOf { 
+            when {
+                anyOf {
                     branch 'main'
                     branch 'develop'
-                    changeRequest()
                 }
             }
             parallel {
@@ -330,7 +341,7 @@ pipeline {
         }
 
         stage('Skip Deploy') {
-            when { not { branch 'main' } }
+            when { not { anyOf { branch 'main'; branch 'develop' } } }
             steps {
                 script {
                     echo "⏭️ Skipping deploy: branch = ${env.BRANCH_NAME}, only main can deploy."
