@@ -29,10 +29,10 @@ describe('API Integration Tests', () => {
       mockApiResponse('/api/auth/login', {
         success: true,
         data: {
-          user: {
+        user: {
             userID: '1',
             username: 'testuser',
-            email: 'test@example.com',
+          email: 'test@example.com',
             fullName: 'Test User',
             profilePicture: '',
             provider: 'google',

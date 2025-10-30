@@ -52,7 +52,7 @@ export default function GoogleAuthButton({
   const baseClasses = "py-3 border border-gray-300 flex items-center justify-center space-x-3 hover:bg-gray-50 transition-colors duration-200 mx-auto disabled:opacity-50 disabled:cursor-not-allowed";
 
   return (
-    <button
+    <button 
       onClick={handleGoogleAuth}
       className={`${baseClasses} ${className}`}
       disabled={disabled || isLoading}
