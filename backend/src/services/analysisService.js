@@ -32,11 +32,19 @@ class AnalysisService {
       const processingRaw = processingInsertResult.rows[0];
       const processing = {
         processingID: processingRaw.processingid,
-        songID: processingRaw.songid,
+        songID: song.songID,
         aiModel: processingRaw.aimodel,
         status: processingRaw.status,
         createdBy: processingRaw.createdby
       };
+      
+      // Validate IDs
+      if (!processing.processingID) {
+        throw new Error('Failed to create processing record: processingID is missing');
+      }
+      if (!song.songID) {
+        throw new Error('Failed to get song record: songID is missing');
+      }
       
       const startTime = Date.now();
       let translationResult = null;
@@ -112,9 +120,15 @@ class AnalysisService {
       `;
       await DatabaseService.query(updateQuery, updateValues);
       
+      // Final validation before return
+      if (!processing.processingID || !song.songID) {
+        logger.error('Missing IDs in result:', { processingID: processing.processingID, songID: song.songID });
+        throw new Error('Failed to complete analysis: missing IDs');
+      }
+      
       return {
-        processingID: processing.processingID,
-        songID: song.songID,
+        processingID: String(processing.processingID),
+        songID: String(song.songID),
         status: 'completed',
         translation: translationResult ? {
           text: translationResult.translation,
