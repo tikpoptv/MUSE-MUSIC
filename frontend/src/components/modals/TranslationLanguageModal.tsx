@@ -68,12 +68,14 @@ export default function TranslationLanguageModal({
             <select
               value={originalLanguage}
               onChange={(e) => setOriginalLanguage(e.target.value)}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7B61FF] focus:border-transparent text-gray-900 bg-white"
+              className="w-full py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7B61FF] focus:border-transparent text-gray-900 bg-white"
               style={{
+                paddingLeft: '16px',
+                paddingRight: '40px',
                 appearance: 'none',
                 backgroundImage: 'url("/icons/dropdown-arrow.svg")',
                 backgroundRepeat: 'no-repeat',
-                backgroundPosition: 'right 12px center',
+                backgroundPosition: 'right 16px center',
                 backgroundSize: '16px'
               }}
             >
@@ -92,12 +94,14 @@ export default function TranslationLanguageModal({
             <select
               value={targetLanguage}
               onChange={(e) => setTargetLanguage(e.target.value)}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7B61FF] focus:border-transparent text-gray-900 bg-white"
+              className="w-full py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7B61FF] focus:border-transparent text-gray-900 bg-white"
               style={{
+                paddingLeft: '16px',
+                paddingRight: '40px',
                 appearance: 'none',
                 backgroundImage: 'url("/icons/dropdown-arrow.svg")',
                 backgroundRepeat: 'no-repeat',
-                backgroundPosition: 'right 12px center',
+                backgroundPosition: 'right 16px center',
                 backgroundSize: '16px'
               }}
             >

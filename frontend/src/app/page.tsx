@@ -141,8 +141,28 @@ export default function Home() {
         }
       });
 
+      // eslint-disable-next-line no-console
+      console.log('Analysis result:', result);
+
+      if (!result || !result.songID || result.songID === 'undefined') {
+        toast.error('Invalid song ID returned from server', { id: 'analysis' });
+        // eslint-disable-next-line no-console
+        console.error('Invalid songID:', result?.songID);
+        return;
+      }
+
+      if (!result.processingID || result.processingID === 'undefined') {
+        toast.error('Invalid processing ID returned from server', { id: 'analysis' });
+        // eslint-disable-next-line no-console
+        console.error('Invalid processingID:', result?.processingID);
+        return;
+      }
+
       toast.success('Analysis completed!', { id: 'analysis' });
-      router.push(`/songs/${result.songID}?processingID=${result.processingID}`);
+      
+      // eslint-disable-next-line no-console
+      console.log('Redirecting to:', `/song/${result.songID}?processingID=${result.processingID}`);
+      router.push(`/song/${result.songID}?processingID=${result.processingID}`);
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('Analysis error:', error);
