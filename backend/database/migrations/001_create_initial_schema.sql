@@ -73,6 +73,33 @@ CREATE TABLE Customers (
 );
 
 -- =========================
+-- Table: LyricsSearchResults (External Lyrics API Results)
+-- =========================
+CREATE TABLE LyricsSearchResults (
+    lyricsSearchResultID UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    externalID INT NOT NULL UNIQUE, -- ID from external API (LRCLIB)
+    trackName VARCHAR(200) NOT NULL,
+    artistName VARCHAR(150) NOT NULL,
+    albumName VARCHAR(200),
+    duration INT, -- duration in seconds
+    instrumental BOOLEAN DEFAULT FALSE,
+    plainLyrics TEXT, -- Plain lyrics text
+    syncedLyrics TEXT, -- Synced lyrics (LRC format)
+    
+    -- Usage tracking
+    usageCount INT DEFAULT 0, -- จำนวนครั้งที่ถูกนำไปใช้สร้าง Song
+    lastUsedAt TIMESTAMP, -- ครั้งล่าสุดที่ถูกใช้
+    
+    -- Metadata
+    sourceAPI VARCHAR(50) DEFAULT 'lrclib', -- Source API name
+    fetchedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- When this record was fetched from external API
+    createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    CONSTRAINT check_source_api CHECK (sourceAPI IN ('lrclib', 'other'))
+);
+
+-- =========================
 -- Table: Songs
 -- =========================
 CREATE TABLE Songs (
@@ -88,13 +115,25 @@ CREATE TABLE Songs (
     approvedBy UUID, -- who approved this song
     playCount INT DEFAULT 0,
     popularity INT DEFAULT 0,
+    
+    -- Lyrics Search Result Reference
+    lyricsSearchResultID UUID, -- Reference to LyricsSearchResults if song was created from external API
+    
+    -- Song Source Status
+    sourceStatus VARCHAR(50) DEFAULT 'manual', -- 'manual', 'from_lyrics_search', 'external'
+    -- 'manual': เพลงที่ผู้ใช้กรอกเนื้อเพลงเอง
+    -- 'from_lyrics_search': เพลงที่สร้างจาก LyricsSearchResults
+    -- 'external': เพลงจากแหล่งอื่น
+    
     createdBy UUID, -- who added this song
     updatedBy UUID, -- who last updated this song
     createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (createdBy) REFERENCES Users(userID) ON DELETE SET NULL,
     FOREIGN KEY (updatedBy) REFERENCES Users(userID) ON DELETE SET NULL,
-    FOREIGN KEY (approvedBy) REFERENCES Users(userID) ON DELETE SET NULL
+    FOREIGN KEY (approvedBy) REFERENCES Users(userID) ON DELETE SET NULL,
+    FOREIGN KEY (lyricsSearchResultID) REFERENCES LyricsSearchResults(lyricsSearchResultID) ON DELETE SET NULL,
+    CONSTRAINT check_source_status CHECK (sourceStatus IN ('manual', 'from_lyrics_search', 'external'))
 );
 
 -- =========================
@@ -149,6 +188,7 @@ CREATE TABLE SongAIProcessing (
     
     -- Translation Results
     translation TEXT,
+    interpretation TEXT, -- Interpretation/meaning of the translation
     originalLanguage VARCHAR(10),
     targetLanguage VARCHAR(10),
     translationConfidence FLOAT DEFAULT 0.0,
@@ -380,6 +420,16 @@ CREATE INDEX idx_customers_last_active ON Customers(lastActiveAt);
 CREATE INDEX idx_customers_language ON Customers(preferredLanguage);
 CREATE INDEX idx_customers_audio_quality ON Customers(preferredAudioQuality);
 
+-- LyricsSearchResults table indexes
+CREATE INDEX idx_lyrics_search_external_id ON LyricsSearchResults(externalID);
+CREATE INDEX idx_lyrics_search_track_name ON LyricsSearchResults(trackName);
+CREATE INDEX idx_lyrics_search_artist_name ON LyricsSearchResults(artistName);
+CREATE INDEX idx_lyrics_search_album_name ON LyricsSearchResults(albumName);
+CREATE INDEX idx_lyrics_search_usage_count ON LyricsSearchResults(usageCount);
+CREATE INDEX idx_lyrics_search_last_used ON LyricsSearchResults(lastUsedAt);
+CREATE INDEX idx_lyrics_search_source_api ON LyricsSearchResults(sourceAPI);
+CREATE INDEX idx_lyrics_search_fetched_at ON LyricsSearchResults(fetchedAt);
+
 -- Songs table indexes
 CREATE INDEX idx_songs_artist ON Songs(artistName);
 CREATE INDEX idx_songs_genre ON Songs(genre);
@@ -389,6 +439,9 @@ CREATE INDEX idx_songs_play_count ON Songs(playCount);
 CREATE INDEX idx_songs_created_at ON Songs(createdAt);
 CREATE INDEX idx_songs_created_by ON Songs(createdBy);
 CREATE INDEX idx_songs_updated_by ON Songs(updatedBy);
+CREATE INDEX idx_songs_lyrics_search_result ON Songs(lyricsSearchResultID) WHERE lyricsSearchResultID IS NOT NULL;
+CREATE INDEX idx_songs_source_status ON Songs(sourceStatus);
+CREATE INDEX idx_songs_source_status_lyrics ON Songs(sourceStatus, lyricsSearchResultID) WHERE sourceStatus = 'from_lyrics_search';
 
 -- Playlists table indexes
 CREATE INDEX idx_playlists_user ON Playlists(userID);
@@ -491,6 +544,9 @@ CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON Users
 CREATE TRIGGER update_customers_updated_at BEFORE UPDATE ON Customers
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+CREATE TRIGGER update_lyrics_search_results_updated_at BEFORE UPDATE ON LyricsSearchResults
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
 CREATE TRIGGER update_songs_updated_at BEFORE UPDATE ON Songs
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
@@ -561,29 +617,43 @@ CREATE TRIGGER normalize_username_trigger
 -- =========================
 CREATE OR REPLACE FUNCTION update_rating_stats()
 RETURNS TRIGGER AS $$
+DECLARE
+    target_processing_id UUID;
 BEGIN
+    -- Determine which processingID to update based on operation type
+    IF TG_OP = 'DELETE' THEN
+        target_processing_id := OLD.processingID;
+    ELSE
+        target_processing_id := NEW.processingID;
+    END IF;
+    
     -- Update rating statistics in SongAIProcessing table
     UPDATE SongAIProcessing 
     SET 
         totalRatings = (
             SELECT COUNT(*) 
             FROM AIProcessingRatings 
-            WHERE processingID = NEW.processingID
+            WHERE processingID = target_processing_id
         ),
         averageRating = (
-            SELECT ROUND(AVG(rating::DECIMAL), 2) 
+            SELECT COALESCE(ROUND(AVG(rating::DECIMAL), 2), 0.00)
             FROM AIProcessingRatings 
-            WHERE processingID = NEW.processingID
+            WHERE processingID = target_processing_id
         ),
         starCount = (
-            SELECT ROUND(AVG(rating::DECIMAL))::INT 
+            SELECT COALESCE(ROUND(AVG(rating::DECIMAL))::INT, 0)
             FROM AIProcessingRatings 
-            WHERE processingID = NEW.processingID
+            WHERE processingID = target_processing_id
         ),
         updatedAt = CURRENT_TIMESTAMP
-    WHERE processingID = NEW.processingID;
+    WHERE processingID = target_processing_id;
     
-    RETURN NEW;
+    -- Return appropriate row based on operation
+    IF TG_OP = 'DELETE' THEN
+        RETURN OLD;
+    ELSE
+        RETURN NEW;
+    END IF;
 END;
 $$ language 'plpgsql';
 
@@ -591,6 +661,66 @@ $$ language 'plpgsql';
 CREATE TRIGGER update_rating_stats_trigger 
     AFTER INSERT OR UPDATE OR DELETE ON AIProcessingRatings
     FOR EACH ROW EXECUTE FUNCTION update_rating_stats();
+
+-- =========================
+-- Create Function to Update LyricsSearchResults Usage Statistics
+-- =========================
+CREATE OR REPLACE FUNCTION update_lyrics_search_usage_stats()
+RETURNS TRIGGER AS $$
+BEGIN
+    -- On INSERT: increment usage count for new reference
+    IF TG_OP = 'INSERT' THEN
+        IF NEW.lyricsSearchResultID IS NOT NULL THEN
+            UPDATE LyricsSearchResults 
+            SET 
+                usageCount = usageCount + 1,
+                lastUsedAt = CURRENT_TIMESTAMP,
+                updatedAt = CURRENT_TIMESTAMP
+            WHERE lyricsSearchResultID = NEW.lyricsSearchResultID;
+        END IF;
+        RETURN NEW;
+    END IF;
+    
+    -- On UPDATE: handle changes in lyricsSearchResultID
+    IF TG_OP = 'UPDATE' THEN
+        -- If lyricsSearchResultID changed
+        IF (OLD.lyricsSearchResultID IS DISTINCT FROM NEW.lyricsSearchResultID) THEN
+            -- Update old record (if existed)
+            IF OLD.lyricsSearchResultID IS NOT NULL THEN
+                -- Note: We don't decrement usageCount as we want to keep historical usage
+                UPDATE LyricsSearchResults 
+                SET updatedAt = CURRENT_TIMESTAMP
+                WHERE lyricsSearchResultID = OLD.lyricsSearchResultID;
+            END IF;
+            
+            -- Update new record (if exists)
+            IF NEW.lyricsSearchResultID IS NOT NULL THEN
+                UPDATE LyricsSearchResults 
+                SET 
+                    usageCount = usageCount + 1,
+                    lastUsedAt = CURRENT_TIMESTAMP,
+                    updatedAt = CURRENT_TIMESTAMP
+                WHERE lyricsSearchResultID = NEW.lyricsSearchResultID;
+            END IF;
+        ELSIF NEW.lyricsSearchResultID IS NOT NULL THEN
+            -- If same lyricsSearchResultID but other fields changed, update lastUsedAt
+            UPDATE LyricsSearchResults 
+            SET 
+                lastUsedAt = CURRENT_TIMESTAMP,
+                updatedAt = CURRENT_TIMESTAMP
+            WHERE lyricsSearchResultID = NEW.lyricsSearchResultID;
+        END IF;
+        RETURN NEW;
+    END IF;
+    
+    RETURN NULL;
+END;
+$$ language 'plpgsql';
+
+-- Create trigger to auto-update lyrics search usage statistics
+CREATE TRIGGER update_lyrics_search_usage_stats_trigger 
+    AFTER INSERT OR UPDATE ON Songs
+    FOR EACH ROW EXECUTE FUNCTION update_lyrics_search_usage_stats();
 
 -- =========================
 -- Table: Prompts (AI Prompts for Translation and Mood Analysis)
@@ -604,3 +734,7 @@ CREATE TABLE Prompts (
     updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT check_prompt_type CHECK (promptType IN ('translation', 'mood'))
 );
+
+-- Trigger for Prompts updatedAt
+CREATE TRIGGER update_prompts_updated_at BEFORE UPDATE ON Prompts
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
