@@ -5,10 +5,14 @@ import MusicCard from '@/components/MusicCard';
 import SkeletonCard from '@/components/SkeletonCard';
 import { fetchHomeContent } from '@/services/homeService';
 import { lyricsService } from '@/services/lyricsService';
+import { analysisService } from '@/services/analysisService';
 import type { LyricsRecord } from '@/types/lyrics';
 import { LocalStorageManager } from '@/utils/localStorageManager';
 import { localStorageKeys } from '@/utils/localStorageKeys';
 import type { HomeResponse } from '@/types/home';
+import { useRouter } from 'next/navigation';
+import toast from 'react-hot-toast';
+import { TranslationLanguageModal } from '@/components/modals';
 
 export default function Home() {
   const [data, setData] = useState<HomeResponse>({ hero: [], sections: [] });
@@ -18,11 +22,18 @@ export default function Home() {
   const [searching, setSearching] = useState<boolean>(false);
   const [results, setResults] = useState<LyricsRecord[]>([]);
   const [rateLimited, setRateLimited] = useState<boolean>(false);
-  const [_selected, setSelected] = useState<LyricsRecord | null>(null);
+  const [selected, setSelected] = useState<LyricsRecord | null>(null);
+  const [analyzing, setAnalyzing] = useState<boolean>(false);
+  const [showLanguageModal, setShowLanguageModal] = useState<boolean>(false);
+  const [translationConfig, setTranslationConfig] = useState<{ originalLanguage: string; targetLanguage: string }>({
+    originalLanguage: 'Auto Detect',
+    targetLanguage: 'Thai'
+  });
   const skipNextSearchRef = useRef<boolean>(false);
   const [showDropdown, setShowDropdown] = useState<boolean>(false);
   const searchWrapRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const router = useRouter();
   const formatDuration = (secs: number): string => {
     const total = Math.max(0, Math.round(secs));
     const m = Math.floor(total / 60);
@@ -93,6 +104,73 @@ export default function Home() {
     document.addEventListener('mousedown', onDocClick);
     return () => document.removeEventListener('mousedown', onDocClick);
   }, [showDropdown]);
+
+  const handleStartAnalysis = async () => {
+    if (!selected) {
+      toast.error('Please select a song first');
+      return;
+    }
+
+    if (!actions.translate && !actions.mood) {
+      toast.error('Please select at least one action (Translate or Mood)');
+      return;
+    }
+
+    if (actions.translate) {
+      setShowLanguageModal(true);
+    } else {
+      toast.error('Mood analysis is not yet available');
+    }
+  };
+
+  const handleLanguageConfirm = async (originalLanguage: string, targetLanguage: string) => {
+    setTranslationConfig({ originalLanguage, targetLanguage });
+    
+    if (!selected) return;
+
+    try {
+      setAnalyzing(true);
+      toast.loading('Starting analysis...', { id: 'analysis' });
+
+      const result = await analysisService.startAnalysis({
+        lyricsRecord: selected,
+        actions,
+        translationConfig: {
+          originalLanguage,
+          targetLanguage
+        }
+      });
+
+      // eslint-disable-next-line no-console
+      console.log('Analysis result:', result);
+
+      if (!result || !result.songID || result.songID === 'undefined') {
+        toast.error('Invalid song ID returned from server', { id: 'analysis' });
+        // eslint-disable-next-line no-console
+        console.error('Invalid songID:', result?.songID);
+        return;
+      }
+
+      if (!result.processingID || result.processingID === 'undefined') {
+        toast.error('Invalid processing ID returned from server', { id: 'analysis' });
+        // eslint-disable-next-line no-console
+        console.error('Invalid processingID:', result?.processingID);
+        return;
+      }
+
+      toast.success('Analysis completed!', { id: 'analysis' });
+      
+      // eslint-disable-next-line no-console
+      console.log('Redirecting to:', `/song/${result.songID}?processingID=${result.processingID}`);
+      router.push(`/song/${result.songID}?processingID=${result.processingID}`);
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('Analysis error:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to start analysis', { id: 'analysis' });
+    } finally {
+      setAnalyzing(false);
+    }
+  };
 
   return (
     <main className="min-h-screen bg-white">
@@ -209,9 +287,23 @@ export default function Home() {
             </button>
           </div>
 
-          <button className="mt-2 mx-auto flex items-center justify-center gap-[11px] rounded-full bg-[#7B61FF] w-full md:w-[249px] h-[70px] px-[19px] py-[14px] text-white shadow hover:opacity-90 shrink-0 max-w-md">
-            <span className="text-base">Start Analysis</span>
-            <AudioLines className="h-8 w-8" />
+          <button
+            type="button"
+            onClick={handleStartAnalysis}
+            disabled={analyzing || !selected}
+            className={`mt-2 mx-auto flex items-center justify-center gap-[11px] rounded-full bg-[#7B61FF] w-full md:w-[249px] h-[70px] px-[19px] py-[14px] text-white shadow hover:opacity-90 shrink-0 max-w-md disabled:opacity-50 disabled:cursor-not-allowed`}
+          >
+            {analyzing ? (
+              <>
+                <span className="text-base">Analyzing...</span>
+                <RefreshCcw className="h-8 w-8 animate-spin" />
+              </>
+            ) : (
+              <>
+                <span className="text-base">Start Analysis</span>
+                <AudioLines className="h-8 w-8" />
+              </>
+            )}
           </button>
         </div>
       </section>
@@ -245,6 +337,14 @@ export default function Home() {
       </section>
 
       {/* Footer removed here to avoid duplication with global layout */}
+
+      <TranslationLanguageModal
+        isOpen={showLanguageModal}
+        onClose={() => setShowLanguageModal(false)}
+        onConfirm={handleLanguageConfirm}
+        defaultOriginalLanguage={translationConfig.originalLanguage}
+        defaultTargetLanguage={translationConfig.targetLanguage}
+      />
     </main>
   );
 }

@@ -4,3 +4,4 @@ export { default as Manage2FA } from './Manage2FA';
 export { default as Disable2FA } from './Disable2FA';
 export { default as TwoFAVerificationModal } from './TwoFAVerificationModal';
 export { default as ResetPasswordModal } from './ResetPasswordModal';
+export { default as TranslationLanguageModal } from './TranslationLanguageModal';
