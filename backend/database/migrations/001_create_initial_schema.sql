@@ -213,9 +213,20 @@ CREATE TABLE SongAIProcessing (
     updatedBy UUID, -- who last updated this processing
     createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    -- Sharing & Approval System
+    shareStatus VARCHAR(20) DEFAULT 'private', -- 'private' (ไม่แชร์), 'public_pending' (ขอแชร์ รออนุมัติ), 'public_approved' (แชร์แล้ว)
+    approvalStatus VARCHAR(20), -- 'pending', 'approved', 'rejected' (NULL ถ้า shareStatus = 'private')
+    approvedBy UUID, -- who approved/rejected this processing
+    approvalNote TEXT, -- optional note from approver explaining the decision
+    approvedAt TIMESTAMP, -- when it was approved/rejected
+    isPublic BOOLEAN DEFAULT FALSE, -- whether this processing result is public or private (true เมื่อ shareStatus = 'public_approved')
     FOREIGN KEY (songID) REFERENCES Songs(songID) ON DELETE CASCADE,
     FOREIGN KEY (createdBy) REFERENCES Users(userID) ON DELETE SET NULL,
-    FOREIGN KEY (updatedBy) REFERENCES Users(userID) ON DELETE SET NULL
+    FOREIGN KEY (updatedBy) REFERENCES Users(userID) ON DELETE SET NULL,
+    FOREIGN KEY (approvedBy) REFERENCES Users(userID) ON DELETE SET NULL,
+    CONSTRAINT check_share_status CHECK (shareStatus IN ('private', 'public_pending', 'public_approved')),
+    CONSTRAINT check_approval_status CHECK (approvalStatus IS NULL OR approvalStatus IN ('pending', 'approved', 'rejected'))
 );
 
 -- =========================
@@ -474,6 +485,11 @@ CREATE INDEX idx_ai_processing_rating ON SongAIProcessing(averageRating);
 CREATE INDEX idx_ai_processing_created ON SongAIProcessing(createdAt);
 CREATE INDEX idx_ai_processing_created_by ON SongAIProcessing(createdBy);
 CREATE INDEX idx_ai_processing_updated_by ON SongAIProcessing(updatedBy);
+CREATE INDEX idx_ai_processing_share_status ON SongAIProcessing(shareStatus);
+CREATE INDEX idx_ai_processing_approval_status ON SongAIProcessing(approvalStatus);
+CREATE INDEX idx_ai_processing_approved_by ON SongAIProcessing(approvedBy);
+CREATE INDEX idx_ai_processing_public ON SongAIProcessing(isPublic);
+CREATE INDEX idx_ai_processing_approved_at ON SongAIProcessing(approvedAt);
 
 -- AIProcessingRatings table indexes
 CREATE INDEX idx_ratings_processing ON AIProcessingRatings(processingID);

@@ -75,7 +75,13 @@ class SongService {
               createdBy: procRaw.createdby,
               updatedBy: procRaw.updatedby,
               createdAt: procRaw.createdat,
-              updatedAt: procRaw.updatedat
+              updatedAt: procRaw.updatedat,
+              shareStatus: procRaw.sharestatus,
+              approvalStatus: procRaw.approvalstatus,
+              approvedBy: procRaw.approvedby,
+              approvalNote: procRaw.approvalnote,
+              approvedAt: procRaw.approvedat,
+              isPublic: procRaw.ispublic || false
             };
           }
         }

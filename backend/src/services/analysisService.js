@@ -9,25 +9,34 @@ class AnalysisService {
    * @param {Object} actions - { translate: boolean, mood: boolean }
    * @param {Object} translationConfig - { originalLanguage, targetLanguage }
    * @param {string|null} userId - User ID (optional, null if not logged in)
+   * @param {boolean} shareRequest - Whether user wants to share with community (default: false)
    * @returns {Promise<Object>} Analysis result
    */
-  static async process(lyricsRecord, actions, translationConfig, userId = null) {
+  static async process(lyricsRecord, actions, translationConfig, userId = null, shareRequest = false) {
     try {
       let lyricsResult = await this.ensureLyricsSearchResult(lyricsRecord);
       let song = await this.ensureSong(lyricsRecord, lyricsResult, userId);
       
+      // Determine share status and approval status based on shareRequest
+      // ถ้าไม่แชร์ (private): shareStatus = 'private', approvalStatus = NULL
+      // ถ้าแชร์ (public): shareStatus = 'public_pending', approvalStatus = 'pending'
+      const shareStatus = shareRequest ? 'public_pending' : 'private';
+      const approvalStatus = shareRequest ? 'pending' : null;
+      
       // Use lowercase table and column names
       const processingInsertQuery = `
         INSERT INTO songaiprocessing 
-        (songid, aimodel, status, createdby) 
-        VALUES ($1, $2, $3, $4) 
+        (songid, aimodel, status, createdby, sharestatus, approvalstatus) 
+        VALUES ($1, $2, $3, $4, $5, $6) 
         RETURNING *
       `;
       const processingInsertResult = await DatabaseService.query(processingInsertQuery, [
         song.songID,
         'n8n-translate',
         'processing',
-        userId
+        userId,
+        shareStatus,
+        approvalStatus
       ]);
       const processingRaw = processingInsertResult.rows[0];
       const processing = {

@@ -13,6 +13,9 @@ interface LyricsTranslationViewerProps {
   onSave?: () => void;
   hasRating?: boolean;
   onShakeFeedback?: () => void;
+  songName?: string;
+  artistName?: string;
+  targetLanguage?: string;
 }
 
 export default function LyricsTranslationViewer({
@@ -23,10 +26,54 @@ export default function LyricsTranslationViewer({
   onLanguageChange,
   onSave,
   hasRating = false,
-  onShakeFeedback
+  onShakeFeedback,
+  songName,
+  artistName,
+  targetLanguage
 }: LyricsTranslationViewerProps) {
   const [selectedLanguage, setSelectedLanguage] = useState<string>(defaultLanguage);
   const [isShaking, setIsShaking] = useState(false);
+
+  const downloadLyricsAsTxt = () => {
+    if (!originalLyrics || !translation) {
+      toast.error('No lyrics available to download');
+      return;
+    }
+
+    const songNameText = songName || 'song';
+    const artistNameText = artistName || 'Unknown Artist';
+    const originalLyricsText = originalLyrics || '';
+    const translationText = translation.replace(/^Translation per line\s*/i, '').trim();
+    const targetLanguageText = targetLanguage || 'Translation';
+
+    // Create content with song info, original lyrics, and translation
+    const content = [
+      `Song: ${songNameText}`,
+      `Artist: ${artistNameText}`,
+      '',
+      '=== Original Lyrics ===',
+      '',
+      originalLyricsText,
+      '',
+      `=== ${targetLanguageText} Translation ===`,
+      '',
+      translationText,
+      ''
+    ].join('\n');
+
+    // Create blob and download
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${songNameText} - ${artistNameText}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    toast.success('Lyrics downloaded successfully!');
+  };
 
   const handleSave = () => {
     if (!hasRating) {
@@ -38,6 +85,8 @@ export default function LyricsTranslationViewer({
       }
       return;
     }
+    
+    downloadLyricsAsTxt();
     
     if (onSave) {
       onSave();

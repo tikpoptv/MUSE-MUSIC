@@ -123,7 +123,7 @@ export default function Home() {
     }
   };
 
-  const handleLanguageConfirm = async (originalLanguage: string, targetLanguage: string) => {
+  const handleLanguageConfirm = async (originalLanguage: string, targetLanguage: string, shareRequest: boolean) => {
     setTranslationConfig({ originalLanguage, targetLanguage });
     
     if (!selected) return;
@@ -138,7 +138,8 @@ export default function Home() {
         translationConfig: {
           originalLanguage,
           targetLanguage
-        }
+        },
+        shareRequest
       });
 
       // eslint-disable-next-line no-console
@@ -161,8 +162,8 @@ export default function Home() {
       toast.success('Analysis completed!', { id: 'analysis' });
       
       // eslint-disable-next-line no-console
-      console.log('Redirecting to:', `/song/${result.songID}?processingID=${result.processingID}`);
-      router.push(`/song/${result.songID}?processingID=${result.processingID}`);
+      console.log('Redirecting to:', `/song/${result.songID}/analysis/${result.processingID}`);
+      router.push(`/song/${result.songID}/analysis/${result.processingID}`);
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('Analysis error:', error);

@@ -14,6 +14,7 @@ export interface AnalysisRequest {
   lyricsRecord: LyricsRecord | { songID: string } & Partial<LyricsRecord>;
   actions: AnalysisActions;
   translationConfig?: TranslationConfig;
+  shareRequest?: boolean; // Whether user wants to share with community (default: false)
 }
 
 export interface TranslationResult {

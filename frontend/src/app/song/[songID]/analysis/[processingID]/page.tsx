@@ -11,7 +11,6 @@ import SummarySection from '@/components/SummarySection';
 import MoodAnalyzeSection from '@/components/MoodAnalyzeSection';
 import SongActionButtons from '@/components/SongActionButtons';
 import FeedbackSection, { type FeedbackSectionRef } from '@/components/FeedbackSection';
-import ShareModal from '@/components/ShareModal';
 import CoverImageUpload from '@/components/CoverImageUpload';
 import { songService, type SongDetail, type ProcessingDetail } from '@/services/songService';
 import toast from 'react-hot-toast';
@@ -26,7 +25,6 @@ export default function SongAnalysisPage() {
   const [processingData, setProcessingData] = useState<ProcessingDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [rating, setRating] = useState(0);
-  const [showShareModal, setShowShareModal] = useState(false);
   const feedbackSectionRef = useRef<FeedbackSectionRef>(null);
   const [coverImage, setCoverImage] = useState<string | null>(null);
 
@@ -373,8 +371,10 @@ export default function SongAnalysisPage() {
               defaultLanguage={processingData?.targetLanguage || 'Thai'}
               availableLanguages={['Thai', 'English', 'Japanese', 'Korean']}
               hasRating={rating > 0}
-              onSave={() => setShowShareModal(true)}
               onShakeFeedback={() => feedbackSectionRef.current?.shake()}
+              songName={songData?.songName}
+              artistName={songData?.artistName}
+              targetLanguage={processingData?.targetLanguage}
             />
 
             {/* Mood Analyze Section */}
@@ -385,19 +385,6 @@ export default function SongAnalysisPage() {
           </div>
         </div>
       </div>
-
-      {/* Share Modal */}
-      <ShareModal
-        isOpen={showShareModal}
-        onConfirm={() => {
-          setShowShareModal(false);
-          // TODO: Call API to share result
-          toast.success('แชร์ผลลัพธ์เรียบร้อยแล้ว');
-        }}
-        onCancel={() => {
-          setShowShareModal(false);
-        }}
-      />
     </main>
   );
 }

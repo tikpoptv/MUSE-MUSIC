@@ -39,11 +39,35 @@ export interface ProcessingDetail {
   isCompleteProcessing: boolean;
   createdAt: string;
   updatedAt: string;
+  // Sharing & Approval System
+  shareStatus?: 'private' | 'public_pending' | 'public_approved';
+  approvalStatus?: 'pending' | 'approved' | 'rejected' | null;
+  approvedBy?: string;
+  approvalNote?: string;
+  approvedAt?: string;
+  isPublic?: boolean;
 }
 
 export interface SongDetailResponse {
   song: SongDetail;
   processing?: ProcessingDetail;
+}
+
+export interface RatingResponse {
+  ratingID: string;
+  processingID: string;
+  userID: string | null;
+  rating: number;
+  comment: string | null;
+  feedback: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RatingStats {
+  totalRatings: number;
+  averageRating: number;
+  starCount: number;
 }
 
 export const songService = {
@@ -58,8 +82,6 @@ export const songService = {
       throw new Error(res.message || 'Failed to fetch song details');
     }
     
-    // Backend response: { success, message, data: { song, processing }, statusCode }
-    // apiService wraps: { success, data: { success, message, data: {...}, statusCode } }
     const backendResponse = res.data as { data?: SongDetailResponse };
     
     if (!backendResponse.data) {
@@ -67,6 +89,62 @@ export const songService = {
     }
     
     return backendResponse.data;
+  },
+
+  async submitRating(processingID: string, rating: number, comment?: string): Promise<RatingResponse> {
+    const url = `/api/ratings/${processingID}`;
+    
+    const res = await apiService.post<{ success: boolean; message?: string; data: RatingResponse; statusCode?: number }>(
+      url,
+      { rating, comment: comment || null }
+    );
+    
+    if (!res.success || !res.data) {
+      throw new Error(res.error || res.message || 'Failed to submit rating');
+    }
+    
+    const backendResponse = res.data as { success: boolean; message?: string; data: RatingResponse; statusCode?: number };
+    
+    if (!backendResponse.success || !backendResponse.data) {
+      throw new Error(backendResponse.message || 'Failed to submit rating');
+    }
+    
+    return backendResponse.data;
+  },
+
+  async getRatingStats(processingID: string): Promise<RatingStats> {
+    const url = `/api/ratings/${processingID}/stats`;
+    
+    const res = await apiService.get<{ success: boolean; message?: string; data: RatingStats }>(url);
+    
+    if (!res.success || !res.data) {
+      throw new Error(res.error || res.message || 'Failed to fetch rating stats');
+    }
+    
+    const backendResponse = res.data as { data?: RatingStats };
+    
+    if (!backendResponse.data) {
+      throw new Error('Missing data in response');
+    }
+    
+    return backendResponse.data;
+  },
+
+  async getUserRating(processingID: string): Promise<RatingResponse | null> {
+    const url = `/api/ratings/${processingID}/user`;
+    
+    const res = await apiService.get<{ success: boolean; message?: string; data: RatingResponse | null }>(url);
+    
+    if (!res.success) {
+      if (res.error?.includes('401') || res.error?.includes('Authentication')) {
+        return null;
+      }
+      throw new Error(res.error || res.message || 'Failed to fetch user rating');
+    }
+    
+    const backendResponse = res.data as { data?: RatingResponse | null };
+    
+    return backendResponse.data || null;
   }
 };
 
