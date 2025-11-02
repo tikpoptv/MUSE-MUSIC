@@ -23,12 +23,19 @@ const config = {
   },
   
   jwt: {
-    secret: process.env.JWT_SECRET
+    secret: process.env.JWT_SECRET,
+    accessExpiresIn: process.env.JWT_ACCESS_EXPIRES_IN || '7d',
+    refreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '30d'
   },
   
   google: {
     clientId: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET
+  },
+  
+  lrclib: {
+    baseUrl: process.env.LRCLIB_BASE_URL || 'https://lrclib.net',
+    userAgent: process.env.LRCLIB_USER_AGENT || 'MUSE-MUSIC Backend (https://github.com/tikpoptv/MUSE-MUSIC)'
   },
   
   frontend: {

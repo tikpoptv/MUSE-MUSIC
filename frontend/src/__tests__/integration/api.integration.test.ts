@@ -20,24 +20,54 @@ describe('API Integration Tests', () => {
   beforeEach(() => {
     // Clear localStorage before each test
     localStorage.clear()
+    fetchMock.resetMocks()
   })
 
   describe('AuthService Integration', () => {
     it('should handle complete login flow', async () => {
-      // Mock successful login
+      // Mock successful login to match new AuthData shape
       mockApiResponse('/api/auth/login', {
-        token: integrationTestData.authToken,
+        success: true,
+        data: {
         user: {
-          id: '1',
+            userID: '1',
+            username: 'testuser',
           email: 'test@example.com',
-          name: 'Test User'
+            fullName: 'Test User',
+            profilePicture: '',
+            provider: 'google',
+            providerID: 'gid_001',
+            providerEmail: 'test@example.com',
+            role: 'user',
+            loginStatus: 'active',
+            setupCompleted: true,
+            setupSkipped: false,
+            registerDate: new Date().toISOString(),
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+          session: {
+            sessionID: 's_test',
+            expiresAt: new Date(Date.now() + 3600_000).toISOString(),
+            deviceInfo: 'desktop',
+            ipAddress: '127.0.0.1',
+            userAgent: 'jest',
+            isActive: true,
+            createdAt: new Date().toISOString(),
+          },
+          tokens: {
+            accessToken: integrationTestData.authToken,
+            refreshToken: 'mock-refresh-token',
+            tokenType: 'Bearer',
+            expiresIn: '3600'
+          }
         }
       })
 
       const result = await authService.login('test@example.com', 'password123')
       
       expect(result).toBeTruthy()
-      expect(result?.token).toBe(integrationTestData.authToken)
+      expect(result?.tokens.accessToken).toBe(integrationTestData.authToken)
       expect(authService.getStoredToken()).toBe(integrationTestData.authToken)
     })
 
@@ -136,8 +166,8 @@ describe('API Integration Tests', () => {
       const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:7662'
       fetchMock.mockIf(
         (req) => req.url === `${API_BASE_URL}/api/protected`,
-        async (req) => {
-          capturedHeaders = Object.fromEntries(req.headers.entries())
+        async (_req) => {
+          capturedHeaders = Object.fromEntries(_req.headers.entries())
           return {
             body: JSON.stringify({ success: true }),
             status: 200,
@@ -237,7 +267,7 @@ describe('API Integration Tests', () => {
       const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:7662'
       fetchMock.mockIf(
         (req) => req.url === `${API_BASE_URL}/api/malformed`,
-        async () => ({
+        async (_req) => ({
           body: 'invalid json',
           status: 200,
           headers: { 'content-type': 'application/json' },
@@ -248,6 +278,58 @@ describe('API Integration Tests', () => {
       
       expect(response.success).toBe(false)
       expect(response.error).toContain('invalid json')
+    })
+  })
+
+  describe('ApiService Refresh Flow', () => {
+    it('should refresh access token on 401 and retry original request', async () => {
+      // seed refresh token in storage
+      authService.setTokensData({
+        accessToken: 'expired-access',
+        refreshToken: 'refresh-123',
+        tokenType: 'Bearer',
+        expiresIn: '3600'
+      } as any)
+
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:7662'
+      let protectedCalled = 0
+
+      fetchMock.mockIf((_req) => true, async (_req) => {
+        const url = _req.url
+        // First call to protected returns 401
+        if (url === `${API_BASE_URL}/api/protected`) {
+          protectedCalled++
+          if (protectedCalled === 1) {
+            return {
+              body: JSON.stringify({ success: false, error: 'Unauthorized' }),
+              status: 401,
+              headers: { 'content-type': 'application/json' },
+            }
+          }
+          // Second call after refresh succeeds
+          return {
+            body: JSON.stringify({ success: true, data: { ok: true } }),
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          }
+        }
+        // Refresh endpoint
+        if (url === `${API_BASE_URL}/api/auth/refresh`) {
+          return {
+            body: JSON.stringify({ success: true, data: { tokens: {
+              accessToken: 'new-access-token', tokenType: 'Bearer', expiresIn: '3600'
+            } } }),
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          }
+        }
+        return { body: 'not matched', status: 404 }
+      })
+
+      const res = await apiService.get('/api/protected')
+      expect(res.success).toBe(true)
+      const stored = authService.getCurrentTokens()
+      expect(stored?.accessToken).toBe('new-access-token')
     })
   })
 })

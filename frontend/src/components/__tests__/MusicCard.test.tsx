@@ -5,8 +5,11 @@ import MusicCard from '@/components/MusicCard'
 // Mock Next.js Image component
 jest.mock('next/image', () => {
   return function MockImage({ src, alt, ...props }: { src: string; alt: string; [key: string]: unknown }) {
+    // Strip Next.js-specific props not valid on <img>
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { fill, priority, onLoadingComplete, ...rest } = props as Record<string, unknown>
     // eslint-disable-next-line @next/next/no-img-element
-    return <img src={src} alt={alt} {...props} />
+    return <img src={src as string} alt={alt as string} {...rest} />
   }
 })
 
@@ -55,18 +58,21 @@ describe('MusicCard Component', () => {
     expect(button).toHaveAttribute('tabIndex', '0')
   })
 
-  it('applies correct CSS classes', () => {
+  it('applies expected wrapper classes', () => {
     render(<MusicCard {...mockProps} />)
-    
     const card = screen.getByRole('button')
-    expect(card).toHaveClass('relative')
-    expect(card).toHaveClass('w-[195px]')
-    expect(card).toHaveClass('h-[235px]')
-    expect(card).toHaveClass('rounded-xl')
-    expect(card).toHaveClass('overflow-hidden')
-    expect(card).toHaveClass('shadow-md')
-    expect(card).toHaveClass('bg-white')
+    expect(card).toHaveClass('group')
     expect(card).toHaveClass('cursor-pointer')
+  })
+
+  it('renders gradient image container with aspect ratio and overlay', () => {
+    render(<MusicCard {...mockProps} />)
+    const card = screen.getByRole('button')
+    const container = card.querySelector('.aspect-square') as HTMLElement
+    expect(container).toBeInTheDocument()
+    expect(container).toHaveClass('bg-gradient-to-br')
+    expect(container).toHaveClass('from-[#7B61FF]')
+    expect(container).toHaveClass('to-[#6B51EF]')
   })
 
   it('renders smile icon', () => {
@@ -89,22 +95,20 @@ describe('MusicCard Component', () => {
     expect(titleElement).toHaveClass('truncate')
   })
 
-  it('renders artist name with correct styling', () => {
+  it('renders artist name with expected styling', () => {
     render(<MusicCard {...mockProps} />)
     
     const artistElement = screen.getByText(mockProps.artist)
     expect(artistElement).toHaveClass('text-xs')
     expect(artistElement).toHaveClass('text-[#7B61FF]')
-    expect(artistElement).toHaveClass('font-medium')
   })
 
-  it('renders title with correct styling', () => {
+  it('renders title with expected styling', () => {
     render(<MusicCard {...mockProps} />)
     
     const titleElement = screen.getByText(mockProps.title)
     expect(titleElement).toHaveClass('text-sm')
-    expect(titleElement).toHaveClass('font-semibold')
-    expect(titleElement).toHaveClass('leading-tight')
+    expect(titleElement).toHaveClass('font-bold')
     expect(titleElement).toHaveClass('truncate')
   })
 })

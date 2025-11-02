@@ -238,15 +238,17 @@ export default function SettingsPage() {
               <select
                 value={formData[field as keyof typeof formData] || ''}
                 onChange={(e) => setFormData({...formData, [field]: e.target.value})}
-                className={`w-full pl-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7B61FF] focus:border-transparent text-[#0F172A] ${
-                  shouldBeEnabled ? 'border-gray-300 pr-12' : 'border-gray-200 bg-gray-50 pr-3'
+                className={`w-full py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7B61FF] focus:border-transparent text-[#0F172A] ${
+                  shouldBeEnabled ? 'border-gray-300' : 'border-gray-200 bg-gray-50'
                 }`}
                 disabled={!shouldBeEnabled}
                 style={{ 
+                  paddingLeft: '12px',
+                  paddingRight: shouldBeEnabled ? '40px' : '12px',
                   appearance: 'none',
                   backgroundImage: shouldBeEnabled ? 'url("/icons/dropdown-arrow.svg")' : 'none',
                   backgroundRepeat: 'no-repeat',
-                  backgroundPosition: 'right 12px center',
+                  backgroundPosition: 'right 16px center',
                   backgroundSize: '16px'
                 }}
               >
@@ -260,15 +262,17 @@ export default function SettingsPage() {
               <select
                 value={formData[field as keyof typeof formData] || ''}
                 onChange={(e) => setFormData({...formData, [field]: e.target.value})}
-                className={`w-full pl-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7B61FF] focus:border-transparent text-[#0F172A] ${
-                  shouldBeEnabled ? 'border-gray-300 pr-12' : 'border-gray-200 bg-gray-50 pr-3'
+                className={`w-full py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7B61FF] focus:border-transparent text-[#0F172A] ${
+                  shouldBeEnabled ? 'border-gray-300' : 'border-gray-200 bg-gray-50'
                 }`}
                 disabled={!shouldBeEnabled}
                 style={{ 
+                  paddingLeft: '12px',
+                  paddingRight: shouldBeEnabled ? '40px' : '12px',
                   appearance: 'none',
                   backgroundImage: shouldBeEnabled ? 'url("/icons/dropdown-arrow.svg")' : 'none',
                   backgroundRepeat: 'no-repeat',
-                  backgroundPosition: 'right 12px center',
+                  backgroundPosition: 'right 16px center',
                   backgroundSize: '16px'
                 }}
               >

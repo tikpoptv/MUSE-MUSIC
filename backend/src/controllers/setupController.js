@@ -1,6 +1,7 @@
 // const { pool } = require('../config/database');
 const { logger } = require('../middleware/logger');
 const UserService = require('../services/userService');
+const { successResponse, errorResponse } = require('../utils/response');
 
 const getSetupStatus = async (req, res) => {
   try {
@@ -9,15 +10,13 @@ const getSetupStatus = async (req, res) => {
     const userData = await UserService.getUserWithSetupStatus(userId);
 
     if (!userData) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found'
-      });
+      return res.status(404).json(
+        errorResponse('User not found', 404)
+      );
     }
 
-    res.json({
-      success: true,
-      data: {
+    res.json(
+      successResponse('Setup status retrieved', {
         allStatus: userData.allStatus,
         stepStatus: userData.stepStatus,
         stepData: userData.stepData,
@@ -25,15 +24,14 @@ const getSetupStatus = async (req, res) => {
         setupSkipped: userData.setupSkipped,
         provider: userData.provider,
         twoFAStatus: userData.twoFAStatus
-      }
-    });
+      })
+    );
 
   } catch (error) {
     logger.error('Error getting setup status:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error'
-    });
+    res.status(500).json(
+      errorResponse('Internal server error', 500)
+    );
   }
 };
 

@@ -11,7 +11,7 @@ class JWTService {
     };
 
     const options = {
-      expiresIn: '7d',
+      expiresIn: config.jwt.accessExpiresIn,
       issuer: 'muse-music-api',
       audience: 'muse-music-client'
     };
@@ -26,7 +26,7 @@ class JWTService {
     };
 
     const options = {
-      expiresIn: '30d',
+      expiresIn: config.jwt.refreshExpiresIn,
       issuer: 'muse-music-api',
       audience: 'muse-music-client'
     };

@@ -117,14 +117,14 @@ temp/
 # Jest
 coverage/
 .nyc_output/
-# test-results/
-# playwright-report/
-# playwright/.cache/
+test-results/
+playwright-report/
+playwright/.cache/
 
-# Playwright
-# test-results/
-# playwright-report/
-# playwright/.cache/
+Playwright
+test-results/
+playwright-report/
+playwright/.cache/
 
 # Cypress
 cypress/videos/

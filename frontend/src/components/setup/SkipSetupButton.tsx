@@ -5,10 +5,14 @@ import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { setupService } from '@/services/setupService';
 import TermsModal from '@/components/TermsModal';
+import { LocalStorageManager } from '../../utils/localStorageManager';
+import { localStorageKeys } from '../../utils/localStorageKeys';
 
 interface SkipSetupButtonProps {
   className?: string;
 }
+
+interface MinimalUser { setupSkipped?: boolean }
 
 export default function SkipSetupButton({ className = "text-gray-500 hover:text-gray-700 text-sm transition-colors" }: SkipSetupButtonProps) {
   const router = useRouter();
@@ -33,11 +37,10 @@ export default function SkipSetupButton({ className = "text-gray-500 hover:text-
     try {
       await setupService.skipSetup(true);
       
-      const userData = localStorage.getItem('user_data');
-      if (userData) {
-        const user = JSON.parse(userData);
+      const user = LocalStorageManager.get<MinimalUser>(localStorageKeys.USER_DATA);
+      if (user) {
         user.setupSkipped = true;
-        localStorage.setItem('user_data', JSON.stringify(user));
+        LocalStorageManager.set(localStorageKeys.USER_DATA, user);
       }
       
       toast.success('Setup skipped successfully!');

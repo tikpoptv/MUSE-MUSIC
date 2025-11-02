@@ -5,19 +5,12 @@ import { useRouter } from 'next/navigation';
 import { twoFactorService } from '@/services/twoFactorService';
 import { TwoFactorModal } from '@/components/modals';
 import toast from 'react-hot-toast';
+import { TwoFAStatus } from '@/types/setup';
 
 export default function Step2Page() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
-  const [twoFAStatus, setTwoFAStatus] = useState<{
-    twofactorenabled: boolean;
-    twoFactorSetupCompleted: boolean;
-    setupStep: string;
-    failedAttempts: number;
-    isLocked: boolean;
-    lockedUntil: string | null;
-    backupCodesCount: number;
-  } | null>(null);
+  const [twoFAStatus, setTwoFAStatus] = useState<TwoFAStatus | null>(null);
   const [showTwoFAModal, setShowTwoFAModal] = useState(false);
   const [twoFAModalType, setTwoFAModalType] = useState<'setup' | 'manage' | 'disable'>('setup');
 
@@ -29,8 +22,7 @@ export default function Step2Page() {
     try {
       const status = await twoFactorService.get2FAStatus();
       setTwoFAStatus(status);
-    } catch (error) {
-      console.error('Error fetching 2FA status:', error);
+    } catch {
       setTwoFAStatus({
         twofactorenabled: false,
         twoFactorSetupCompleted: false,
