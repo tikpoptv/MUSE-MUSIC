@@ -17,7 +17,7 @@ const startAnalysis = async (req, res) => {
       }
     }
     
-    const { lyricsRecord, actions, translationConfig } = req.body;
+    const { lyricsRecord, actions, translationConfig, shareRequest = false } = req.body;
     
     if (!lyricsRecord) {
       return res.status(400).json(
@@ -61,14 +61,16 @@ const startAnalysis = async (req, res) => {
       userId,
       hasTranslate: actions.translate,
       hasMood: actions.mood,
-      targetLanguage: translationConfig?.targetLanguage
+      targetLanguage: translationConfig?.targetLanguage,
+      shareRequest: shareRequest
     });
     
     const result = await AnalysisService.process(
       lyricsRecord,
       actions,
       translationConfig || {},
-      userId
+      userId,
+      shareRequest
     );
     
     return res.json(

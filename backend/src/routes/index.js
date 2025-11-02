@@ -10,6 +10,7 @@ const translateRoutes = require('./analysis');
 const twoFactorRoutes = require('./twoFactor');
 const lyricsRoutes = require('./lyrics');
 const songsRoutes = require('./songs');
+const ratingsRoutes = require('./ratings');
 
 router.get('/', (req, res) => {
   res.json({
@@ -31,6 +32,7 @@ router.use('/api/setup', setupSaveRoutes);
 router.use('/api/2fa', twoFactorRoutes);
 router.use('/api/lyrics', lyricsRoutes);
 router.use('/api/songs', songsRoutes);
+router.use('/api/ratings', ratingsRoutes);
 
 // Mount analysis
 router.use('/api/analysis', translateRoutes);

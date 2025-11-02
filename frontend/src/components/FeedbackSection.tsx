@@ -1,7 +1,11 @@
 'use client';
 
-import { useState, useImperativeHandle, forwardRef } from 'react';
+import { useState, useImperativeHandle, forwardRef, useEffect } from 'react';
 import toast from 'react-hot-toast';
+import { useRouter } from 'next/navigation';
+import { Lock, LogIn } from 'lucide-react';
+import { songService } from '@/services/songService';
+import { authService } from '@/services/authService';
 
 interface FeedbackSectionProps {
   processingID?: string;
@@ -15,10 +19,16 @@ export interface FeedbackSectionRef {
 
 const FeedbackSection = forwardRef<FeedbackSectionRef, FeedbackSectionProps>(
   ({ processingID, onSubmit, onRatingChange }, ref) => {
+    const router = useRouter();
     const [rating, setRating] = useState(0);
     const [feedback, setFeedback] = useState('');
     const [submitting, setSubmitting] = useState(false);
     const [isShaking, setIsShaking] = useState(false);
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+    useEffect(() => {
+      setIsAuthenticated(authService.isAuthenticated());
+    }, []);
 
     useImperativeHandle(ref, () => ({
       shake: () => {
@@ -26,6 +36,10 @@ const FeedbackSection = forwardRef<FeedbackSectionRef, FeedbackSectionProps>(
         setTimeout(() => setIsShaking(false), 500);
       }
     }));
+
+    const handleLoginClick = () => {
+      router.push('/login');
+    };
 
   const handleRatingClick = (star: number) => {
     setRating(star);
@@ -45,11 +59,7 @@ const FeedbackSection = forwardRef<FeedbackSectionRef, FeedbackSectionProps>(
       if (onSubmit) {
         await onSubmit(rating, feedback);
       } else {
-        // TODO: Submit feedback to API
-        // await apiService.post(`/api/processing/${processingID}/rating`, {
-        //   rating,
-        //   comment: feedback
-        // });
+        await songService.submitRating(processingID, rating, feedback || undefined);
       }
       
       toast.success('Thank you for your feedback!');
@@ -59,19 +69,46 @@ const FeedbackSection = forwardRef<FeedbackSectionRef, FeedbackSectionProps>(
         onRatingChange(0);
       }
     } catch (error) {
-      // eslint-disable-next-line no-console
-      console.error('Error submitting feedback:', error);
-      toast.error('Failed to submit feedback');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to submit feedback';
+      toast.error(errorMessage);
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <div className={`flex flex-col items-center rounded-xl bg-white mt-6 transition-transform ${isShaking ? 'animate-shake' : ''}`} style={{ width: '304px', height: '324px', padding: '24px', gap: '19px', boxShadow: '0 0 18px 0 rgba(255, 0, 102, 0.25)' }}>
-      <h3 className="font-semibold text-gray-900 text-sm text-center">
-        Could you please give me some feedback on my analysis?
-      </h3>
+    <div className={`flex flex-col items-center rounded-xl bg-white mt-6 transition-transform ${isShaking ? 'animate-shake' : ''} relative`} style={{ width: '304px', height: '324px', boxShadow: '0 0 18px 0 rgba(255, 0, 102, 0.25)' }}>
+      {!isAuthenticated && (
+        <div 
+          className="absolute inset-0 rounded-xl flex flex-col items-center justify-center z-10 cursor-pointer transition-all hover:opacity-95"
+          style={{ 
+            background: 'linear-gradient(135deg, rgba(123, 97, 255, 0.9) 0%, rgba(123, 97, 255, 0.75) 100%)',
+            backdropFilter: 'blur(4px)'
+          }}
+          onClick={handleLoginClick}
+        >
+          <div className="flex flex-col items-center gap-3 px-6">
+            <div className="flex items-center justify-center w-16 h-16 rounded-full mb-2" style={{ backgroundColor: 'rgba(255, 255, 255, 0.2)' }}>
+              <Lock style={{ width: '32px', height: '32px', color: 'white' }} strokeWidth={2} />
+            </div>
+            <p className="text-white text-center text-base font-semibold">
+              Pretty please?
+            </p>
+            <p className="text-white text-center text-sm font-medium opacity-95">
+              Login to share your thoughts with us!
+            </p>
+            <div className="flex items-center gap-1 mt-1 text-white opacity-90">
+              <LogIn style={{ width: '16px', height: '16px', color: 'white' }} strokeWidth={2} />
+              <span className="text-xs">Click to login</span>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      <div className="flex flex-col items-center" style={{ width: '100%', height: '100%', padding: '24px', gap: '19px', opacity: isAuthenticated ? 1 : 0.4, pointerEvents: isAuthenticated ? 'auto' : 'none' }}>
+        <h3 className="font-semibold text-gray-900 text-sm text-center">
+          Could you please give me some feedback on my analysis?
+        </h3>
       
       <div className="flex gap-2">
         {[1, 2, 3, 4, 5].map((star) => (
@@ -109,13 +146,14 @@ const FeedbackSection = forwardRef<FeedbackSectionRef, FeedbackSectionProps>(
         rows={3}
       />
 
-      <button
-        onClick={handleFeedbackSubmit}
-        disabled={rating === 0 || submitting}
-        className="w-full bg-pink-500 text-white py-2 text-sm rounded-lg hover:bg-pink-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        {submitting ? 'Submitting...' : 'Submit'}
-      </button>
+        <button
+          onClick={handleFeedbackSubmit}
+          disabled={rating === 0 || submitting || !isAuthenticated}
+          className="w-full bg-pink-500 text-white py-2 text-sm rounded-lg hover:bg-pink-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {submitting ? 'Submitting...' : 'Submit'}
+        </button>
+      </div>
     </div>
   );
 });

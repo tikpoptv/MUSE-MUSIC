@@ -1,11 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 interface TranslationLanguageModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: (originalLanguage: string, targetLanguage: string) => void;
+  onConfirm: (originalLanguage: string, targetLanguage: string, shareRequest: boolean) => void;
   defaultOriginalLanguage?: string;
   defaultTargetLanguage?: string;
 }
@@ -37,11 +37,19 @@ export default function TranslationLanguageModal({
 }: TranslationLanguageModalProps) {
   const [originalLanguage, setOriginalLanguage] = useState<string>(defaultOriginalLanguage);
   const [targetLanguage, setTargetLanguage] = useState<string>(defaultTargetLanguage);
+  const [shareRequest, setShareRequest] = useState<boolean>(true);
+
+  // Reset shareRequest when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setShareRequest(true);
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
   const handleConfirm = () => {
-    onConfirm(originalLanguage, targetLanguage);
+    onConfirm(originalLanguage, targetLanguage, shareRequest);
     onClose();
   };
 
@@ -111,6 +119,23 @@ export default function TranslationLanguageModal({
                 </option>
               ))}
             </select>
+          </div>
+
+          <div className="pt-4 border-t border-gray-200">
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={shareRequest}
+                onChange={(e) => setShareRequest(e.target.checked)}
+                className="w-5 h-5 text-[#7B61FF] border-gray-300 rounded focus:ring-[#7B61FF] focus:ring-2 cursor-pointer"
+              />
+              <span className="text-sm text-gray-700">
+                Share this result with the community?
+              </span>
+            </label>
+            <p className="text-xs text-gray-500 mt-2 ml-8">
+              If unchecked, this will be kept private and won&apos;t require approval.
+            </p>
           </div>
         </div>
 

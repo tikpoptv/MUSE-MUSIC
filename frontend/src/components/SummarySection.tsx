@@ -5,8 +5,15 @@ interface SummarySectionProps {
 }
 
 export default function SummarySection({ processingData }: SummarySectionProps) {
-  const summaryText = (processingData?.interpretation || processingData?.summary || '')
-    .replace(/^Interpretation:\s*/i, '');
+  const interpretation = processingData?.interpretation || processingData?.summary || '';
+  
+  // Remove "**Interpretation:**" or "Interpretation:" prefix if exists
+  const cleanedInterpretation = interpretation
+    .replace(/^\*\*Interpretation:\*\*\s*/i, '')
+    .replace(/^Interpretation:\s*/i, '')
+    .trim();
+
+  if (!cleanedInterpretation) return null;
 
   return (
     <div style={{ width: '100%' }}>
@@ -15,8 +22,19 @@ export default function SummarySection({ processingData }: SummarySectionProps) 
       </label>
       {/* Divider Line */}
       <div style={{ width: '100%', height: '1px', backgroundColor: '#7B61FF', marginBottom: '16px' }}></div>
-      <div style={{ color: '#000', fontFamily: 'Inter', fontSize: '16px', fontWeight: 400, lineHeight: 'normal', overflowWrap: 'break-word', whiteSpace: 'normal' }}>
-        {summaryText}
+      <div 
+        style={{ 
+          color: '#000', 
+          fontFamily: 'Inter', 
+          fontSize: '16px', 
+          fontWeight: 400, 
+          lineHeight: '1.6', 
+          overflowWrap: 'break-word', 
+          whiteSpace: 'normal',
+          textAlign: 'justify'
+        }}
+      >
+        {cleanedInterpretation}
       </div>
     </div>
   );
