@@ -76,7 +76,6 @@ class ApiService {
             return {
               success: false,
               error: retryData.error || retryData.message || 'Request failed',
-              error: retryData.error || retryData.message || 'Request failed',
             };
           }
           
@@ -87,11 +86,6 @@ class ApiService {
         } else {
           authService.logout();
 
-          if (!this.isRedirectingToLogin && 
-              typeof window !== 'undefined' && 
-              window.location && 
-              window.location.pathname !== '/login' && 
-              process.env.NODE_ENV !== 'test') {
           if (!this.isRedirectingToLogin && 
               typeof window !== 'undefined' && 
               window.location && 
@@ -111,7 +105,6 @@ class ApiService {
       if (!response.ok) {
         return {
           success: false,
-          error: data.error || data.message || 'Request failed',
           error: data.error || data.message || 'Request failed',
         };
       }
