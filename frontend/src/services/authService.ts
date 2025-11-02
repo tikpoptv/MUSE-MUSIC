@@ -101,6 +101,7 @@ export const authService = {
       return { success: true };
     } catch (error) {
       // eslint-disable-next-line no-console
+      // eslint-disable-next-line no-console
       console.error('Logout API error:', error);
       this.removeToken();
       return { success: false, message: 'Logout failed but local session cleared' };
@@ -206,6 +207,7 @@ export const authService = {
       }
     } catch (error) {
       // eslint-disable-next-line no-console
+      // eslint-disable-next-line no-console
       console.error('Forgot password error:', error);
       return { success: false, message: 'An error occurred while sending password reset email' };
     }
@@ -221,6 +223,7 @@ export const authService = {
       }
     } catch (error) {
       // eslint-disable-next-line no-console
+      // eslint-disable-next-line no-console
       console.error('Reset password error:', error);
       return { success: false, message: 'An error occurred while resetting password' };
     }
@@ -235,6 +238,7 @@ export const authService = {
         return { success: false, message: response.error || 'Invalid or expired reset token' };
       }
     } catch (error) {
+      // eslint-disable-next-line no-console
       // eslint-disable-next-line no-console
       console.error('Validate reset token error:', error);
       return { success: false, message: 'An error occurred while validating reset token' };
