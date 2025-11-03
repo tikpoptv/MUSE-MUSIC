@@ -59,6 +59,10 @@ const config = {
     secretKey: process.env.MINIO_SECRET_KEY,
     bucketName: process.env.MINIO_BUCKET_NAME || 'muse-music',
     publicUrl: process.env.MINIO_PUBLIC_URL || 'https://musemusic.minio.phitik.com'
+  },
+  
+  youtube: {
+    apiKey: process.env.YOUTUBE_API_KEY
   }
 };
 
