@@ -12,6 +12,7 @@ import MoodAnalyzeSection from '@/components/MoodAnalyzeSection';
 import SongActionButtons from '@/components/SongActionButtons';
 import FeedbackSection, { type FeedbackSectionRef } from '@/components/FeedbackSection';
 import CoverImageUpload from '@/components/CoverImageUpload';
+import SyncedLyricsPlayer, { type SyncedLyricsLine } from '@/components/SyncedLyricsPlayer';
 import { songService, type SongDetail, type ProcessingDetail } from '@/services/songService';
 import toast from 'react-hot-toast';
 
@@ -27,6 +28,10 @@ export default function SongAnalysisPage() {
   const [rating, setRating] = useState(0);
   const feedbackSectionRef = useRef<FeedbackSectionRef>(null);
   const [coverImage, setCoverImage] = useState<string | null>(null);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [syncedLyricsLines, setSyncedLyricsLines] = useState<SyncedLyricsLine[]>([]);
+  const [durationMatch, setDurationMatch] = useState<boolean | null>(null);
+  const [seekToTime, setSeekToTime] = useState<number | undefined>(undefined);
 
   useEffect(() => {
     const fetchSongData = async () => {
@@ -375,7 +380,34 @@ export default function SongAnalysisPage() {
               songName={songData?.songName}
               artistName={songData?.artistName}
               targetLanguage={processingData?.targetLanguage}
+              currentTime={currentTime}
+              syncedLyricsLines={syncedLyricsLines}
+              durationMatch={durationMatch}
+              songDuration={songData?.duration}
+              onSeekToTime={(time) => setSeekToTime(time)}
             />
+
+            {/* Synced Lyrics Player */}
+            {songData?.syncedLyrics ? (
+              <SyncedLyricsPlayer
+                syncedLyrics={songData.syncedLyrics}
+                songDuration={songData.duration || undefined}
+                processingID={processingID}
+                initialYoutubeVideoId={processingData?.youtubeVideoId || null}
+                onCurrentTimeChange={setCurrentTime}
+                onSyncedLyricsParsed={setSyncedLyricsLines}
+                onDurationMatchChange={setDurationMatch}
+                seekToTime={seekToTime}
+              />
+            ) : (
+              <div className="w-full">
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                  <p className="text-sm text-yellow-800 text-center">
+                    ⚠️ This song does not have synchronized lyrics available.
+                  </p>
+                </div>
+              </div>
+            )}
 
             {/* Mood Analyze Section */}
             <MoodAnalyzeSection processingData={processingData} />
