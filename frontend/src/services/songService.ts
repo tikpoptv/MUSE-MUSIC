@@ -7,6 +7,7 @@ export interface SongDetail {
   artistName: string;
   genre?: string;
   lyrics?: string;
+  syncedLyrics?: string;
   duration?: number;
   country?: string;
   language?: string;
@@ -39,6 +40,10 @@ export interface ProcessingDetail {
   isCompleteProcessing: boolean;
   createdAt: string;
   updatedAt: string;
+  // Rating System
+  totalRatings?: number;
+  averageRating?: number;
+  starCount?: number;
   // Sharing & Approval System
   shareStatus?: 'private' | 'public_pending' | 'public_approved';
   approvalStatus?: 'pending' | 'approved' | 'rejected' | null;
@@ -46,6 +51,8 @@ export interface ProcessingDetail {
   approvalNote?: string;
   approvedAt?: string;
   isPublic?: boolean;
+  coverImage?: string | null; // Cover image URL from MinIO
+  youtubeVideoId?: string | null; // YouTube video ID for synced lyrics player
 }
 
 export interface SongDetailResponse {
@@ -145,6 +152,32 @@ export const songService = {
     const backendResponse = res.data as { data?: RatingResponse | null };
     
     return backendResponse.data || null;
+  },
+
+  async updateYouTubeVideoId(processingID: string, youtubeVideoId: string | null): Promise<void> {
+    const url = `/api/processing/${processingID}/youtube-video-id`;
+    
+    const res = await apiService.put<{ success: boolean; message?: string }>(
+      url,
+      { youtubeVideoId }
+    );
+    
+    if (!res.success) {
+      throw new Error(res.error || res.message || 'Failed to update YouTube video ID');
+    }
+  },
+
+  async updateCoverImage(processingID: string, coverImageUrl: string | null): Promise<void> {
+    const url = `/api/processing/${processingID}/cover-image`;
+    
+    const res = await apiService.put<{ success: boolean; message?: string }>(
+      url,
+      { coverImageUrl }
+    );
+    
+    if (!res.success) {
+      throw new Error(res.error || res.message || 'Failed to update cover image');
+    }
   }
 };
 

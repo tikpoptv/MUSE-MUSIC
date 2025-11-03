@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import { Search, Languages, RefreshCcw, AudioLines } from 'lucide-react';
+import { Search, Languages, RefreshCcw, AudioLines, Music } from 'lucide-react';
 import MusicCard from '@/components/MusicCard';
 import SkeletonCard from '@/components/SkeletonCard';
 import { fetchHomeContent } from '@/services/homeService';
@@ -215,8 +215,16 @@ export default function Home() {
                 ) : results.length === 0 ? (
                   <div className="text-sm text-gray-500">No results</div>
                 ) : (
-                  <ul className="divide-y divide-gray-100">
-                    {results.slice(0, 10).map((r) => (
+                  <>
+                    {/* Help text explaining the Music icon */}
+                    <div className="mb-2 pb-2 border-b border-gray-100">
+                      <div className="flex items-center gap-2 text-xs text-gray-500">
+                        <Music className="h-3 w-3 text-[#7B61FF]" />
+                        <span>Song has synchronized lyrics available</span>
+                      </div>
+                    </div>
+                    <ul className="divide-y divide-gray-100">
+                      {results.slice(0, 10).map((r) => (
                       <li
                         key={r.id}
                         className="py-2 flex items-center justify-between cursor-pointer hover:bg-gray-50 px-2 rounded"
@@ -245,14 +253,27 @@ export default function Home() {
                           }
                         }}
                       >
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium text-gray-900 truncate">{r.trackName}</p>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-medium text-gray-900 truncate">{r.trackName}</p>
+                            {/* Music icon indicates this song has synchronized lyrics (LRC format) available */}
+                            {r.syncedLyrics && (
+                              <div 
+                                className="flex-shrink-0" 
+                                title="This song has synchronized lyrics (LRC format) available - you can use the synchronized lyrics player"
+                                aria-label="Has synchronized lyrics"
+                              >
+                                <Music className="h-4 w-4 text-[#7B61FF]" />
+                              </div>
+                            )}
+                          </div>
                           <p className="text-xs text-[#7B61FF] truncate">{r.artistName} • {r.albumName}</p>
                         </div>
-                        <span className="ml-3 text-[10px] text-gray-400">{formatDuration(r.duration)}</span>
+                        <span className="ml-3 text-[10px] text-gray-400 flex-shrink-0">{formatDuration(r.duration)}</span>
                       </li>
                     ))}
-                  </ul>
+                    </ul>
+                  </>
                 )}
               </div>
             )}

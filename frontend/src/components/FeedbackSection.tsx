@@ -11,6 +11,7 @@ interface FeedbackSectionProps {
   processingID?: string;
   onSubmit?: (rating: number, feedback: string) => Promise<void>;
   onRatingChange?: (rating: number) => void;
+  onRatingSubmitted?: () => void;
 }
 
 export interface FeedbackSectionRef {
@@ -18,17 +19,47 @@ export interface FeedbackSectionRef {
 }
 
 const FeedbackSection = forwardRef<FeedbackSectionRef, FeedbackSectionProps>(
-  ({ processingID, onSubmit, onRatingChange }, ref) => {
+  ({ processingID, onSubmit, onRatingChange, onRatingSubmitted }, ref) => {
     const router = useRouter();
     const [rating, setRating] = useState(0);
     const [feedback, setFeedback] = useState('');
     const [submitting, setSubmitting] = useState(false);
     const [isShaking, setIsShaking] = useState(false);
     const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const [ratingStats, setRatingStats] = useState<{ totalRatings: number; averageRating: number; starCount: number } | null>(null);
+    const [userRating, setUserRating] = useState<{ rating: number; comment: string | null } | null>(null);
 
     useEffect(() => {
       setIsAuthenticated(authService.isAuthenticated());
     }, []);
+
+    useEffect(() => {
+      const fetchRatings = async () => {
+        if (!processingID || processingID === 'undefined') return;
+
+        try {
+          const stats = await songService.getRatingStats(processingID);
+          setRatingStats(stats);
+
+          if (authService.isAuthenticated()) {
+            const userRatingData = await songService.getUserRating(processingID);
+            if (userRatingData) {
+              setUserRating({ rating: userRatingData.rating, comment: userRatingData.comment });
+              setRating(userRatingData.rating);
+              setFeedback(userRatingData.comment || '');
+              if (onRatingSubmitted) {
+                onRatingSubmitted();
+              }
+            }
+          }
+        } catch (error) {
+          // eslint-disable-next-line no-console
+          console.error('Error fetching ratings:', error);
+        }
+      };
+
+      fetchRatings();
+    }, [processingID, onRatingSubmitted]);
 
     useImperativeHandle(ref, () => ({
       shake: () => {
@@ -54,6 +85,7 @@ const FeedbackSection = forwardRef<FeedbackSectionRef, FeedbackSectionProps>(
       return;
     }
     
+    const hadExistingRating = !!userRating;
     setSubmitting(true);
     try {
       if (onSubmit) {
@@ -62,11 +94,40 @@ const FeedbackSection = forwardRef<FeedbackSectionRef, FeedbackSectionProps>(
         await songService.submitRating(processingID, rating, feedback || undefined);
       }
       
-      toast.success('Thank you for your feedback!');
-      setRating(0);
-      setFeedback('');
-      if (onRatingChange) {
-        onRatingChange(0);
+      toast.success(hadExistingRating ? 'Rating updated successfully!' : 'Thank you for your feedback!');
+      
+      // Refresh rating stats after submission
+      try {
+        const stats = await songService.getRatingStats(processingID);
+        setRatingStats(stats);
+        
+        if (authService.isAuthenticated()) {
+          const userRatingData = await songService.getUserRating(processingID);
+          if (userRatingData) {
+            // Update userRating state first
+            const updatedUserRating = { rating: userRatingData.rating, comment: userRatingData.comment };
+            setUserRating(updatedUserRating);
+            // Then update form to reflect the saved rating (should match what was submitted)
+            setRating(userRatingData.rating);
+            setFeedback(userRatingData.comment || '');
+            // Notify parent that rating has been submitted
+            if (onRatingSubmitted) {
+              onRatingSubmitted();
+            }
+          }
+        }
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.error('Error refreshing ratings:', error);
+      }
+      
+      // Reset form only if this was a new rating (not updating)
+      if (!hadExistingRating) {
+        setRating(0);
+        setFeedback('');
+        if (onRatingChange) {
+          onRatingChange(0);
+        }
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to submit feedback';
@@ -109,6 +170,12 @@ const FeedbackSection = forwardRef<FeedbackSectionRef, FeedbackSectionProps>(
         <h3 className="font-semibold text-gray-900 text-sm text-center">
           Could you please give me some feedback on my analysis?
         </h3>
+        
+        {ratingStats && ratingStats.totalRatings > 0 && (
+          <div className="text-xs text-gray-600 text-center">
+            {ratingStats.averageRating.toFixed(1)} stars ({ratingStats.totalRatings} {ratingStats.totalRatings === 1 ? 'rating' : 'ratings'})
+          </div>
+        )}
       
       <div className="flex gap-2">
         {[1, 2, 3, 4, 5].map((star) => (
@@ -151,7 +218,9 @@ const FeedbackSection = forwardRef<FeedbackSectionRef, FeedbackSectionProps>(
           disabled={rating === 0 || submitting || !isAuthenticated}
           className="w-full bg-pink-500 text-white py-2 text-sm rounded-lg hover:bg-pink-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {submitting ? 'Submitting...' : 'Submit'}
+          {submitting 
+            ? (userRating ? 'Updating...' : 'Submitting...') 
+            : (userRating ? 'Update' : 'Submit')}
         </button>
       </div>
     </div>
