@@ -1,12 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const { getTranslate } = require('../controllers/translateController.js');
-const { startAnalysis } = require('../controllers/analysisController.js');
+const { startAnalysis, reAnalyzeAnalysis } = require('../controllers/analysisController.js');
 
-// Legacy translate endpoint (kept for backwards compatibility)
 router.post('/translate', getTranslate);
-
-// New unified analysis endpoint
 router.post('/start', startAnalysis);
+router.post('/:processingID/re-analyze', reAnalyzeAnalysis);
 
 module.exports = router;

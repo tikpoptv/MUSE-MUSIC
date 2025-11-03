@@ -29,7 +29,6 @@ const MusicCard: React.FC<MusicCardProps> = ({ image, title, artist, href }) => 
               sizes="(max-width: 768px) 50vw, 200px"
               className={`object-cover transition-opacity duration-500 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
               priority={false}
-              onLoadingComplete={() => setImageLoaded(true)}
               onLoad={() => setImageLoaded(true)}
             />
           ) : null}

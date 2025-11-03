@@ -3,13 +3,20 @@
 import { useRouter } from 'next/navigation';
 import { Music } from 'lucide-react';
 
-export default function SongActionButtons() {
+interface SongActionButtonsProps {
+  onReAnalyzeClick: () => void;
+  isReAnalyzing?: boolean;
+}
+
+export default function SongActionButtons({ onReAnalyzeClick, isReAnalyzing = false }: SongActionButtonsProps) {
   const router = useRouter();
 
   return (
     <div className="flex items-center justify-between w-full" style={{ gap: '22px' }}>
       {/* Re-analyze Button */}
       <button
+        onClick={onReAnalyzeClick}
+        disabled={isReAnalyzing}
         style={{
           display: 'flex',
           height: '60px',
@@ -24,9 +31,9 @@ export default function SongActionButtons() {
           color: '#7B61FF',
           cursor: 'pointer'
         }}
-        className="hover:bg-purple-50 transition-colors"
+        className="hover:bg-purple-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        Re-analyze
+        {isReAnalyzing ? 'Re-analyzing...' : 'Re-analyze'}
       </button>
 
       {/* One more song Button */}

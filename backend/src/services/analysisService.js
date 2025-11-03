@@ -153,6 +153,162 @@ class AnalysisService {
       throw error;
     }
   }
+
+  static async reAnalyze(processingID, actions, translationConfig) {
+    try {
+      if (!processingID) {
+        throw new Error('processingID is required');
+      }
+
+      const processingQuery = `
+        SELECT sap.*, s.songname, s.artistname, s.lyrics, s.duration, s.lyricssearchresultid,
+               lsr.externalid, lsr.trackname
+        FROM songaiprocessing sap
+        JOIN songs s ON sap.songid = s.songid
+        LEFT JOIN lyricssearchresults lsr ON s.lyricssearchresultid = lsr.lyricssearchresultid
+        WHERE sap.processingid = $1
+        LIMIT 1
+      `;
+      const processingResult = await DatabaseService.query(processingQuery, [processingID]);
+
+      if (!processingResult.rows || processingResult.rows.length === 0) {
+        throw new Error('Processing record not found');
+      }
+
+      const processingRaw = processingResult.rows[0];
+      const song = {
+        songID: processingRaw.songid,
+        songName: processingRaw.songname,
+        artistName: processingRaw.artistname,
+        lyrics: processingRaw.lyrics,
+        duration: processingRaw.duration,
+        lyricsSearchResultID: processingRaw.lyricssearchresultid
+      };
+
+      const lyricsRecord = {
+        id: processingRaw.externalid,
+        songID: song.songID,
+        trackName: processingRaw.trackname || song.songName,
+        artistName: song.artistName,
+        plainLyrics: song.lyrics,
+        duration: song.duration
+      };
+
+      const updateStatusQuery = `
+        UPDATE songaiprocessing 
+        SET status = 'processing', updatedat = CURRENT_TIMESTAMP
+        WHERE processingid = $1
+      `;
+      await DatabaseService.query(updateStatusQuery, [processingID]);
+
+      let lyricsResult = await this.ensureLyricsSearchResult(lyricsRecord);
+
+      const startTime = Date.now();
+      let translationResult = null;
+      let moodResult = null;
+
+      if (actions.translate) {
+        const fullLyrics = await this.fetchFullLyrics(
+          lyricsRecord.plainLyrics || lyricsRecord.lyrics,
+          lyricsResult.externalID
+        );
+
+        translationResult = await this.processTranslation(
+          fullLyrics,
+          translationConfig,
+          processingID
+        );
+      }
+
+      if (actions.mood) {
+        moodResult = null;
+      }
+
+      const processingTime = Date.now() - startTime;
+
+      const updateFields = [];
+      const updateValues = [];
+      let paramIndex = 1;
+
+      updateFields.push(`processingtime = $${paramIndex++}`);
+      updateValues.push(processingTime);
+
+      updateFields.push(`status = $${paramIndex++}`);
+      updateValues.push('completed');
+
+      if (translationResult) {
+        const mappedTranslation = this.mapTranslationToPreview(translationResult.translation);
+        updateFields.push(`translation = $${paramIndex++}`);
+        updateValues.push(mappedTranslation);
+
+        updateFields.push(`interpretation = $${paramIndex++}`);
+        updateValues.push(translationResult.interpretation);
+
+        updateFields.push(`originallanguage = $${paramIndex++}`);
+        updateValues.push(translationConfig.originalLanguage || 'auto');
+
+        updateFields.push(`targetlanguage = $${paramIndex++}`);
+        updateValues.push(translationConfig.targetLanguage);
+
+        updateFields.push(`translationconfidence = $${paramIndex++}`);
+        updateValues.push(0.95);
+      }
+
+      if (moodResult) {
+        updateFields.push(`moodtype = $${paramIndex++}`);
+        updateValues.push(moodResult.moodType || null);
+
+        updateFields.push(`moodscore = $${paramIndex++}`);
+        updateValues.push(moodResult.moodScore || 0.00);
+
+        updateFields.push(`moodconfidence = $${paramIndex++}`);
+        updateValues.push(moodResult.moodConfidence || 0.0);
+      }
+
+      const requestedActions = [];
+      if (actions.translate && translationResult) requestedActions.push('translate');
+      if (actions.mood && moodResult) requestedActions.push('mood');
+      updateFields.push(`iscompleteprocessing = $${paramIndex++}`);
+      updateValues.push(requestedActions.length > 0);
+
+      const whereValueIndex = paramIndex;
+      updateValues.push(processingID);
+
+      const updateQuery = `
+        UPDATE songaiprocessing 
+        SET ${updateFields.join(', ')}, updatedat = CURRENT_TIMESTAMP
+        WHERE processingid = $${whereValueIndex}
+      `;
+      await DatabaseService.query(updateQuery, updateValues);
+
+      return {
+        processingID: String(processingID),
+        songID: String(song.songID),
+        status: 'completed',
+        translation: translationResult ? {
+          text: translationResult.translation,
+          interpretation: translationResult.interpretation,
+          originalLanguage: translationConfig.originalLanguage || 'auto',
+          targetLanguage: translationConfig.targetLanguage
+        } : null,
+        mood: moodResult
+      };
+
+    } catch (error) {
+      logger.error('Error in AnalysisService.reAnalyze:', error);
+      
+      const updateStatusQuery = `
+        UPDATE songaiprocessing 
+        SET status = 'failed', errormessage = $1, updatedat = CURRENT_TIMESTAMP
+        WHERE processingid = $2
+      `;
+      await DatabaseService.query(updateStatusQuery, [error.message, processingID]).catch(err => {
+        logger.error('Failed to update processing status to failed:', err);
+      });
+
+      throw error;
+    }
+  }
   
   static async ensureLyricsSearchResult(lyricsRecord) {
     if (!lyricsRecord || !lyricsRecord.id) {

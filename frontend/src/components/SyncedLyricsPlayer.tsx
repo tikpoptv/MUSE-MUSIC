@@ -19,6 +19,7 @@ interface SyncedLyricsPlayerProps {
   onSyncedLyricsParsed?: (lines: SyncedLyricsLine[]) => void;
   onDurationMatchChange?: (matches: boolean | null) => void;
   seekToTime?: number; // Time to seek video to (external control)
+  readonly?: boolean; // Disable editing (read-only mode)
 }
 
 type YouTubePlayer = {
@@ -58,7 +59,8 @@ export default function SyncedLyricsPlayer({
   onCurrentTimeChange,
   onSyncedLyricsParsed,
   onDurationMatchChange,
-  seekToTime
+  seekToTime,
+  readonly = false
 }: SyncedLyricsPlayerProps) {
   const [videoUrl, setVideoUrl] = useState('');
   const [videoId, setVideoId] = useState('');
@@ -107,6 +109,8 @@ export default function SyncedLyricsPlayer({
   };
 
   useEffect(() => {
+    if (readonly) return; // Don't auto-save in readonly mode
+    
     if (videoId && processingID && videoId !== initialYoutubeVideoId) {
       const saveVideoId = async () => {
         try {
@@ -121,7 +125,7 @@ export default function SyncedLyricsPlayer({
       const timeoutId = setTimeout(saveVideoId, 1000);
       return () => clearTimeout(timeoutId);
     }
-  }, [videoId, processingID, initialYoutubeVideoId]);
+  }, [videoId, processingID, initialYoutubeVideoId, readonly]);
 
   useEffect(() => {
     if (!syncedLyrics) return;
@@ -364,9 +368,10 @@ export default function SyncedLyricsPlayer({
             <input
               type="text"
               value={videoUrl}
-              onChange={handleUrlChange}
+              onChange={readonly ? undefined : handleUrlChange}
               placeholder="https://www.youtube.com/watch?v=..."
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#7B61FF] focus:border-transparent"
+              disabled={readonly}
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#7B61FF] focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60"
             />
           </div>
           {videoId && (

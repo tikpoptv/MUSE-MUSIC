@@ -23,6 +23,7 @@ interface LyricsTranslationViewerProps {
   durationMatch?: boolean | null; // Whether video duration matches song duration
   songDuration?: number; // Total song duration in seconds
   onSeekToTime?: (time: number) => void; // Callback to seek video to specific time
+  onSelectedLanguageChange?: (language: string) => void; // Callback when selected language changes
 }
 
 export default function LyricsTranslationViewer({
@@ -41,12 +42,21 @@ export default function LyricsTranslationViewer({
   syncedLyricsLines = [],
   durationMatch = null,
   songDuration,
-  onSeekToTime
+  onSeekToTime,
+  onSelectedLanguageChange
 }: LyricsTranslationViewerProps) {
-  const [selectedLanguage, setSelectedLanguage] = useState<string>(defaultLanguage);
+  const [selectedLanguage, setSelectedLanguage] = useState<string>(targetLanguage || defaultLanguage);
   const [isShaking, setIsShaking] = useState(false);
   const lyricsContainerRef = useRef<HTMLDivElement>(null);
   const lineRefs = useRef<Map<number, HTMLDivElement>>(new Map());
+
+  useEffect(() => {
+    if (targetLanguage) {
+      setSelectedLanguage(targetLanguage);
+    } else if (defaultLanguage) {
+      setSelectedLanguage(defaultLanguage);
+    }
+  }, [targetLanguage, defaultLanguage]);
 
   const downloadLyricsAsTxt = () => {
     if (!originalLyrics || !translation) {
@@ -111,6 +121,9 @@ export default function LyricsTranslationViewer({
     setSelectedLanguage(language);
     if (onLanguageChange) {
       onLanguageChange(language);
+    }
+    if (onSelectedLanguageChange) {
+      onSelectedLanguageChange(language);
     }
   };
 

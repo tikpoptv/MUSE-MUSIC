@@ -1,28 +1,29 @@
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { Heart, Share2, MoreVertical } from 'lucide-react';
 import MusicCard from '@/components/MusicCard';
 import SkeletonCard from '@/components/SkeletonCard';
 import LyricsTranslationViewer from '@/components/LyricsTranslationViewer';
-import SongDetailsCard from '@/components/SongDetailsCard';
 import SummarySection from '@/components/SummarySection';
 import MoodAnalyzeSection from '@/components/MoodAnalyzeSection';
 import SongActionButtons from '@/components/SongActionButtons';
 import FeedbackSection, { type FeedbackSectionRef } from '@/components/FeedbackSection';
 import CoverImageUpload from '@/components/CoverImageUpload';
 import SyncedLyricsPlayer, { type SyncedLyricsLine } from '@/components/SyncedLyricsPlayer';
+import ProcessingVersionBar from '@/components/ProcessingVersionBar';
 import { songService, type SongDetail, type ProcessingDetail } from '@/services/songService';
 import { analysisService } from '@/services/analysisService';
 import ReAnalyzeConfirmModal from '@/components/modals/ReAnalyzeConfirmModal';
 import toast from 'react-hot-toast';
 
-export default function SongAnalysisPage() {
+export default function SongDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const songID = params.songID as string;
-  const processingID = params.processingID as string;
+  const processingID = searchParams.get('processingID') || '';
 
   const [songData, setSongData] = useState<SongDetail | null>(null);
   const [processingData, setProcessingData] = useState<ProcessingDetail | null>(null);
@@ -34,7 +35,6 @@ export default function SongAnalysisPage() {
     setHasSubmittedRating(true);
   }, []);
   const [coverImage, setCoverImage] = useState<string | null>(null);
-  const [isSavingCoverImage, setIsSavingCoverImage] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [syncedLyricsLines, setSyncedLyricsLines] = useState<SyncedLyricsLine[]>([]);
   const [durationMatch, setDurationMatch] = useState<boolean | null>(null);
@@ -139,6 +139,7 @@ export default function SongAnalysisPage() {
       <main className="min-h-screen bg-white">
         <div className="mx-auto max-w-7xl px-6 py-8">
           <div className="animate-pulse">
+            <div className="h-6 bg-gray-200 rounded w-64 mb-4 mx-auto"></div>
             <div className="h-9 bg-gray-200 rounded w-96 mb-8 mx-auto"></div>
             
             <div className="grid grid-cols-1 lg:grid-cols-[40%_60%] gap-8">
@@ -223,37 +224,6 @@ export default function SongAnalysisPage() {
               
               {/* ฝั่งรายละเอียด Skeleton */}
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '54px', width: '100%' }}>
-                {/* Song Details Card Skeleton */}
-                <div className="p-6 w-full">
-                  <div className="flex flex-col gap-4">
-                    {/* Song Name */}
-                    <div className="flex items-center" style={{ gap: '12px' }}>
-                      <div className="h-4 bg-gray-200 rounded" style={{ width: '100px' }}></div>
-                      <div className="bg-gray-200 rounded" style={{ width: '300px', height: '36px', borderRadius: '6px' }}></div>
-                    </div>
-                    {/* Song Name English */}
-                    <div className="flex items-center" style={{ gap: '12px' }}>
-                      <div className="h-4 bg-gray-200 rounded" style={{ width: '100px' }}></div>
-                      <div className="bg-gray-200 rounded" style={{ width: '300px', height: '36px', borderRadius: '6px' }}></div>
-                    </div>
-                    {/* Artist */}
-                    <div className="flex items-center" style={{ gap: '12px' }}>
-                      <div className="h-4 bg-gray-200 rounded" style={{ width: '100px' }}></div>
-                      <div className="bg-gray-200 rounded" style={{ width: '300px', height: '36px', borderRadius: '6px' }}></div>
-                    </div>
-                    {/* Country */}
-                    <div className="flex items-center" style={{ gap: '12px' }}>
-                      <div className="h-4 bg-gray-200 rounded" style={{ width: '100px' }}></div>
-                      <div className="bg-gray-200 rounded" style={{ width: '300px', height: '36px', borderRadius: '6px' }}></div>
-                    </div>
-                    {/* Language */}
-                    <div className="flex items-center" style={{ gap: '12px' }}>
-                      <div className="h-4 bg-gray-200 rounded" style={{ width: '100px' }}></div>
-                      <div className="bg-gray-200 rounded" style={{ width: '300px', height: '36px', borderRadius: '6px' }}></div>
-                    </div>
-                  </div>
-                </div>
-                
                 {/* Summary Skeleton */}
                 <div style={{ width: '100%' }}>
                   <div className="h-4 bg-gray-200 rounded w-20 mb-2"></div>
@@ -347,8 +317,18 @@ export default function SongAnalysisPage() {
   return (
     <main className="min-h-screen bg-white">
       <div className="mx-auto max-w-7xl px-6 py-8">
-        <h1 className="text-center text-black font-semibold mb-8" style={{ fontFamily: 'Inter', fontSize: '32px', fontWeight: 600 }}>
-          You&apos;re the First Explorer of this song!
+        <p className="text-center mb-4" style={{ fontFamily: 'Inter', fontSize: '24px', fontStyle: 'normal', fontWeight: 600, lineHeight: 'normal', color: '#000' }}>
+          We Gave It Another Spin.
+        </p>
+        <h1 className="text-center mb-8" style={{ fontFamily: 'Inter', fontSize: '32px', fontStyle: 'normal', fontWeight: 700, lineHeight: 'normal', color: '#000' }}>
+          {songData?.songName && songData?.artistName ? (
+            <>
+              {songData.songName} - {songData.artistName}
+              {songData.country && ` (${songData.country})`}
+            </>
+          ) : (
+            'Song Details'
+          )}
         </h1>
 
         <div className="grid grid-cols-1 lg:grid-cols-[40%_60%] gap-8">
@@ -356,36 +336,14 @@ export default function SongAnalysisPage() {
           <div className="space-y-6">
             {/* Centered Section */}
             <div className="flex flex-col items-center">
-              {/* Song Cover Card */}
+              {/* Song Cover Card - Read Only */}
               <CoverImageUpload
                 width={304}
                 height={302}
-                onImageChange={async (imageUrl) => {
-                  setCoverImage(imageUrl);
-                  if (processingID && processingID !== 'undefined') {
-                    try {
-                      setIsSavingCoverImage(true);
-                      await songService.updateCoverImage(processingID, imageUrl);
-                      if (processingData) {
-                        setProcessingData({
-                          ...processingData,
-                          coverImage: imageUrl
-                        });
-                      }
-                      if (imageUrl) {
-                        toast.success('Cover image saved!');
-                      } else {
-                        toast.success('Cover image removed!');
-                      }
-                    } catch (error) {
-                      toast.error(error instanceof Error ? error.message : 'Failed to save cover image');
-                    } finally {
-                      setIsSavingCoverImage(false);
-                    }
-                  }
-                }}
+                onImageChange={undefined}
                 initialImage={coverImage}
-                isSaving={isSavingCoverImage}
+                isSaving={false}
+                readonly={true}
               />
 
               {/* Action Icons */}
@@ -449,12 +407,23 @@ export default function SongAnalysisPage() {
           </div>
 
           {/* ฝั่งรายละเอียด (60%) */}
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '54px', width: '100%' }}>
-            {/* Song Details Card */}
-            <SongDetailsCard songData={songData} processingData={processingData} />
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', width: '100%' }}>
+            {/* Processing Version Bar */}
+            {processingData && (
+              <div style={{ width: '100%', marginBottom: '16px' }}>
+                <ProcessingVersionBar
+                  versionNumber={1}
+                  processingID={processingData.processingID}
+                  rating={processingData.averageRating ? Math.round(processingData.averageRating) : undefined}
+                  onNewAnalyze={handleReAnalyzeClick}
+                />
+              </div>
+            )}
 
             {/* Summary */}
-            <SummarySection processingData={processingData} />
+            <div style={{ marginBottom: '54px', width: '100%' }}>
+              <SummarySection processingData={processingData} />
+            </div>
 
             {/* Lyrics Section */}
             <LyricsTranslationViewer
@@ -486,6 +455,7 @@ export default function SongAnalysisPage() {
                 onSyncedLyricsParsed={setSyncedLyricsLines}
                 onDurationMatchChange={setDurationMatch}
                 seekToTime={seekToTime}
+                readonly={true}
               />
             ) : (
               <div className="w-full">
