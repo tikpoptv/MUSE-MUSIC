@@ -7,7 +7,7 @@ jest.mock('next/image', () => {
   return function MockImage({ src, alt, ...props }: { src: string; alt: string; [key: string]: unknown }) {
     // Strip Next.js-specific props not valid on <img>
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { fill, priority, onLoadingComplete, ...rest } = props as Record<string, unknown>
+    const { fill, priority, ...rest } = props as Record<string, unknown>
     // eslint-disable-next-line @next/next/no-img-element
     return <img src={src as string} alt={alt as string} {...rest} />
   }

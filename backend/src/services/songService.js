@@ -108,6 +108,7 @@ class SongService {
               approvalNote: procRaw.approvalnote,
               approvedAt: procRaw.approvedat,
               isPublic: procRaw.ispublic || false,
+              coverImage: procRaw.coverimage || null,
               youtubeVideoId: procRaw.youtubevideoid || null
             };
           }

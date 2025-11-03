@@ -213,6 +213,9 @@ CREATE TABLE SongAIProcessing (
     createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     
+    -- Cover Image
+    coverImage VARCHAR(500), -- URL to cover image (stored in MinIO) - each processing can have its own cover
+    
     -- Sharing & Approval System
     shareStatus VARCHAR(20) DEFAULT 'private', -- 'private' (ไม่แชร์), 'public_pending' (ขอแชร์ รออนุมัติ), 'public_approved' (แชร์แล้ว)
     approvalStatus VARCHAR(20), -- 'pending', 'approved', 'rejected' (NULL ถ้า shareStatus = 'private')

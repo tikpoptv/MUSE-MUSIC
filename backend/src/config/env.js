@@ -49,6 +49,16 @@ const config = {
   },
   n8n: {
     translateWebHook: process.env.TRANSLATE_WEBHOOK
+  },
+  
+  minio: {
+    endpoint: process.env.MINIO_ENDPOINT || 'musemusic.minio.phitik.com',
+    port: parseInt(process.env.MINIO_PORT) || 443,
+    useSSL: process.env.MINIO_USE_SSL !== 'false',
+    accessKey: process.env.MINIO_ACCESS_KEY,
+    secretKey: process.env.MINIO_SECRET_KEY,
+    bucketName: process.env.MINIO_BUCKET_NAME || 'muse-music',
+    publicUrl: process.env.MINIO_PUBLIC_URL || 'https://musemusic.minio.phitik.com'
   }
 };
 

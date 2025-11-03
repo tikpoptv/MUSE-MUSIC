@@ -40,12 +40,11 @@ class ApiService {
       this.setAuthToken(token);
     }
     
+    // Use headers from options if provided, otherwise use defaults
+    // This allows post/put methods to override headers (e.g., for FormData)
     const config: RequestInit = {
       ...options,
-      headers: {
-        ...this.defaultHeaders,
-        ...options.headers,
-      },
+      headers: options.headers || this.defaultHeaders,
     };
 
     try {
@@ -133,10 +132,41 @@ class ApiService {
     data?: unknown,
     headers?: HeadersInit
   ): Promise<ApiResponse<T>> {
+    // Check if data is FormData - if so, don't stringify and let browser set Content-Type
+    const isFormData = data instanceof FormData;
+    
+    // For FormData, we need to keep Authorization but remove Content-Type
+    let requestHeaders: HeadersInit;
+    
+    if (isFormData) {
+      // Build headers manually to preserve Authorization but remove Content-Type
+      requestHeaders = {};
+      
+      // Copy Authorization from defaultHeaders if exists
+      const authToken = this.getAuthToken();
+      if (authToken) {
+        requestHeaders['Authorization'] = `Bearer ${authToken}`;
+      }
+      
+      // Merge any additional headers provided
+      if (headers) {
+        Object.assign(requestHeaders, headers);
+      }
+      
+      // Explicitly remove Content-Type to let browser set it with boundary
+      delete (requestHeaders as Record<string, string>)['Content-Type'];
+    } else {
+      // For JSON, use default headers
+      requestHeaders = { ...this.defaultHeaders };
+      if (headers) {
+        Object.assign(requestHeaders, headers);
+      }
+    }
+    
     return this.request<T>(endpoint, {
       method: 'POST',
-      body: data ? JSON.stringify(data) : undefined,
-      headers,
+      body: data ? (isFormData ? data : JSON.stringify(data)) : undefined,
+      headers: requestHeaders,
     });
   }
 
@@ -152,9 +182,14 @@ class ApiService {
     });
   }
 
-  async delete<T>(endpoint: string, headers?: HeadersInit): Promise<ApiResponse<T>> {
+  async delete<T>(
+    endpoint: string,
+    data?: unknown,
+    headers?: HeadersInit
+  ): Promise<ApiResponse<T>> {
     return this.request<T>(endpoint, {
       method: 'DELETE',
+      body: data ? JSON.stringify(data) : undefined,
       headers,
     });
   }
