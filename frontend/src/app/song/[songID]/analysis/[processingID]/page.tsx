@@ -482,6 +482,8 @@ export default function SongAnalysisPage() {
                 songDuration={songData.duration || undefined}
                 processingID={processingID}
                 initialYoutubeVideoId={processingData?.youtubeVideoId || null}
+                songName={songData.songName}
+                artistName={songData.artistName}
                 onCurrentTimeChange={setCurrentTime}
                 onSyncedLyricsParsed={setSyncedLyricsLines}
                 onDurationMatchChange={setDurationMatch}
