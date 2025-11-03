@@ -426,46 +426,50 @@ export default function SongDetailPage() {
             </div>
 
             {/* Lyrics Section */}
-            <LyricsTranslationViewer
-              translation={processingData?.translation}
-              originalLyrics={songData?.lyrics}
-              defaultLanguage={processingData?.targetLanguage || 'Thai'}
-              availableLanguages={['Thai', 'English', 'Japanese', 'Korean']}
-              hasRating={hasSubmittedRating}
-              onShakeFeedback={() => feedbackSectionRef.current?.shake()}
-              songName={songData?.songName}
-              artistName={songData?.artistName}
-              targetLanguage={processingData?.targetLanguage}
-              currentTime={currentTime}
-              syncedLyricsLines={syncedLyricsLines}
-              durationMatch={durationMatch}
-              songDuration={songData?.duration}
-              onSeekToTime={(time) => setSeekToTime(time)}
-              onSelectedLanguageChange={setSelectedLanguage}
-            />
+            <div style={{ marginBottom: '54px', width: '100%' }}>
+              <LyricsTranslationViewer
+                translation={processingData?.translation}
+                originalLyrics={songData?.lyrics}
+                defaultLanguage={processingData?.targetLanguage || 'Thai'}
+                availableLanguages={['Thai', 'English', 'Japanese', 'Korean']}
+                hasRating={hasSubmittedRating}
+                onShakeFeedback={() => feedbackSectionRef.current?.shake()}
+                songName={songData?.songName}
+                artistName={songData?.artistName}
+                targetLanguage={processingData?.targetLanguage}
+                currentTime={currentTime}
+                syncedLyricsLines={syncedLyricsLines}
+                durationMatch={durationMatch}
+                songDuration={songData?.duration}
+                onSeekToTime={(time) => setSeekToTime(time)}
+                onSelectedLanguageChange={setSelectedLanguage}
+              />
+            </div>
 
             {/* Synced Lyrics Player */}
-            {songData?.syncedLyrics ? (
-              <SyncedLyricsPlayer
-                syncedLyrics={songData.syncedLyrics}
-                songDuration={songData.duration || undefined}
-                processingID={processingID}
-                initialYoutubeVideoId={processingData?.youtubeVideoId || null}
-                onCurrentTimeChange={setCurrentTime}
-                onSyncedLyricsParsed={setSyncedLyricsLines}
-                onDurationMatchChange={setDurationMatch}
-                seekToTime={seekToTime}
-                readonly={true}
-              />
-            ) : (
-              <div className="w-full">
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                  <p className="text-sm text-yellow-800 text-center">
-                    ⚠️ This song does not have synchronized lyrics available.
-                  </p>
+            <div style={{ marginBottom: '54px', width: '100%' }}>
+              {songData?.syncedLyrics ? (
+                <SyncedLyricsPlayer
+                  syncedLyrics={songData.syncedLyrics}
+                  songDuration={songData.duration || undefined}
+                  processingID={processingID}
+                  initialYoutubeVideoId={processingData?.youtubeVideoId || null}
+                  onCurrentTimeChange={setCurrentTime}
+                  onSyncedLyricsParsed={setSyncedLyricsLines}
+                  onDurationMatchChange={setDurationMatch}
+                  seekToTime={seekToTime}
+                  readonly={true}
+                />
+              ) : (
+                <div className="w-full">
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                    <p className="text-sm text-yellow-800 text-center">
+                      ⚠️ This song does not have synchronized lyrics available.
+                    </p>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
 
             {/* Mood Analyze Section */}
             <MoodAnalyzeSection processingData={processingData} />
