@@ -83,8 +83,7 @@ CREATE TABLE LyricsSearchResults (
     albumName VARCHAR(200),
     duration INT, -- duration in seconds
     instrumental BOOLEAN DEFAULT FALSE,
-    plainLyrics TEXT, -- Plain lyrics text
-    syncedLyrics TEXT, -- Synced lyrics (LRC format)
+    lyricsPreview VARCHAR(500), -- First line of lyrics for mapping (copyright-safe, full lyrics fetched from external API when needed)
     
     -- Usage tracking
     usageCount INT DEFAULT 0, -- จำนวนครั้งที่ถูกนำไปใช้สร้าง Song
@@ -221,6 +220,9 @@ CREATE TABLE SongAIProcessing (
     approvalNote TEXT, -- optional note from approver explaining the decision
     approvedAt TIMESTAMP, -- when it was approved/rejected
     isPublic BOOLEAN DEFAULT FALSE, -- whether this processing result is public or private (true เมื่อ shareStatus = 'public_approved')
+    
+    -- Synchronized Lyrics Player
+    youtubeVideoId VARCHAR(100), -- YouTube video ID for synced lyrics player
     FOREIGN KEY (songID) REFERENCES Songs(songID) ON DELETE CASCADE,
     FOREIGN KEY (createdBy) REFERENCES Users(userID) ON DELETE SET NULL,
     FOREIGN KEY (updatedBy) REFERENCES Users(userID) ON DELETE SET NULL,
@@ -490,6 +492,7 @@ CREATE INDEX idx_ai_processing_approval_status ON SongAIProcessing(approvalStatu
 CREATE INDEX idx_ai_processing_approved_by ON SongAIProcessing(approvedBy);
 CREATE INDEX idx_ai_processing_public ON SongAIProcessing(isPublic);
 CREATE INDEX idx_ai_processing_approved_at ON SongAIProcessing(approvedAt);
+CREATE INDEX idx_ai_processing_youtube_video_id ON SongAIProcessing(youtubeVideoId) WHERE youtubeVideoId IS NOT NULL;
 
 -- AIProcessingRatings table indexes
 CREATE INDEX idx_ratings_processing ON AIProcessingRatings(processingID);

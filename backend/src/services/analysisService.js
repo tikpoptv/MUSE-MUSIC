@@ -1,5 +1,6 @@
 const DatabaseService = require('./databaseService');
 const TranslateService = require('./translateService');
+const lyricsService = require('./lyricsService');
 const { logger } = require('../middleware/logger');
 
 class AnalysisService {
@@ -17,13 +18,8 @@ class AnalysisService {
       let lyricsResult = await this.ensureLyricsSearchResult(lyricsRecord);
       let song = await this.ensureSong(lyricsRecord, lyricsResult, userId);
       
-      // Determine share status and approval status based on shareRequest
-      // ถ้าไม่แชร์ (private): shareStatus = 'private', approvalStatus = NULL
-      // ถ้าแชร์ (public): shareStatus = 'public_pending', approvalStatus = 'pending'
       const shareStatus = shareRequest ? 'public_pending' : 'private';
       const approvalStatus = shareRequest ? 'pending' : null;
-      
-      // Use lowercase table and column names
       const processingInsertQuery = `
         INSERT INTO songaiprocessing 
         (songid, aimodel, status, createdby, sharestatus, approvalstatus) 
@@ -47,7 +43,6 @@ class AnalysisService {
         createdBy: processingRaw.createdby
       };
       
-      // Validate IDs
       if (!processing.processingID) {
         throw new Error('Failed to create processing record: processingID is missing');
       }
@@ -60,14 +55,18 @@ class AnalysisService {
       let moodResult = null;
       
       if (actions.translate) {
-        translationResult = await this.processTranslation(
+        const fullLyrics = await this.fetchFullLyrics(
           lyricsRecord.plainLyrics || lyricsRecord.lyrics,
+          lyricsResult.externalID
+        );
+        
+        translationResult = await this.processTranslation(
+          fullLyrics,
           translationConfig,
           processing.processingID
         );
       }
       
-      // TODO: Implement mood analysis
       if (actions.mood) {
         moodResult = null;
       }
@@ -86,8 +85,10 @@ class AnalysisService {
       updateValues.push('completed');
       
       if (translationResult) {
+        // Map original text to preview (copyright-safe), keep translation full
+        const mappedTranslation = this.mapTranslationToPreview(translationResult.translation);
         updateFields.push(`translation = $${paramIndex++}`);
-        updateValues.push(translationResult.translation);
+        updateValues.push(mappedTranslation);
         
         updateFields.push(`interpretation = $${paramIndex++}`);
         updateValues.push(translationResult.interpretation);
@@ -129,7 +130,6 @@ class AnalysisService {
       `;
       await DatabaseService.query(updateQuery, updateValues);
       
-      // Final validation before return
       if (!processing.processingID || !song.songID) {
         logger.error('Missing IDs in result:', { processingID: processing.processingID, songID: song.songID });
         throw new Error('Failed to complete analysis: missing IDs');
@@ -159,20 +159,17 @@ class AnalysisService {
       throw new Error('Lyrics record must have an id');
     }
     
-    // Convert externalID to integer (handle float/string cases)
     const externalID = parseInt(String(lyricsRecord.id), 10);
     if (isNaN(externalID)) {
       throw new Error(`Invalid externalID: ${lyricsRecord.id}`);
     }
     
-    // Use lowercase table and column names (PostgreSQL converts unquoted identifiers to lowercase)
     const findQuery = `SELECT * FROM lyricssearchresults WHERE externalid = $1 LIMIT 1`;
     const findResult = await DatabaseService.query(findQuery, [externalID]);
     const existing = findResult.rows[0] || null;
     
-    if (existing) {
-      // Normalize column names (PostgreSQL returns lowercase)
-      return {
+      if (existing) {
+        return {
         lyricsSearchResultID: existing.lyricssearchresultid,
         externalID: existing.externalid,
         trackName: existing.trackname,
@@ -180,8 +177,7 @@ class AnalysisService {
         albumName: existing.albumname,
         duration: existing.duration,
         instrumental: existing.instrumental,
-        plainLyrics: existing.plainlyrics,
-        syncedLyrics: existing.syncedlyrics,
+        lyricsPreview: existing.lyricspreview,
         sourceAPI: existing.sourceapi,
         usageCount: existing.usagecount,
         lastUsedAt: existing.lastusedat,
@@ -191,7 +187,6 @@ class AnalysisService {
       };
     }
     
-    // Convert duration to integer if provided
     let duration = null;
     if (lyricsRecord.duration != null) {
       duration = parseInt(String(lyricsRecord.duration), 10);
@@ -200,11 +195,16 @@ class AnalysisService {
       }
     }
     
-    // Use lowercase table and column names (PostgreSQL converts unquoted identifiers to lowercase)
+    const fullLyricsText = lyricsRecord.plainLyrics || lyricsRecord.lyrics || '';
+    const lyricsPreview = fullLyricsText
+      .split('\n')[0]
+      .substring(0, 500)
+      .trim();
+    
     const insertQuery = `
       INSERT INTO lyricssearchresults 
-      (externalid, trackname, artistname, albumname, duration, instrumental, plainlyrics, syncedlyrics, sourceapi) 
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) 
+      (externalid, trackname, artistname, albumname, duration, instrumental, lyricspreview, sourceapi) 
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
       RETURNING *
     `;
     const insertValues = [
@@ -214,14 +214,12 @@ class AnalysisService {
       lyricsRecord.albumName || '',
       duration,
       lyricsRecord.instrumental || false,
-      lyricsRecord.plainLyrics || lyricsRecord.lyrics || '',
-      lyricsRecord.syncedLyrics || null,
+      lyricsPreview,
       'lrclib'
     ];
     const insertResult = await DatabaseService.query(insertQuery, insertValues);
     const newResult = insertResult.rows[0];
     
-    // Normalize column names (PostgreSQL returns lowercase)
     const normalizedResult = {
       lyricsSearchResultID: newResult.lyricssearchresultid,
       externalID: newResult.externalid,
@@ -230,8 +228,7 @@ class AnalysisService {
       albumName: newResult.albumname,
       duration: newResult.duration,
       instrumental: newResult.instrumental,
-      plainLyrics: newResult.plainlyrics,
-      syncedLyrics: newResult.syncedlyrics,
+      lyricsPreview: newResult.lyricspreview,
       sourceAPI: newResult.sourceapi,
       usageCount: newResult.usagecount,
       lastUsedAt: newResult.lastusedat,
@@ -242,6 +239,30 @@ class AnalysisService {
     
     logger.info(`Created new LyricsSearchResult: ${normalizedResult.lyricsSearchResultID}`);
     return normalizedResult;
+  }
+  
+  static async fetchFullLyrics(lyricsFromRecord, externalID) {
+    if (lyricsFromRecord && lyricsFromRecord.trim()) {
+      return lyricsFromRecord;
+    }
+    
+    if (!externalID) {
+      throw new Error('Cannot fetch lyrics: externalID is missing');
+    }
+    
+    try {
+      logger.info(`Fetching full lyrics from external API for externalID: ${externalID}`);
+      const result = await lyricsService.getById(externalID);
+      
+      if (!result || !result.plainLyrics) {
+        throw new Error('Failed to fetch lyrics from external API: no lyrics found');
+      }
+      
+      return result.plainLyrics;
+    } catch (error) {
+      logger.error(`Failed to fetch lyrics from external API (externalID: ${externalID}):`, error);
+      throw new Error(`Failed to fetch lyrics: ${error.message}`);
+    }
   }
   
   static async ensureSong(lyricsRecord, lyricsResult, userId) {
@@ -291,7 +312,6 @@ class AnalysisService {
       }
     }
     
-    // Use lowercase table and column names
     const songInsertQuery = `
       INSERT INTO songs 
       (songname, artistname, genre, lyrics, duration, filepath, lyricssearchresultid, sourcestatus, createdby) 
@@ -302,7 +322,7 @@ class AnalysisService {
       lyricsRecord.trackName || lyricsRecord.songName || '',
       lyricsRecord.artistName || '',
       null,
-      lyricsRecord.plainLyrics || lyricsRecord.lyrics || '',
+      null,
       songDuration,
       null,
       lyricsResult.lyricsSearchResultID,
@@ -336,6 +356,61 @@ class AnalysisService {
     
     logger.info(`Created new Song: ${normalizedSong.songID}`);
     return normalizedSong;
+  }
+  
+  static mapTranslationToPreview(translationText) {
+    if (!translationText || !translationText.trim()) {
+      return translationText;
+    }
+    
+    let cleanedText = translationText.trim();
+    cleanedText = cleanedText.replace(/^\*\*[^*]*\*?\*?\s*\n?/m, '');
+    cleanedText = cleanedText.replace(/^```[\w]*\s*\n?/m, '');
+    cleanedText = cleanedText.replace(/```\s*$/m, '');
+    cleanedText = cleanedText.trim();
+    
+    const allLines = cleanedText.split('\n');
+    const result = [];
+    const hasThaiChars = (text) => /[\u0E00-\u0E7F]/.test(text);
+    const originalQueue = [];
+    const translationQueue = [];
+    
+    for (let idx = 0; idx < allLines.length; idx++) {
+      const raw = allLines[idx];
+      const line = raw.trim();
+      if (!line) {
+        while (originalQueue.length > 0 && translationQueue.length > 0) {
+          result.push(originalQueue.shift());
+          result.push(translationQueue.shift());
+          result.push('');
+        }
+        continue;
+      }
+      
+      if (hasThaiChars(line)) {
+        originalQueue.push(line.substring(0, 10));
+      } else {
+        translationQueue.push(line);
+      }
+      
+      while (originalQueue.length > 0 && translationQueue.length > 0) {
+        result.push(originalQueue.shift());
+        result.push(translationQueue.shift());
+        result.push('');
+      }
+    }
+    
+    while (originalQueue.length > 0) {
+      result.push(originalQueue.shift());
+    }
+    while (translationQueue.length > 0) {
+      result.push(translationQueue.shift());
+    }
+    while (result.length > 0 && result[result.length - 1] === '') {
+      result.pop();
+    }
+    
+    return result.join('\n');
   }
   
   static async processTranslation(lyrics, translationConfig, processingID) {

@@ -7,6 +7,7 @@ export interface SongDetail {
   artistName: string;
   genre?: string;
   lyrics?: string;
+  syncedLyrics?: string;
   duration?: number;
   country?: string;
   language?: string;
@@ -46,6 +47,7 @@ export interface ProcessingDetail {
   approvalNote?: string;
   approvedAt?: string;
   isPublic?: boolean;
+  youtubeVideoId?: string | null; // YouTube video ID for synced lyrics player
 }
 
 export interface SongDetailResponse {
@@ -145,6 +147,19 @@ export const songService = {
     const backendResponse = res.data as { data?: RatingResponse | null };
     
     return backendResponse.data || null;
+  },
+
+  async updateYouTubeVideoId(processingID: string, youtubeVideoId: string | null): Promise<void> {
+    const url = `/api/processing/${processingID}/youtube-video-id`;
+    
+    const res = await apiService.put<{ success: boolean; message?: string }>(
+      url,
+      { youtubeVideoId }
+    );
+    
+    if (!res.success) {
+      throw new Error(res.error || res.message || 'Failed to update YouTube video ID');
+    }
   }
 };
 

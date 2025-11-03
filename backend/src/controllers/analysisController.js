@@ -51,12 +51,6 @@ const startAnalysis = async (req, res) => {
       );
     }
     
-    if (lyricsRecord.id && !lyricsRecord.plainLyrics && !lyricsRecord.lyrics) {
-      return res.status(400).json(
-        errorResponse('lyricsRecord must have plainLyrics or lyrics text', 400)
-      );
-    }
-    
     logger.info('Starting analysis', {
       userId,
       hasTranslate: actions.translate,
