@@ -528,40 +528,47 @@ class AnalysisService {
     const allLines = cleanedText.split('\n');
     const result = [];
     const hasThaiChars = (text) => /[\u0E00-\u0E7F]/.test(text);
-    const originalQueue = [];
-    const translationQueue = [];
     
-    for (let idx = 0; idx < allLines.length; idx++) {
-      const raw = allLines[idx];
-      const line = raw.trim();
-      if (!line) {
-        while (originalQueue.length > 0 && translationQueue.length > 0) {
-          result.push(originalQueue.shift());
-          result.push(translationQueue.shift());
-          result.push('');
-        }
-        continue;
+    let i = 0;
+    while (i < allLines.length) {
+      while (i < allLines.length && allLines[i].trim() === '') {
+        i++;
+      }
+      if (i >= allLines.length) break;
+      
+      const originalLine = allLines[i].trim();
+      i++;
+      
+      if (!originalLine) continue;
+      
+      while (i < allLines.length && allLines[i].trim() === '') {
+        i++;
       }
       
-      if (hasThaiChars(line)) {
-        originalQueue.push(line.substring(0, 10));
+      if (i >= allLines.length) {
+        const preview = originalLine.substring(0, Math.min(10, originalLine.length));
+        result.push(preview);
+        break;
+      }
+      
+      const translationLine = allLines[i].trim();
+      i++;
+      
+      if (hasThaiChars(originalLine) && !hasThaiChars(translationLine)) {
+        const preview = translationLine.substring(0, Math.min(10, translationLine.length));
+        result.push(preview);
+        result.push(originalLine);
       } else {
-        translationQueue.push(line);
+        const preview = originalLine.substring(0, Math.min(10, originalLine.length));
+        result.push(preview);
+        if (translationLine) {
+          result.push(translationLine);
+        }
       }
       
-      while (originalQueue.length > 0 && translationQueue.length > 0) {
-        result.push(originalQueue.shift());
-        result.push(translationQueue.shift());
-        result.push('');
-      }
+      result.push('');
     }
     
-    while (originalQueue.length > 0) {
-      result.push(originalQueue.shift());
-    }
-    while (translationQueue.length > 0) {
-      result.push(translationQueue.shift());
-    }
     while (result.length > 0 && result[result.length - 1] === '') {
       result.pop();
     }
