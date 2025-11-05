@@ -40,6 +40,9 @@ export interface ProcessingDetail {
   isCompleteProcessing: boolean;
   createdAt: string;
   updatedAt: string;
+  // User tracking
+  createdBy?: string | null; // User ID who created this processing
+  updatedBy?: string | null;
   // Rating System
   totalRatings?: number;
   averageRating?: number;
@@ -75,6 +78,13 @@ export interface RatingStats {
   totalRatings: number;
   averageRating: number;
   starCount: number;
+}
+
+export interface ProcessingCheckResponse {
+  exists: boolean;
+  processingID: string | null;
+  totalRatings?: number;
+  averageRating?: number | null;
 }
 
 export const songService = {
@@ -178,6 +188,24 @@ export const songService = {
     if (!res.success) {
       throw new Error(res.error || res.message || 'Failed to update cover image');
     }
+  },
+
+  async checkProcessingByLanguage(songID: string, targetLanguage: string): Promise<ProcessingCheckResponse> {
+    const url = `/api/songs/${songID}/check-language?targetLanguage=${encodeURIComponent(targetLanguage)}`;
+    
+    const res = await apiService.get<{ success: boolean; message?: string; data: ProcessingCheckResponse }>(url);
+    
+    if (!res.success || !res.data) {
+      throw new Error(res.message || 'Failed to check processing');
+    }
+    
+    const backendResponse = res.data as { data?: ProcessingCheckResponse };
+    
+    if (!backendResponse.data) {
+      throw new Error('Missing data in response');
+    }
+    
+    return backendResponse.data;
   }
 };
 
