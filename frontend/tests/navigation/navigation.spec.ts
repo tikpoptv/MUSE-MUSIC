@@ -7,9 +7,7 @@ test.describe('Navigation Tests', () => {
     await expect(page.locator('h1')).toContainText('Discover the soul of music!');
     
     // Wait for loading state to complete - either sections appear or no data message appears
-    // Use a more robust approach: wait for either condition to be true
     await Promise.race([
-      // Option 1: Wait for sections to appear (h2 with valid content, not "Loading...")
       page.waitForFunction(
         () => {
           const h2Elements = Array.from(document.querySelectorAll('h2'));
@@ -21,30 +19,18 @@ test.describe('Navigation Tests', () => {
         },
         { timeout: 30000 }
       ).catch(() => null),
-      
-      // Option 2: Wait for no data message to appear
       page.waitForSelector('text=No recommended songs available at this time', { timeout: 30000 }).catch(() => null)
     ]);
-    
+
     // Additional wait to ensure content is stable
     await page.waitForTimeout(1000);
-    
-    // Check if there are sections or no data message
-    const h2Elements = page.locator('h2');
-    const h2Count = await h2Elements.count();
-    const hasNoDataMessage = await page.locator('text=No recommended songs available at this time').count() > 0;
-    
-    if (h2Count > 0) {
-      // If sections exist, check that h2 contains valid language names (not "Loading...")
-      const firstH2Text = await h2Elements.first().textContent();
-      expect(firstH2Text).not.toBe('Loading...');
-      expect(firstH2Text?.trim()).not.toBe('');
-      await expect(h2Elements.first()).toContainText(/English|Korean|Thai|Japanese|Chinese|Spanish|French|German|Italian|Portuguese|Russian|Vietnamese|Indonesian|Malay|Hindi|Recommended/i);
-    } else if (hasNoDataMessage) {
-      // If no data, verify the message is shown
-      await expect(page.locator('text=No recommended songs available at this time')).toBeVisible();
-    }
-    
+
+    // Robust check: either a valid section heading exists OR the no-data message is visible
+    const hasValidSectionHeading = await page.locator('h2', { hasText: /English|Korean|Thai|Japanese|Chinese|Spanish|French|German|Italian|Portuguese|Russian|Vietnamese|Indonesian|Malay|Hindi|Recommended/i }).count() > 0;
+    const hasNoDataMessage = await page.locator('text=No recommended songs available at this time').isVisible().catch(() => false);
+
+    expect(hasValidSectionHeading || hasNoDataMessage).toBeTruthy();
+
     await expect(page.locator('text=Coming Soon')).toHaveCount(0);
   });
 
