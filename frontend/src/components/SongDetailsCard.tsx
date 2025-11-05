@@ -65,26 +65,25 @@ export default function SongDetailsCard({
     }
   };
   return (
-    <div className="p-6">
-      <div className="flex flex-col gap-4">
+    <div className="p-3 sm:p-6 w-full max-w-full overflow-hidden">
+      <div className="flex flex-col gap-3 sm:gap-4 w-full">
         {/* Song Name */}
-        <div className="flex items-center" style={{ gap: '12px' }}>
-          <label className="whitespace-nowrap" style={{ color: '#000', fontFamily: 'Inter', fontSize: '14px', fontWeight: 500, lineHeight: '14px', width: '100px' }}>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-3 w-full">
+          <label className="whitespace-nowrap text-gray-900 text-xs sm:text-sm font-medium leading-tight sm:leading-4 sm:w-[100px] sm:flex-shrink-0 mb-0.5 sm:mb-0">
             Song Name
           </label>
           <input
             type="text"
             value={songData?.songName || ''}
             placeholder="Enter the name of song."
-            className="px-4 text-gray-900"
-            style={{ width: '300px', height: '36px', borderRadius: '6px', border: '1px solid #CBD5E1', background: '#FFF' }}
+            className="box-border px-3 sm:px-4 text-sm sm:text-base text-gray-900 w-full sm:w-[300px] sm:flex-1 h-10 sm:h-[36px] rounded-md border border-slate-300 bg-white min-w-0"
             readOnly
           />
         </div>
 
         {/* Song Name (English) */}
-        <div className="flex items-center" style={{ gap: '12px' }}>
-          <label style={{ color: '#000', fontFamily: 'Inter', fontSize: '14px', fontWeight: 500, lineHeight: '20px', width: '100px' }}>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-3 w-full">
+          <label className="text-gray-900 text-xs sm:text-sm font-medium leading-tight sm:leading-5 sm:w-[100px] sm:flex-shrink-0 mb-0.5 sm:mb-0">
             Song Name<br />(English)
           </label>
           <input
@@ -92,49 +91,33 @@ export default function SongDetailsCard({
             value={songNameEnglish}
             onChange={handleSongNameEnglishChange}
             placeholder="Enter the English name of song."
-            className="px-4 text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#7B61FF] focus:border-[#7B61FF]"
-            style={{ width: '300px', height: '36px', borderRadius: '6px', border: '1px solid #CBD5E1', background: '#FFF' }}
+            className="box-border px-3 sm:px-4 text-sm sm:text-base text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#7B61FF] focus:border-[#7B61FF] w-full sm:w-[300px] sm:flex-1 h-10 sm:h-[36px] rounded-md border border-slate-300 bg-white min-w-0"
           />
         </div>
 
         {/* Artist */}
-        <div className="flex items-center" style={{ gap: '12px' }}>
-          <label className="whitespace-nowrap" style={{ color: '#000', fontFamily: 'Inter', fontSize: '14px', fontWeight: 500, lineHeight: '14px', width: '100px' }}>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-3 w-full">
+          <label className="whitespace-nowrap text-gray-900 text-xs sm:text-sm font-medium leading-tight sm:leading-4 sm:w-[100px] sm:flex-shrink-0 mb-0.5 sm:mb-0">
             Artist
           </label>
           <input
             type="text"
             value={songData?.artistName || ''}
             placeholder="Enter the name of artist."
-            className="px-4 text-gray-900"
-            style={{ width: '300px', height: '36px', borderRadius: '6px', border: '1px solid #CBD5E1', background: '#FFF' }}
+            className="box-border px-3 sm:px-4 text-sm sm:text-base text-gray-900 w-full sm:w-[300px] sm:flex-1 h-10 sm:h-[36px] rounded-md border border-slate-300 bg-white min-w-0"
             readOnly
           />
         </div>
 
         {/* Country */}
-        <div className="flex items-center" style={{ gap: '12px' }}>
-          <label className="whitespace-nowrap" style={{ color: '#000', fontFamily: 'Inter', fontSize: '14px', fontWeight: 500, lineHeight: '14px', width: '100px' }}>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-3 w-full">
+          <label className="whitespace-nowrap text-gray-900 text-xs sm:text-sm font-medium leading-tight sm:leading-4 sm:w-[100px] sm:flex-shrink-0 mb-0.5 sm:mb-0">
             Country
           </label>
           <select
             value={country}
             onChange={handleCountryChange}
-            className="text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#7B61FF] focus:border-[#7B61FF]"
-            style={{ 
-              width: '300px', 
-              height: '36px', 
-              borderRadius: '6px', 
-              border: '1px solid #CBD5E1', 
-              background: '#FFF',
-              paddingLeft: '16px',
-              paddingRight: '40px',
-              appearance: 'none',
-              backgroundImage: 'url("/icons/dropdown-arrow.svg")',
-              backgroundRepeat: 'no-repeat',
-              backgroundPosition: 'right 16px center',
-              backgroundSize: '16px'
-            }}
+            className="box-border text-sm sm:text-base text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#7B61FF] focus:border-[#7B61FF] w-full sm:w-[300px] sm:flex-1 h-10 sm:h-[36px] rounded-md border border-slate-300 bg-white pl-3 sm:pl-4 pr-10 appearance-none bg-[url('/icons/dropdown-arrow.svg')] bg-no-repeat bg-[right_12px_center] sm:bg-[right_16px_center] bg-[length:14px] sm:bg-[length:16px] min-w-0"
           >
             <option value="">Select country.</option>
             <option value="us">United States</option>
@@ -145,27 +128,13 @@ export default function SongDetailsCard({
         </div>
 
         {/* Language */}
-        <div className="flex items-center" style={{ gap: '12px' }}>
-          <label className="whitespace-nowrap" style={{ color: '#000', fontFamily: 'Inter', fontSize: '14px', fontWeight: 500, lineHeight: '14px', width: '100px' }}>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-3 w-full">
+          <label className="whitespace-nowrap text-gray-900 text-xs sm:text-sm font-medium leading-tight sm:leading-4 sm:w-[100px] sm:flex-shrink-0 mb-0.5 sm:mb-0">
             Language
           </label>
           <select
             value={processingData?.originalLanguage || songData?.language || ''}
-            className="text-gray-900"
-            style={{ 
-              width: '300px', 
-              height: '36px', 
-              borderRadius: '6px', 
-              border: '1px solid #CBD5E1', 
-              background: '#FFF',
-              paddingLeft: '16px',
-              paddingRight: '40px',
-              appearance: 'none',
-              backgroundImage: 'url("/icons/dropdown-arrow.svg")',
-              backgroundRepeat: 'no-repeat',
-              backgroundPosition: 'right 16px center',
-              backgroundSize: '16px'
-            }}
+            className="box-border text-sm sm:text-base text-gray-900 w-full sm:w-[300px] sm:flex-1 h-10 sm:h-[36px] rounded-md border border-slate-300 bg-white pl-3 sm:pl-4 pr-10 appearance-none bg-[url('/icons/dropdown-arrow.svg')] bg-no-repeat bg-[right_12px_center] sm:bg-[right_16px_center] bg-[length:14px] sm:bg-[length:16px] min-w-0 disabled:opacity-50 disabled:cursor-not-allowed"
             disabled
           >
             <option value="">Select language.</option>
