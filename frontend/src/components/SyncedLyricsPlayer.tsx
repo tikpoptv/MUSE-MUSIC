@@ -22,6 +22,8 @@ interface SyncedLyricsPlayerProps {
   onCurrentTimeChange?: (currentTime: number) => void;
   onSyncedLyricsParsed?: (lines: SyncedLyricsLine[]) => void;
   onDurationMatchChange?: (matches: boolean | null) => void;
+  onIsPlayingChange?: (isPlaying: boolean) => void;
+  onPlayPauseRequest?: (api: { playPause: () => void }) => void;
   seekToTime?: number;
   readonly?: boolean;
 }
@@ -65,6 +67,8 @@ export default function SyncedLyricsPlayer({
   onCurrentTimeChange,
   onSyncedLyricsParsed,
   onDurationMatchChange,
+  onIsPlayingChange,
+  onPlayPauseRequest,
   seekToTime,
   readonly = false
 }: SyncedLyricsPlayerProps) {
@@ -341,8 +345,12 @@ export default function SyncedLyricsPlayer({
                 }
               },
               onStateChange: (event: { data: number }) => {
-                setIsPlaying(event.data === 1);
-                if (event.data === 1) {
+                const playing = event.data === 1;
+                setIsPlaying(playing);
+                if (onIsPlayingChange) {
+                  onIsPlayingChange(playing);
+                }
+                if (playing) {
                   startSync();
                 } else {
                   stopSync();
@@ -377,7 +385,7 @@ export default function SyncedLyricsPlayer({
         playerRef.current = null;
       }
     };
-  }, [videoId, songDuration, startSync, stopSync, onDurationMatchChange]);
+  }, [videoId, songDuration, startSync, stopSync, onDurationMatchChange, onIsPlayingChange]);
 
   // Handle external seek request
   useEffect(() => {
@@ -390,7 +398,7 @@ export default function SyncedLyricsPlayer({
     }
   }, [seekToTime]);
 
-  const handlePlayPause = () => {
+  const handlePlayPause = useCallback(() => {
     if (!playerRef.current) return;
     
     try {
@@ -402,7 +410,17 @@ export default function SyncedLyricsPlayer({
     } catch {
       toast.error('Failed to control player');
     }
-  };
+  }, [isPlaying]);
+
+  useEffect(() => {
+    if (onPlayPauseRequest) {
+      // Expose playPause function to parent
+      const api = {
+        playPause: handlePlayPause
+      };
+      onPlayPauseRequest(api);
+    }
+  }, [handlePlayPause, onPlayPauseRequest]);
 
   return (
     <div className="w-full space-y-4">
