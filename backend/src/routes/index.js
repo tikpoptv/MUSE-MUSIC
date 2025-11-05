@@ -13,6 +13,7 @@ const songsRoutes = require('./songs');
 const ratingsRoutes = require('./ratings');
 const processingRoutes = require('./processing');
 const imagesRoutes = require('./images');
+const youtubeRoutes = require('./youtube');
 
 router.get('/', (req, res) => {
   res.json({
@@ -37,6 +38,7 @@ router.use('/api/songs', songsRoutes);
 router.use('/api/ratings', ratingsRoutes);
 router.use('/api/processing', processingRoutes);
 router.use('/api/images', imagesRoutes);
+router.use('/api/youtube', youtubeRoutes);
 
 // Mount analysis
 router.use('/api/analysis', translateRoutes);

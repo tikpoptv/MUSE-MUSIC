@@ -527,41 +527,41 @@ class AnalysisService {
     
     const allLines = cleanedText.split('\n');
     const result = [];
-    const hasThaiChars = (text) => /[\u0E00-\u0E7F]/.test(text);
-    const originalQueue = [];
-    const translationQueue = [];
     
-    for (let idx = 0; idx < allLines.length; idx++) {
-      const raw = allLines[idx];
-      const line = raw.trim();
-      if (!line) {
-        while (originalQueue.length > 0 && translationQueue.length > 0) {
-          result.push(originalQueue.shift());
-          result.push(translationQueue.shift());
-          result.push('');
-        }
-        continue;
+    let i = 0;
+    while (i < allLines.length) {
+      while (i < allLines.length && allLines[i].trim() === '') {
+        i++;
+      }
+      if (i >= allLines.length) break;
+      
+      const firstLine = allLines[i].trim();
+      i++;
+      
+      if (!firstLine) continue;
+      
+      while (i < allLines.length && allLines[i].trim() === '') {
+        i++;
       }
       
-      if (hasThaiChars(line)) {
-        originalQueue.push(line.substring(0, 10));
-      } else {
-        translationQueue.push(line);
+      if (i >= allLines.length) {
+        const preview = firstLine.substring(0, Math.min(10, firstLine.length));
+        result.push(preview);
+        break;
       }
       
-      while (originalQueue.length > 0 && translationQueue.length > 0) {
-        result.push(originalQueue.shift());
-        result.push(translationQueue.shift());
-        result.push('');
+      const secondLine = allLines[i].trim();
+      i++;
+      
+      const preview = firstLine.substring(0, Math.min(10, firstLine.length));
+      result.push(preview);
+      if (secondLine) {
+        result.push(secondLine);
       }
+      
+      result.push('');
     }
     
-    while (originalQueue.length > 0) {
-      result.push(originalQueue.shift());
-    }
-    while (translationQueue.length > 0) {
-      result.push(translationQueue.shift());
-    }
     while (result.length > 0 && result[result.length - 1] === '') {
       result.pop();
     }

@@ -1,9 +1,11 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Youtube, Music, Play, Pause } from 'lucide-react';
+import { Youtube, Music, Play, Pause, Search, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { songService } from '@/services/songService';
+import { youtubeService } from '@/services/youtubeService';
+import type { YouTubeVideo } from '@/types/youtube';
 
 export interface SyncedLyricsLine {
   time: number; // in seconds
@@ -12,14 +14,18 @@ export interface SyncedLyricsLine {
 
 interface SyncedLyricsPlayerProps {
   syncedLyrics: string;
-  songDuration?: number; // Duration in seconds
-  processingID?: string; // Processing ID for saving YouTube video ID
-  initialYoutubeVideoId?: string | null; // Initial YouTube video ID from database
+  songDuration?: number;
+  processingID?: string;
+  initialYoutubeVideoId?: string | null;
+  songName?: string;
+  artistName?: string;
   onCurrentTimeChange?: (currentTime: number) => void;
   onSyncedLyricsParsed?: (lines: SyncedLyricsLine[]) => void;
   onDurationMatchChange?: (matches: boolean | null) => void;
-  seekToTime?: number; // Time to seek video to (external control)
-  readonly?: boolean; // Disable editing (read-only mode)
+  onIsPlayingChange?: (isPlaying: boolean) => void;
+  onPlayPauseRequest?: (api: { playPause: () => void }) => void;
+  seekToTime?: number;
+  readonly?: boolean;
 }
 
 type YouTubePlayer = {
@@ -56,14 +62,22 @@ export default function SyncedLyricsPlayer({
   songDuration,
   processingID,
   initialYoutubeVideoId,
+  songName,
+  artistName,
   onCurrentTimeChange,
   onSyncedLyricsParsed,
   onDurationMatchChange,
+  onIsPlayingChange,
+  onPlayPauseRequest,
   seekToTime,
   readonly = false
 }: SyncedLyricsPlayerProps) {
   const [videoUrl, setVideoUrl] = useState('');
   const [videoId, setVideoId] = useState('');
+  const [searchResults, setSearchResults] = useState<YouTubeVideo[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [showSearchResults, setShowSearchResults] = useState(false);
+  const [hasAutoSearched, setHasAutoSearched] = useState(false);
   
   useEffect(() => {
     if (initialYoutubeVideoId) {
@@ -75,6 +89,33 @@ export default function SyncedLyricsPlayer({
       setVideoId('');
     }
   }, [initialYoutubeVideoId]);
+
+  useEffect(() => {
+    if (!initialYoutubeVideoId && syncedLyrics && songName && songName.trim() !== '' && !hasAutoSearched && !readonly) {
+      const autoSearch = async () => {
+        try {
+          setIsSearching(true);
+          const searchQuery = songName.trim();
+          const searchArtist = artistName?.trim() || undefined;
+          const results = await youtubeService.searchVideos(searchQuery, searchArtist, 5);
+          if (results.length > 0) {
+            setSearchResults(results);
+            setShowSearchResults(true);
+            toast.success(`Found ${results.length} YouTube video${results.length > 1 ? 's' : ''}`);
+          } else {
+            toast.error('No YouTube videos found');
+          }
+        } catch (error) {
+          toast.error(error instanceof Error ? error.message : 'Failed to search YouTube');
+        } finally {
+          setIsSearching(false);
+          setHasAutoSearched(true);
+        }
+      };
+      
+      autoSearch();
+    }
+  }, [initialYoutubeVideoId, syncedLyrics, songName, artistName, hasAutoSearched, readonly]);
   const [videoDuration, setVideoDuration] = useState<number | null>(null);
   const [durationMatch, setDurationMatch] = useState<boolean | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -106,6 +147,34 @@ export default function SyncedLyricsPlayer({
     } else {
       setVideoId('');
     }
+  };
+
+  const handleSearchClick = async () => {
+    if (!songName) {
+      toast.error('Song name is required for search');
+      return;
+    }
+
+    try {
+      setIsSearching(true);
+      const results = await youtubeService.searchVideos(songName, artistName, 5);
+      setSearchResults(results);
+      setShowSearchResults(true);
+      if (results.length === 0) {
+        toast.error('No YouTube videos found');
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to search YouTube');
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handleSelectVideo = (selectedVideo: YouTubeVideo) => {
+    setVideoId(selectedVideo.videoId);
+    setVideoUrl(`https://www.youtube.com/watch?v=${selectedVideo.videoId}`);
+    setShowSearchResults(false);
+    setSearchResults([]);
   };
 
   useEffect(() => {
@@ -276,8 +345,12 @@ export default function SyncedLyricsPlayer({
                 }
               },
               onStateChange: (event: { data: number }) => {
-                setIsPlaying(event.data === 1);
-                if (event.data === 1) {
+                const playing = event.data === 1;
+                setIsPlaying(playing);
+                if (onIsPlayingChange) {
+                  onIsPlayingChange(playing);
+                }
+                if (playing) {
                   startSync();
                 } else {
                   stopSync();
@@ -312,7 +385,7 @@ export default function SyncedLyricsPlayer({
         playerRef.current = null;
       }
     };
-  }, [videoId, songDuration, startSync, stopSync, onDurationMatchChange]);
+  }, [videoId, songDuration, startSync, stopSync, onDurationMatchChange, onIsPlayingChange]);
 
   // Handle external seek request
   useEffect(() => {
@@ -325,7 +398,7 @@ export default function SyncedLyricsPlayer({
     }
   }, [seekToTime]);
 
-  const handlePlayPause = () => {
+  const handlePlayPause = useCallback(() => {
     if (!playerRef.current) return;
     
     try {
@@ -337,7 +410,17 @@ export default function SyncedLyricsPlayer({
     } catch {
       toast.error('Failed to control player');
     }
-  };
+  }, [isPlaying]);
+
+  useEffect(() => {
+    if (onPlayPauseRequest) {
+      // Expose playPause function to parent
+      const api = {
+        playPause: handlePlayPause
+      };
+      onPlayPauseRequest(api);
+    }
+  }, [handlePlayPause, onPlayPauseRequest]);
 
   return (
     <div className="w-full space-y-4">
@@ -374,6 +457,25 @@ export default function SyncedLyricsPlayer({
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#7B61FF] focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60"
             />
           </div>
+          {!readonly && songName && (
+            <button
+              onClick={handleSearchClick}
+              disabled={isSearching}
+              className="px-4 py-2 bg-[#FEB21A] text-white rounded-lg hover:bg-[#E8A219] transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              {isSearching ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Searching...</span>
+                </>
+              ) : (
+                <>
+                  <Search className="h-4 w-4" />
+                  <span>Search</span>
+                </>
+              )}
+            </button>
+          )}
           {videoId && (
             <button
               onClick={handlePlayPause}
@@ -383,6 +485,37 @@ export default function SyncedLyricsPlayer({
             </button>
           )}
         </div>
+        
+        {/* Search Results */}
+        {showSearchResults && searchResults.length > 0 && (
+          <div className="mt-3 border border-gray-200 rounded-lg bg-white shadow-lg max-h-64 overflow-y-auto">
+            <div className="p-2 border-b border-gray-200">
+              <p className="text-sm font-medium text-gray-700">Search Results</p>
+            </div>
+            <div className="divide-y divide-gray-200">
+              {searchResults.map((video) => (
+                <button
+                  key={video.videoId}
+                  onClick={() => handleSelectVideo(video)}
+                  className="w-full p-3 text-left hover:bg-gray-50 transition-colors"
+                >
+                  <div className="flex gap-3">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={video.thumbnail}
+                      alt={video.title}
+                      className="w-24 h-18 object-cover rounded flex-shrink-0"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 line-clamp-2">{video.title}</p>
+                      <p className="text-xs text-gray-500 mt-1">{video.channelTitle}</p>
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
         {videoId && (
           <div className="space-y-1">
             <p className="text-xs text-green-600">✓ Valid YouTube video ID detected</p>
