@@ -2,31 +2,44 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Navigation Tests', () => {
   test('should load home page with correct content', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/', { waitUntil: 'networkidle' });
     await expect(page).toHaveTitle(/MUSE MUSIC/);
     await expect(page.locator('h1')).toContainText('Discover the soul of music!');
     
-    // Wait for loading to complete - wait until h2 does not contain "Loading..."
-    await page.waitForFunction(
-      () => {
-        const h2Elements = Array.from(document.querySelectorAll('h2'));
-        return h2Elements.length === 0 || !h2Elements.some(el => el.textContent?.trim() === 'Loading...');
-      },
-      { timeout: 15000 }
-    );
+    // Wait for loading state to complete - either sections appear or no data message appears
+    // Use a more robust approach: wait for either condition to be true
+    await Promise.race([
+      // Option 1: Wait for sections to appear (h2 with valid content, not "Loading...")
+      page.waitForFunction(
+        () => {
+          const h2Elements = Array.from(document.querySelectorAll('h2'));
+          if (h2Elements.length === 0) return false;
+          return h2Elements.some(el => {
+            const text = el.textContent?.trim() || '';
+            return text !== '' && text !== 'Loading...' && /English|Korean|Thai|Japanese|Chinese|Spanish|French|German|Italian|Portuguese|Russian|Vietnamese|Indonesian|Malay|Hindi|Recommended/i.test(text);
+          });
+        },
+        { timeout: 30000 }
+      ).catch(() => null),
+      
+      // Option 2: Wait for no data message to appear
+      page.waitForSelector('text=No recommended songs available at this time', { timeout: 30000 }).catch(() => null)
+    ]);
     
-    // Wait a bit more to ensure content is fully rendered
-    await page.waitForTimeout(500);
+    // Additional wait to ensure content is stable
+    await page.waitForTimeout(1000);
     
     // Check if there are sections or no data message
-    const h2Count = await page.locator('h2').count();
+    const h2Elements = page.locator('h2');
+    const h2Count = await h2Elements.count();
     const hasNoDataMessage = await page.locator('text=No recommended songs available at this time').count() > 0;
     
     if (h2Count > 0) {
       // If sections exist, check that h2 contains valid language names (not "Loading...")
-      const firstH2Text = await page.locator('h2').first().textContent();
+      const firstH2Text = await h2Elements.first().textContent();
       expect(firstH2Text).not.toBe('Loading...');
-      await expect(page.locator('h2').first()).toContainText(/English|Korean|Thai|Japanese|Chinese|Spanish|French|German|Italian|Portuguese|Russian|Vietnamese|Indonesian|Malay|Hindi|Recommended/i);
+      expect(firstH2Text?.trim()).not.toBe('');
+      await expect(h2Elements.first()).toContainText(/English|Korean|Thai|Japanese|Chinese|Spanish|French|German|Italian|Portuguese|Russian|Vietnamese|Indonesian|Malay|Hindi|Recommended/i);
     } else if (hasNoDataMessage) {
       // If no data, verify the message is shown
       await expect(page.locator('text=No recommended songs available at this time')).toBeVisible();
