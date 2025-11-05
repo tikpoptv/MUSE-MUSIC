@@ -20,7 +20,28 @@ class UserService {
     const values = [username, email, hashedPassword, fullName, 'local', 'customer'];
     const result = await DatabaseService.query(query, values);
     
-    return new User(result.rows[0]);
+    // Normalize data from database (lowercase) to camelCase for User model
+    const userDataFromDB = result.rows[0];
+    const normalizedData = {
+      userID: userDataFromDB.userid,
+      username: userDataFromDB.username,
+      email: userDataFromDB.email,
+      password: null, // Don't include password in user object
+      fullName: userDataFromDB.fullname,
+      profilePicture: null,
+      provider: userDataFromDB.provider,
+      providerID: null,
+      providerEmail: null,
+      role: userDataFromDB.role,
+      loginStatus: null,
+      setupCompleted: null,
+      setupSkipped: null,
+      registerDate: userDataFromDB.registerdate,
+      createdAt: userDataFromDB.createdat,
+      updatedAt: null
+    };
+    
+    return new User(normalizedData);
   }
 
   static async findByUsername(username) {
