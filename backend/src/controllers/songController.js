@@ -35,7 +35,47 @@ const getSongDetail = async (req, res) => {
   }
 };
 
+const checkProcessingByLanguage = async (req, res) => {
+  try {
+    const { songID } = req.params;
+    const { targetLanguage } = req.query;
+
+    if (!songID || songID === 'undefined') {
+      return res.status(400).json(
+        errorResponse('songID is required', 400)
+      );
+    }
+
+    if (!targetLanguage) {
+      return res.status(400).json(
+        errorResponse('targetLanguage is required', 400)
+      );
+    }
+
+    logger.info('Checking processing by language', { songID, targetLanguage });
+
+    const result = await SongService.checkProcessingByLanguage(songID, targetLanguage);
+
+    return res.json(
+      successResponse('Processing check completed', result)
+    );
+  } catch (error) {
+    logger.error('Error in checkProcessingByLanguage:', error);
+
+    if (error.message.includes('not found') || error.message.includes('Invalid')) {
+      return res.status(404).json(
+        errorResponse(error.message, 404)
+      );
+    }
+
+    return res.status(500).json(
+      errorResponse('Failed to check processing', 500, error.message)
+    );
+  }
+};
+
 module.exports = {
-  getSongDetail
+  getSongDetail,
+  checkProcessingByLanguage
 };
 

@@ -4,19 +4,62 @@ const lyricsService = require('./lyricsService');
 const { logger } = require('../middleware/logger');
 
 class AnalysisService {
-  /**
-   * Process analysis request - manages Songs, LyricsSearchResults, and AI Processing
-   * @param {Object} lyricsRecord - Lyrics record from external API
-   * @param {Object} actions - { translate: boolean, mood: boolean }
-   * @param {Object} translationConfig - { originalLanguage, targetLanguage }
-   * @param {string|null} userId - User ID (optional, null if not logged in)
-   * @param {boolean} shareRequest - Whether user wants to share with community (default: false)
-   * @returns {Promise<Object>} Analysis result
-   */
   static async process(lyricsRecord, actions, translationConfig, userId = null, shareRequest = false) {
     try {
       let lyricsResult = await this.ensureLyricsSearchResult(lyricsRecord);
       let song = await this.ensureSong(lyricsRecord, lyricsResult, userId);
+      
+      const targetLanguage = translationConfig?.targetLanguage || null;
+      
+      if (targetLanguage && actions.translate) {
+        const languageCodeToName = {
+          'en': 'English',
+          'th': 'Thai',
+          'ko': 'Korean',
+          'ja': 'Japanese',
+          'zh': 'Chinese',
+          'es': 'Spanish',
+          'fr': 'French',
+          'de': 'German',
+          'it': 'Italian',
+          'pt': 'Portuguese',
+          'ru': 'Russian',
+          'vi': 'Vietnamese',
+          'id': 'Indonesian',
+          'ms': 'Malay',
+          'hi': 'Hindi'
+        };
+
+        const languageName = languageCodeToName[targetLanguage] || targetLanguage;
+
+        const existingProcessingQuery = `
+          SELECT processingid, songid, status, approvalstatus, sharestatus, targetlanguage
+          FROM songaiprocessing
+          WHERE songid = $1
+            AND approvalstatus = 'approved'
+            AND sharestatus = 'public_approved'
+            AND targetlanguage = $2
+          ORDER BY 
+            CASE WHEN totalratings > 0 THEN 0 ELSE 1 END,
+            totalratings DESC,
+            averagerating DESC NULLS LAST,
+            createdat DESC
+          LIMIT 1
+        `;
+        const existingProcessingResult = await DatabaseService.query(existingProcessingQuery, [song.songID, languageName]);
+        
+        if (existingProcessingResult.rows && existingProcessingResult.rows.length > 0) {
+          const existingProcessing = existingProcessingResult.rows[0];
+          logger.info(`Song already exists with approved processing for target language ${targetLanguage}: ${existingProcessing.processingid}`);
+          return {
+            processingID: String(existingProcessing.processingid),
+            songID: String(song.songID),
+            status: 'completed',
+            alreadyExists: true,
+            message: 'Song already exists in system with approved processing'
+          };
+        }
+      }
       
       const shareStatus = shareRequest ? 'public_pending' : 'private';
       const approvalStatus = shareRequest ? 'pending' : null;
@@ -73,7 +116,6 @@ class AnalysisService {
       
       const processingTime = Date.now() - startTime;
       
-      // Build UPDATE query with lowercase column names
       const updateFields = [];
       const updateValues = [];
       let paramIndex = 1;
@@ -85,7 +127,6 @@ class AnalysisService {
       updateValues.push('completed');
       
       if (translationResult) {
-        // Map original text to preview (copyright-safe), keep translation full
         const mappedTranslation = this.mapTranslationToPreview(translationResult.translation);
         updateFields.push(`translation = $${paramIndex++}`);
         updateValues.push(mappedTranslation);
@@ -203,6 +244,12 @@ class AnalysisService {
 
       let lyricsResult = await this.ensureLyricsSearchResult(lyricsRecord);
 
+      const existingOriginalLanguage = processingRaw.originallanguage || null;
+      const finalTranslationConfig = {
+        ...translationConfig,
+        originalLanguage: translationConfig.originalLanguage || existingOriginalLanguage || 'auto'
+      };
+
       const startTime = Date.now();
       let translationResult = null;
       let moodResult = null;
@@ -215,7 +262,7 @@ class AnalysisService {
 
         translationResult = await this.processTranslation(
           fullLyrics,
-          translationConfig,
+          finalTranslationConfig,
           processingID
         );
       }
@@ -245,10 +292,10 @@ class AnalysisService {
         updateValues.push(translationResult.interpretation);
 
         updateFields.push(`originallanguage = $${paramIndex++}`);
-        updateValues.push(translationConfig.originalLanguage || 'auto');
+        updateValues.push(finalTranslationConfig.originalLanguage);
 
         updateFields.push(`targetlanguage = $${paramIndex++}`);
-        updateValues.push(translationConfig.targetLanguage);
+        updateValues.push(finalTranslationConfig.targetLanguage);
 
         updateFields.push(`translationconfidence = $${paramIndex++}`);
         updateValues.push(0.95);
@@ -288,8 +335,8 @@ class AnalysisService {
         translation: translationResult ? {
           text: translationResult.translation,
           interpretation: translationResult.interpretation,
-          originalLanguage: translationConfig.originalLanguage || 'auto',
-          targetLanguage: translationConfig.targetLanguage
+          originalLanguage: finalTranslationConfig.originalLanguage,
+          targetLanguage: finalTranslationConfig.targetLanguage
         } : null,
         mood: moodResult
       };
@@ -426,7 +473,6 @@ class AnalysisService {
       throw new Error('LyricsSearchResult must have lyricsSearchResultID');
     }
     
-    // Use lowercase table and column names
     const songQuery = `
       SELECT * FROM songs 
       WHERE lyricssearchresultid = $1 
@@ -436,7 +482,6 @@ class AnalysisService {
     const existingSong = songResult.rows[0] || null;
     
     if (existingSong) {
-      // Normalize column names (PostgreSQL returns lowercase)
       return {
         songID: existingSong.songid,
         songName: existingSong.songname,
@@ -459,7 +504,6 @@ class AnalysisService {
       };
     }
     
-    // Convert duration to integer if provided
     let songDuration = null;
     if (lyricsRecord.duration != null) {
       songDuration = parseInt(String(lyricsRecord.duration), 10);
@@ -488,7 +532,6 @@ class AnalysisService {
     const songInsertResult = await DatabaseService.query(songInsertQuery, songInsertValues);
     const newSong = songInsertResult.rows[0];
     
-    // Normalize column names (PostgreSQL returns lowercase)
     const normalizedSong = {
       songID: newSong.songid,
       songName: newSong.songname,
@@ -520,46 +563,51 @@ class AnalysisService {
     }
     
     let cleanedText = translationText.trim();
-    cleanedText = cleanedText.replace(/^\*\*[^*]*\*?\*?\s*\n?/m, '');
+    
     cleanedText = cleanedText.replace(/^```[\w]*\s*\n?/m, '');
     cleanedText = cleanedText.replace(/```\s*$/m, '');
     cleanedText = cleanedText.trim();
+    cleanedText = cleanedText.replace(/\\n/g, '\n');
     
-    const allLines = cleanedText.split('\n');
+    const sections = cleanedText.split(/\n\n+/);
     const result = [];
     
-    let i = 0;
-    while (i < allLines.length) {
-      while (i < allLines.length && allLines[i].trim() === '') {
-        i++;
+    for (const section of sections) {
+      if (!section.trim()) continue;
+      
+      const lines = section.split('\n').map(line => line.trim()).filter(line => line);
+      
+      if (lines.length === 0) continue;
+      
+      let i = 0;
+      while (i < lines.length) {
+        let originalLine = (lines[i] || '').replace(/\*\*/g, '').trim();
+
+        if (/^-{2,}$/.test(originalLine)) {
+          i += 1;
+          continue;
+        }
+
+        let translatedLine = '';
+
+        if (i + 1 < lines.length) {
+          const rawNext = (lines[i + 1] || '').trim();
+          if (!/^-{2,}$/.test(rawNext)) {
+            translatedLine = rawNext.replace(/\*\*/g, '').trim();
+          }
+          i += 2;
+        } else {
+          i += 1;
+        }
+
+        if (originalLine) {
+          result.push(originalLine);
+          if (translatedLine) {
+            result.push(translatedLine);
+          }
+          result.push('');
+        }
       }
-      if (i >= allLines.length) break;
-      
-      const firstLine = allLines[i].trim();
-      i++;
-      
-      if (!firstLine) continue;
-      
-      while (i < allLines.length && allLines[i].trim() === '') {
-        i++;
-      }
-      
-      if (i >= allLines.length) {
-        const preview = firstLine.substring(0, Math.min(10, firstLine.length));
-        result.push(preview);
-        break;
-      }
-      
-      const secondLine = allLines[i].trim();
-      i++;
-      
-      const preview = firstLine.substring(0, Math.min(10, firstLine.length));
-      result.push(preview);
-      if (secondLine) {
-        result.push(secondLine);
-      }
-      
-      result.push('');
     }
     
     while (result.length > 0 && result[result.length - 1] === '') {

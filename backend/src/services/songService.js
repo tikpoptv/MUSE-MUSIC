@@ -124,13 +124,74 @@ class SongService {
       throw error;
     }
   }
+
+  static async checkProcessingByLanguage(songID, targetLanguage) {
+    try {
+      if (!songID || songID === 'undefined') {
+        throw new Error('Invalid songID');
+      }
+
+      if (!targetLanguage) {
+        throw new Error('targetLanguage is required');
+      }
+
+      const languageCodeToName = {
+        'en': 'English',
+        'th': 'Thai',
+        'ko': 'Korean',
+        'ja': 'Japanese',
+        'zh': 'Chinese',
+        'es': 'Spanish',
+        'fr': 'French',
+        'de': 'German',
+        'it': 'Italian',
+        'pt': 'Portuguese',
+        'ru': 'Russian',
+        'vi': 'Vietnamese',
+        'id': 'Indonesian',
+        'ms': 'Malay',
+        'hi': 'Hindi'
+      };
+
+      const languageName = languageCodeToName[targetLanguage] || targetLanguage;
+
+      const query = `
+        SELECT processingid, songid, targetlanguage, totalratings, averagerating, createdat
+        FROM songaiprocessing
+        WHERE songid = $1
+          AND targetlanguage = $2
+          AND approvalstatus = 'approved'
+          AND sharestatus = 'public_approved'
+        ORDER BY 
+          CASE WHEN totalratings > 0 THEN 0 ELSE 1 END,
+          totalratings DESC,
+          averagerating DESC NULLS LAST,
+          createdat DESC
+        LIMIT 1
+      `;
+
+      const result = await DatabaseService.query(query, [songID, languageName]);
+
+      if (result.rows && result.rows.length > 0) {
+        const processing = result.rows[0];
+        return {
+          exists: true,
+          processingID: processing.processingid,
+          totalRatings: processing.totalratings || 0,
+          averageRating: processing.averagerating ? parseFloat(processing.averagerating) : null
+        };
+      }
+
+      return {
+        exists: false,
+        processingID: null
+      };
+    } catch (error) {
+      logger.error('Error in SongService.checkProcessingByLanguage:', error);
+      throw error;
+    }
+  }
   
-  /**
-   * Map translation preview back to full original lyrics for frontend display
-   * @param {string} translationWithPreview - Translation with preview (format: "preview\nTranslation\n\npreview\nTranslation")
-   * @param {string} fullLyrics - Full original lyrics text
-   * @returns {string} Mapped translation with full original lyrics
-   */
   static mapTranslationToFull(translationWithPreview, fullLyrics) {
     if (!translationWithPreview || !fullLyrics) {
       return translationWithPreview;
@@ -200,4 +261,3 @@ class SongService {
 }
 
 module.exports = SongService;
-
