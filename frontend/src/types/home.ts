@@ -1,9 +1,9 @@
 export interface HomeTrackItem {
   id: string;
+  processingID: string;
   title: string;
   artist: string;
   image: string;
-  href: string;
 }
 
 export interface HomeSection {

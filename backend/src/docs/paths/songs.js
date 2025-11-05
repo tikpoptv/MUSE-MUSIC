@@ -109,5 +109,62 @@
  *         description: Song not found
  *       500:
  *         description: Server error
+ *
+ * /api/songs/{songID}/check-language:
+ *   get:
+ *     summary: Check if processing exists for a song by target language
+ *     description: Check if there is an approved processing for a song with the specified target language
+ *     tags: [Songs]
+ *     parameters:
+ *       - in: path
+ *         name: songID
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Song ID
+ *       - in: query
+ *         name: targetLanguage
+ *         required: true
+ *         schema:
+ *           type: string
+ *           enum: [en, th, ko, ja, zh, es, fr, de, it, pt, ru, vi, id, ms, hi]
+ *         description: Target language code
+ *         example: "th"
+ *     responses:
+ *       200:
+ *         description: Processing check completed
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Processing check completed"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     exists:
+ *                       type: boolean
+ *                       example: true
+ *                     processingID:
+ *                       type: string
+ *                       format: uuid
+ *                       nullable: true
+ *                     totalRatings:
+ *                       type: integer
+ *                     averageRating:
+ *                       type: number
+ *                       nullable: true
+ *       400:
+ *         description: Bad request - missing or invalid parameters
+ *       404:
+ *         description: Song not found
+ *       500:
+ *         description: Server error
  */
 

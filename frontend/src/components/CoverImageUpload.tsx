@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Plus, X, Loader2, Lock, LogIn } from 'lucide-react';
+import { Plus, X, Loader2, Lock, LogIn, Music } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
@@ -29,6 +29,7 @@ export default function CoverImageUpload({
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [imageError, setImageError] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
@@ -38,6 +39,7 @@ export default function CoverImageUpload({
 
   useEffect(() => {
     setCoverImage(initialImage);
+    setImageError(false);
   }, [initialImage]);
 
   const handleFileSelect = async (file: File) => {
@@ -195,7 +197,7 @@ export default function CoverImageUpload({
             <p className="text-white text-xs font-medium">Saving...</p>
           </div>
         </div>
-      ) : coverImage ? (
+      ) : coverImage && !imageError ? (
         <>
           {(coverImage.startsWith('http') || coverImage.startsWith('/api/images')) ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -213,6 +215,7 @@ export default function CoverImageUpload({
                 right: 0,
                 bottom: 0
               }}
+              onError={() => setImageError(true)}
             />
           ) : (
             <Image
@@ -222,6 +225,7 @@ export default function CoverImageUpload({
               className="object-cover"
               sizes={`${width}px`}
               priority
+              onError={() => setImageError(true)}
             />
           )}
           {isAuthenticated && !readonly && (
@@ -237,6 +241,10 @@ export default function CoverImageUpload({
             </button>
           )}
         </>
+      ) : readonly ? (
+        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#7B61FF] to-[#6B51EF]">
+          <Music className="text-white/80" size={64} />
+        </div>
       ) : (
         <>
           {!readonly && !isAuthenticated && (
