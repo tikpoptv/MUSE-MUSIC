@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Smile } from "lucide-react";
+import { Smile, Music } from "lucide-react";
 
 interface MusicCardProps {
   image?: string;
@@ -12,6 +12,9 @@ interface MusicCardProps {
 
 const MusicCard: React.FC<MusicCardProps> = ({ image, title, artist, href }) => {
   const [imageLoaded, setImageLoaded] = useState(false);
+  const [imageError, setImageError] = useState(false);
+  const hasImage = image && image.trim() !== '' && image !== '/images/cover.jpg' && !imageError;
+
   return (
     <Link href={href}>
       <div
@@ -21,7 +24,7 @@ const MusicCard: React.FC<MusicCardProps> = ({ image, title, artist, href }) => 
         aria-label={`Listen to ${title} by ${artist}`}
       >
         <div className="w-full aspect-square rounded-xl mb-3 relative overflow-hidden bg-gradient-to-br from-[#7B61FF] to-[#6B51EF] transition-transform duration-300 group-hover:scale-[1.02]">
-          {image ? (
+          {hasImage ? (
             <Image
               src={image}
               alt={title}
@@ -30,8 +33,13 @@ const MusicCard: React.FC<MusicCardProps> = ({ image, title, artist, href }) => 
               className={`object-cover transition-opacity duration-500 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
               priority={false}
               onLoad={() => setImageLoaded(true)}
+              onError={() => setImageError(true)}
             />
-          ) : null}
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <Music className="text-white/80" size={64} />
+            </div>
+          )}
           <div className="absolute inset-0 bg-black/20" />
           <div className="absolute bottom-0 right-0">
             <div className="w-12 h-12 bg-white/80 rounded-lg flex items-center justify-center">

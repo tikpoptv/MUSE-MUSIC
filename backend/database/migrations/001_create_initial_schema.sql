@@ -226,6 +226,9 @@ CREATE TABLE SongAIProcessing (
     
     -- Synchronized Lyrics Player
     youtubeVideoId VARCHAR(100), -- YouTube video ID for synced lyrics player
+    
+    -- Sharing Link
+    shortlink VARCHAR(255), -- Short link for sharing this processing
     FOREIGN KEY (songID) REFERENCES Songs(songID) ON DELETE CASCADE,
     FOREIGN KEY (createdBy) REFERENCES Users(userID) ON DELETE SET NULL,
     FOREIGN KEY (updatedBy) REFERENCES Users(userID) ON DELETE SET NULL,

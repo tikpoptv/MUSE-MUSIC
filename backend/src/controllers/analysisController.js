@@ -67,6 +67,12 @@ const startAnalysis = async (req, res) => {
       shareRequest
     );
     
+    if (result.alreadyExists) {
+      return res.json(
+        successResponse('Song already exists in system with approved processing', result)
+      );
+    }
+    
     return res.json(
       successResponse('Analysis completed successfully', result)
     );

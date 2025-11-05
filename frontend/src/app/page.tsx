@@ -142,27 +142,23 @@ export default function Home() {
         shareRequest
       });
 
-      // eslint-disable-next-line no-console
-      console.log('Analysis result:', result);
-
       if (!result || !result.songID || result.songID === 'undefined') {
         toast.error('Invalid song ID returned from server', { id: 'analysis' });
-        // eslint-disable-next-line no-console
-        console.error('Invalid songID:', result?.songID);
         return;
       }
 
       if (!result.processingID || result.processingID === 'undefined') {
         toast.error('Invalid processing ID returned from server', { id: 'analysis' });
-        // eslint-disable-next-line no-console
-        console.error('Invalid processingID:', result?.processingID);
+        return;
+      }
+
+      if (result.alreadyExists) {
+        toast.success('Song already exists in system', { id: 'analysis' });
+        router.push(`/song/${result.songID}?processingID=${result.processingID}`);
         return;
       }
 
       toast.success('Analysis completed!', { id: 'analysis' });
-      
-      // eslint-disable-next-line no-console
-      console.log('Redirecting to:', `/song/${result.songID}/analysis/${result.processingID}`);
       router.push(`/song/${result.songID}/analysis/${result.processingID}`);
     } catch (error) {
       // eslint-disable-next-line no-console
@@ -331,31 +327,39 @@ export default function Home() {
       </section>
 
       <section className="mx-auto max-w-6xl px-6 pb-12">
-        <h2 className="text-[24px] font-bold text-black mb-3">English</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-5">
-          {loading
-            ? Array.from({ length: 5 }).map((_, idx) => (
-                <SkeletonCard key={`skeleton-hero-${idx}`} />
-              ))
-            : data.hero.map((a, idx) => (
-                <MusicCard key={`en-${idx}`} image={a.image} title={a.title} artist={a.artist} href={a.href} />
-        ))}
-      </div>
-
-        {data.sections.map((section, sIdx) => (
-          <div key={`section-${sIdx}`} className={sIdx === 0 ? 'mt-10' : 'mt-10'}>
-            <h2 className="text-[24px] font-bold text-black mb-3">{section.title}</h2>
+        {loading ? (
+          <>
+            <h2 className="text-[24px] font-bold text-black mb-3">Loading...</h2>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-5">
-              {loading
-                ? Array.from({ length: 5 }).map((_, idx) => (
-                    <SkeletonCard key={`skeleton-${sIdx}-${idx}`} />
-                  ))
-                : section.items.map((a, idx) => (
-                    <MusicCard key={`${section.title}-${idx}`} image={a.image} title={a.title} artist={a.artist} href={a.href} />
+              {Array.from({ length: 5 }).map((_, idx) => (
+                <SkeletonCard key={`skeleton-${idx}`} />
+              ))}
+            </div>
+          </>
+        ) : data.sections.length > 0 ? (
+          data.sections.map((section, sIdx) => (
+            section.items.length > 0 && (
+              <div key={`section-${sIdx}`} className={sIdx === 0 ? '' : 'mt-10'}>
+                <h2 className="text-[24px] font-bold text-black mb-3">{section.title}</h2>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-5">
+                  {section.items.map((a, idx) => (
+                    <MusicCard 
+                      key={`${section.title}-${idx}`} 
+                      image={a.image} 
+                      title={a.title} 
+                      artist={a.artist} 
+                      href={`/song/${a.id}?processingID=${a.processingID}`} 
+                    />
                   ))}
-        </div>
-      </div>
-        ))}
+                </div>
+              </div>
+            )
+          ))
+        ) : (
+          <div className="text-center py-12">
+            <p className="text-[18px] text-gray-600">No recommended songs available at this time</p>
+          </div>
+        )}
       </section>
 
       {/* Footer removed here to avoid duplication with global layout */}

@@ -30,5 +30,7 @@ export interface AnalysisResult {
   status: 'completed' | 'processing' | 'failed';
   translation: TranslationResult | null;
   mood: unknown | null;
+  alreadyExists?: boolean;
+  message?: string;
 }
 

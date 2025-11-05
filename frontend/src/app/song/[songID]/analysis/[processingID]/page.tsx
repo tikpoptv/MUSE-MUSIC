@@ -15,8 +15,28 @@ import CoverImageUpload from '@/components/CoverImageUpload';
 import SyncedLyricsPlayer, { type SyncedLyricsLine } from '@/components/SyncedLyricsPlayer';
 import { songService, type SongDetail, type ProcessingDetail } from '@/services/songService';
 import { analysisService } from '@/services/analysisService';
+import { recommendSongsService, type RecommendedSong } from '@/services/recommendSongsService';
 import ReAnalyzeConfirmModal from '@/components/modals/ReAnalyzeConfirmModal';
+import NavigateAwayConfirmModal from '@/components/modals/NavigateAwayConfirmModal';
 import toast from 'react-hot-toast';
+
+const languageNameToCode: Record<string, string> = {
+  'Thai': 'th',
+  'English': 'en',
+  'Japanese': 'ja',
+  'Korean': 'ko'
+};
+
+const languageCodeToName: Record<string, string> = {
+  'th': 'Thai',
+  'en': 'English',
+  'ja': 'Japanese',
+  'ko': 'Korean',
+  'English': 'English',
+  'Thai': 'Thai',
+  'Japanese': 'Japanese',
+  'Korean': 'Korean'
+};
 
 export default function SongAnalysisPage() {
   const params = useParams();
@@ -48,6 +68,14 @@ export default function SongAnalysisPage() {
   const [isReAnalyzeModalOpen, setIsReAnalyzeModalOpen] = useState(false);
   const [isReAnalyzing, setIsReAnalyzing] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState<string>('Thai');
+  const [isNavigateAwayModalOpen, setIsNavigateAwayModalOpen] = useState(false);
+  const [pendingLanguageChange, setPendingLanguageChange] = useState<string | null>(null);
+  const [pendingProcessingID, setPendingProcessingID] = useState<string | null>(null);
+
+  const [recommendedByLanguage, setRecommendedByLanguage] = useState<RecommendedSong[]>([]);
+  const [recommendedByMood, setRecommendedByMood] = useState<RecommendedSong[]>([]);
+  const [loadingRecommendationsByLanguage, setLoadingRecommendationsByLanguage] = useState(false);
+  const [loadingRecommendationsByMood, setLoadingRecommendationsByMood] = useState(false);
 
   useEffect(() => {
     const fetchSongData = async () => {
@@ -67,17 +95,27 @@ export default function SongAnalysisPage() {
         setLoading(true);
         const data = await songService.getSongDetail(songID, processingID);
         
-                setSongData(data.song);
-                if (data.processing) {
-                  setProcessingData(data.processing);
-                  if (data.processing.coverImage) {
-                    const coverImageUrl = data.processing.coverImage;
-                    setCoverImage(coverImageUrl.startsWith('http') ? new URL(coverImageUrl).pathname : coverImageUrl);
-                  }
-                  if (data.processing.targetLanguage) {
-                    setSelectedLanguage(data.processing.targetLanguage);
-                  }
-                }
+        setSongData(data.song);
+        if (data.processing) {
+          const processing = data.processing;
+          
+          const isApproved = processing.approvalStatus === 'approved' && processing.shareStatus === 'public_approved';
+          
+          if (isApproved) {
+            toast.error('This processing has been reviewed and approved. You can no longer edit it.');
+            window.location.href = `/song/${songID}?processingID=${processingID}`;
+            return;
+          }
+          
+          setProcessingData(processing);
+          if (processing.coverImage) {
+            const coverImageUrl = processing.coverImage;
+            setCoverImage(coverImageUrl.startsWith('http') ? new URL(coverImageUrl).pathname : coverImageUrl);
+          }
+          if (processing.targetLanguage) {
+            setSelectedLanguage(processing.targetLanguage);
+          }
+        }
       } catch (error) {
         toast.error(error instanceof Error ? error.message : 'Failed to load song details');
         router.push('/');
@@ -89,6 +127,121 @@ export default function SongAnalysisPage() {
     fetchSongData();
   }, [songID, processingID, router]);
 
+  useEffect(() => {
+    const fetchRecommendationsByLanguage = async () => {
+      if (!processingData?.originalLanguage) return;
+
+      try {
+        setLoadingRecommendationsByLanguage(true);
+        
+        const originalLang = processingData.originalLanguage;
+        let languageCode: string | null = null;
+
+        const langLower = originalLang.toLowerCase();
+        if (languageCodeToName[langLower]) {
+          languageCode = langLower;
+        } else if (languageCodeToName[originalLang]) {
+          languageCode = originalLang;
+        } else {
+          const matchedKey = Object.keys(languageCodeToName).find(key => 
+            languageCodeToName[key] === originalLang || key.toLowerCase() === langLower
+          );
+          languageCode = matchedKey || null;
+        }
+
+        if (languageCode) {
+          const languageSongs = await recommendSongsService.getRecommendedSongsByLanguageAndMood(
+            languageCode, 
+            undefined, 
+            2,
+            songID
+          );
+          setRecommendedByLanguage(languageSongs);
+        }
+      } catch {
+        // Silently fail - recommendations are optional
+      } finally {
+        setLoadingRecommendationsByLanguage(false);
+      }
+    };
+
+    if (processingData?.originalLanguage) {
+      fetchRecommendationsByLanguage();
+    }
+  }, [processingData?.originalLanguage, songID]);
+
+  useEffect(() => {
+    const fetchRecommendationsByMood = async () => {
+      if (!processingData?.moodType) return;
+
+      try {
+        setLoadingRecommendationsByMood(true);
+        
+        const moodSongs = await recommendSongsService.getRecommendedSongsByLanguageAndMood(
+          undefined,
+          processingData.moodType,
+          2,
+          songID
+        );
+        setRecommendedByMood(moodSongs);
+      } catch {
+        // Silently fail - recommendations are optional
+      } finally {
+        setLoadingRecommendationsByMood(false);
+      }
+    };
+
+    if (processingData?.moodType) {
+      fetchRecommendationsByMood();
+    }
+  }, [processingData?.moodType, songID]);
+
+  const handleLanguageChange = async (language: string) => {
+    if (!songID || songID === 'undefined') return;
+    
+    const languageCode = languageNameToCode[language];
+    if (!languageCode) {
+      toast.error('Invalid language selected');
+      return;
+    }
+
+    if (language === processingData?.targetLanguage) {
+      return;
+    }
+
+    try {
+      setPendingLanguageChange(language);
+      const checkResult = await songService.checkProcessingByLanguage(songID, languageCode);
+
+      if (checkResult.exists && checkResult.processingID) {
+        setPendingProcessingID(checkResult.processingID);
+        setIsNavigateAwayModalOpen(true);
+      } else {
+        setIsReAnalyzeModalOpen(true);
+        setPendingLanguageChange(language);
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to check processing');
+      setPendingLanguageChange(null);
+    }
+  };
+
+  const handleNavigateAwayConfirm = () => {
+    if (pendingProcessingID) {
+      window.location.href = `/song/${songID}?processingID=${pendingProcessingID}`;
+    } else {
+      setIsNavigateAwayModalOpen(false);
+      setPendingLanguageChange(null);
+      setPendingProcessingID(null);
+    }
+  };
+
+  const handleNavigateAwayCancel = () => {
+    setIsNavigateAwayModalOpen(false);
+    setPendingLanguageChange(null);
+    setPendingProcessingID(null);
+  };
+
   const handleReAnalyzeClick = () => {
     setIsReAnalyzeModalOpen(true);
   };
@@ -99,6 +252,10 @@ export default function SongAnalysisPage() {
       return;
     }
 
+    const targetLanguageCode = pendingLanguageChange 
+      ? languageNameToCode[pendingLanguageChange] 
+      : languageNameToCode[selectedLanguage] || 'th';
+
     try {
       setIsReAnalyzing(true);
       
@@ -108,7 +265,7 @@ export default function SongAnalysisPage() {
           mood: true
         },
         translationConfig: {
-          targetLanguage: selectedLanguage
+          targetLanguage: targetLanguageCode
         }
       });
 
@@ -124,6 +281,9 @@ export default function SongAnalysisPage() {
               const coverImageUrl = data.processing.coverImage;
               setCoverImage(coverImageUrl.startsWith('http') ? new URL(coverImageUrl).pathname : coverImageUrl);
             }
+            if (pendingLanguageChange) {
+              setSelectedLanguage(pendingLanguageChange);
+            }
           }
           toast.success('Re-analysis completed!');
         } catch {
@@ -131,12 +291,14 @@ export default function SongAnalysisPage() {
         } finally {
           setIsReAnalyzing(false);
           setIsReAnalyzeModalOpen(false);
+          setPendingLanguageChange(null);
         }
       }, 2000);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to re-analyze');
       setIsReAnalyzing(false);
       setIsReAnalyzeModalOpen(false);
+      setPendingLanguageChange(null);
     }
   };
 
@@ -416,42 +578,58 @@ export default function SongAnalysisPage() {
             </div>
 
             {/* Recommend with language */}
-            <div className="flex flex-col items-center mx-auto" style={{ width: '304px' }}>
-              <h2 className="text-lg font-semibold text-gray-900 mb-3 w-full">Recommend with language</h2>
-              <div className="grid grid-cols-2 gap-3 w-full">
-                <MusicCard
-                  image="/placeholder.jpg"
-                  title="Saranghe"
-                  artist="HUNTR/X"
-                  href="/songs/1"
-                />
-                <MusicCard
-                  image="/placeholder.jpg"
-                  title="Takedown"
-                  artist="HUNTR/X"
-                  href="/songs/2"
-                />
+            {processingData?.originalLanguage && (
+              <div className="flex flex-col items-center mx-auto" style={{ width: '304px' }}>
+                <h2 className="text-lg font-semibold text-gray-900 mb-3 w-full">Recommend with language</h2>
+                {loadingRecommendationsByLanguage ? (
+                  <div className="grid grid-cols-2 gap-3 w-full">
+                    <SkeletonCard />
+                    <SkeletonCard />
+                  </div>
+                ) : recommendedByLanguage.length > 0 ? (
+                  <div className="grid grid-cols-2 gap-3 w-full">
+                    {recommendedByLanguage.map((song) => (
+                      <MusicCard
+                        key={`${song.id}-${song.processingID}`}
+                        image={song.image}
+                        title={song.title}
+                        artist={song.artist}
+                        href={`/song/${song.id}?processingID=${song.processingID}`}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500 text-center w-full">No recommendations available</p>
+                )}
               </div>
-            </div>
+            )}
 
             {/* Recommend with Mood */}
-            <div className="flex flex-col items-center mx-auto" style={{ width: '304px' }}>
-              <h2 className="text-lg font-semibold text-gray-900 mb-3 w-full">Recommend with Mood</h2>
-              <div className="grid grid-cols-2 gap-3 w-full">
-                <MusicCard
-                  image="/placeholder.jpg"
-                  title="Good"
-                  artist="B"
-                  href="/songs/3"
-                />
-                <MusicCard
-                  image="/placeholder.jpg"
-                  title="Lalala"
-                  artist="YEP."
-                  href="/songs/4"
-                />
+            {processingData?.moodType && (
+              <div className="flex flex-col items-center mx-auto" style={{ width: '304px' }}>
+                <h2 className="text-lg font-semibold text-gray-900 mb-3 w-full">Recommend with Mood</h2>
+                {loadingRecommendationsByMood ? (
+                  <div className="grid grid-cols-2 gap-3 w-full">
+                    <SkeletonCard />
+                    <SkeletonCard />
+                  </div>
+                ) : recommendedByMood.length > 0 ? (
+                  <div className="grid grid-cols-2 gap-3 w-full">
+                    {recommendedByMood.map((song) => (
+                      <MusicCard
+                        key={`${song.id}-${song.processingID}`}
+                        image={song.image}
+                        title={song.title}
+                        artist={song.artist}
+                        href={`/song/${song.id}?processingID=${song.processingID}`}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500 text-center w-full">No recommendations available</p>
+                )}
               </div>
-            </div>
+            )}
           </div>
 
           {/* ฝั่งรายละเอียด (60%) */}
@@ -478,6 +656,7 @@ export default function SongAnalysisPage() {
               durationMatch={durationMatch}
               songDuration={songData?.duration}
                 onSeekToTime={(time) => setSeekToTime(time)}
+                onLanguageChange={handleLanguageChange}
                 onSelectedLanguageChange={setSelectedLanguage}
                 onPlayPause={() => playerPlayPauseRef.current?.()}
                 isPlaying={isPlaying}
@@ -523,13 +702,24 @@ export default function SongAnalysisPage() {
         </div>
       </div>
 
+      {/* Navigate Away Confirm Modal */}
+      <NavigateAwayConfirmModal
+        isOpen={isNavigateAwayModalOpen}
+        onClose={handleNavigateAwayCancel}
+        onConfirm={handleNavigateAwayConfirm}
+        targetLanguage={pendingLanguageChange || selectedLanguage}
+      />
+
       {/* Re-Analyze Confirm Modal */}
       <ReAnalyzeConfirmModal
         isOpen={isReAnalyzeModalOpen}
-        onClose={() => setIsReAnalyzeModalOpen(false)}
+        onClose={() => {
+          setIsReAnalyzeModalOpen(false);
+          setPendingLanguageChange(null);
+        }}
         onConfirm={handleReAnalyzeConfirm}
         isProcessing={isReAnalyzing}
-        targetLanguage={selectedLanguage}
+        targetLanguage={pendingLanguageChange || selectedLanguage}
       />
     </main>
   );
