@@ -6,15 +6,26 @@ test.describe('Navigation Tests', () => {
     await expect(page).toHaveTitle(/MUSE MUSIC/);
     await expect(page.locator('h1')).toContainText('Discover the soul of music!');
     
-    // Wait for loading to complete
-    await page.waitForSelector('text=Loading...', { state: 'hidden', timeout: 10000 }).catch(() => {});
+    // Wait for loading to complete - wait until h2 does not contain "Loading..."
+    await page.waitForFunction(
+      () => {
+        const h2Elements = Array.from(document.querySelectorAll('h2'));
+        return h2Elements.length === 0 || !h2Elements.some(el => el.textContent?.trim() === 'Loading...');
+      },
+      { timeout: 15000 }
+    );
+    
+    // Wait a bit more to ensure content is fully rendered
+    await page.waitForTimeout(500);
     
     // Check if there are sections or no data message
-    const hasSections = await page.locator('h2').count() > 0;
+    const h2Count = await page.locator('h2').count();
     const hasNoDataMessage = await page.locator('text=No recommended songs available at this time').count() > 0;
     
-    if (hasSections) {
-      // If sections exist, check that h2 contains valid language names
+    if (h2Count > 0) {
+      // If sections exist, check that h2 contains valid language names (not "Loading...")
+      const firstH2Text = await page.locator('h2').first().textContent();
+      expect(firstH2Text).not.toBe('Loading...');
       await expect(page.locator('h2').first()).toContainText(/English|Korean|Thai|Japanese|Chinese|Spanish|French|German|Italian|Portuguese|Russian|Vietnamese|Indonesian|Malay|Hindi|Recommended/i);
     } else if (hasNoDataMessage) {
       // If no data, verify the message is shown
