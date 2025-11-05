@@ -527,7 +527,6 @@ class AnalysisService {
     
     const allLines = cleanedText.split('\n');
     const result = [];
-    const hasThaiChars = (text) => /[\u0E00-\u0E7F]/.test(text);
     
     let i = 0;
     while (i < allLines.length) {
@@ -536,34 +535,28 @@ class AnalysisService {
       }
       if (i >= allLines.length) break;
       
-      const originalLine = allLines[i].trim();
+      const firstLine = allLines[i].trim();
       i++;
       
-      if (!originalLine) continue;
+      if (!firstLine) continue;
       
       while (i < allLines.length && allLines[i].trim() === '') {
         i++;
       }
       
       if (i >= allLines.length) {
-        const preview = originalLine.substring(0, Math.min(10, originalLine.length));
+        const preview = firstLine.substring(0, Math.min(10, firstLine.length));
         result.push(preview);
         break;
       }
       
-      const translationLine = allLines[i].trim();
+      const secondLine = allLines[i].trim();
       i++;
       
-      if (hasThaiChars(originalLine) && !hasThaiChars(translationLine)) {
-        const preview = translationLine.substring(0, Math.min(10, translationLine.length));
-        result.push(preview);
-        result.push(originalLine);
-      } else {
-        const preview = originalLine.substring(0, Math.min(10, originalLine.length));
-        result.push(preview);
-        if (translationLine) {
-          result.push(translationLine);
-        }
+      const preview = firstLine.substring(0, Math.min(10, firstLine.length));
+      result.push(preview);
+      if (secondLine) {
+        result.push(secondLine);
       }
       
       result.push('');

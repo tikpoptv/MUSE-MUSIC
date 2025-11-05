@@ -34,11 +34,17 @@ export default function SongDetailPage() {
   const handleRatingSubmitted = useCallback(() => {
     setHasSubmittedRating(true);
   }, []);
+
+  const handleIsPlayingChange = useCallback((playing: boolean) => {
+    setIsPlaying(playing);
+  }, []);
   const [coverImage, setCoverImage] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(0);
   const [syncedLyricsLines, setSyncedLyricsLines] = useState<SyncedLyricsLine[]>([]);
   const [durationMatch, setDurationMatch] = useState<boolean | null>(null);
   const [seekToTime, setSeekToTime] = useState<number | undefined>(undefined);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const playerPlayPauseRef = useRef<(() => void) | null>(null);
   const [isReAnalyzeModalOpen, setIsReAnalyzeModalOpen] = useState(false);
   const [isReAnalyzing, setIsReAnalyzing] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState<string>('Thai');
@@ -443,6 +449,8 @@ export default function SongDetailPage() {
                 songDuration={songData?.duration}
                 onSeekToTime={(time) => setSeekToTime(time)}
                 onSelectedLanguageChange={setSelectedLanguage}
+                onPlayPause={() => playerPlayPauseRef.current?.()}
+                isPlaying={isPlaying}
               />
             </div>
 
@@ -459,6 +467,10 @@ export default function SongDetailPage() {
                   onCurrentTimeChange={setCurrentTime}
                   onSyncedLyricsParsed={setSyncedLyricsLines}
                   onDurationMatchChange={setDurationMatch}
+                  onIsPlayingChange={handleIsPlayingChange}
+                  onPlayPauseRequest={(api) => {
+                    playerPlayPauseRef.current = api.playPause;
+                  }}
                   seekToTime={seekToTime}
                   readonly={true}
                 />

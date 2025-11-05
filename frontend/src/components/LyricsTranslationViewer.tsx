@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Languages as LanguagesIcon, Save, AlertTriangle } from 'lucide-react';
+import { Languages as LanguagesIcon, Save, AlertTriangle, Maximize2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 import type { SyncedLyricsLine } from './SyncedLyricsPlayer';
+import LyricsTranslationViewerFullscreen from './LyricsTranslationViewerFullscreen';
 
 interface LyricsTranslationViewerProps {
   translation?: string;
@@ -24,6 +25,8 @@ interface LyricsTranslationViewerProps {
   songDuration?: number; // Total song duration in seconds
   onSeekToTime?: (time: number) => void; // Callback to seek video to specific time
   onSelectedLanguageChange?: (language: string) => void; // Callback when selected language changes
+  onPlayPause?: () => void; // Callback to play/pause video
+  isPlaying?: boolean; // Whether video is currently playing
 }
 
 export default function LyricsTranslationViewer({
@@ -43,10 +46,13 @@ export default function LyricsTranslationViewer({
   durationMatch = null,
   songDuration,
   onSeekToTime,
-  onSelectedLanguageChange
+  onSelectedLanguageChange,
+  onPlayPause,
+  isPlaying = false
 }: LyricsTranslationViewerProps) {
   const [selectedLanguage, setSelectedLanguage] = useState<string>(targetLanguage || defaultLanguage);
   const [isShaking, setIsShaking] = useState(false);
+  const [isFullscreenOpen, setIsFullscreenOpen] = useState(false);
   const lyricsContainerRef = useRef<HTMLDivElement>(null);
   const lineRefs = useRef<Map<number, HTMLDivElement>>(new Map());
 
@@ -365,12 +371,22 @@ export default function LyricsTranslationViewer({
             ))}
           </select>
         </div>
-        <button 
-          onClick={handleSave}
-          className={`p-2 hover:bg-gray-100 rounded-lg transition-colors ${isShaking ? 'animate-shake' : ''}`}
-        >
-          <Save className="h-5 w-5 text-[#7B61FF]" />
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setIsFullscreenOpen(true)}
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            aria-label="Open fullscreen"
+            title="Fullscreen"
+          >
+            <Maximize2 className="h-5 w-5 text-[#7B61FF]" />
+          </button>
+          <button 
+            onClick={handleSave}
+            className={`p-2 hover:bg-gray-100 rounded-lg transition-colors ${isShaking ? 'animate-shake' : ''}`}
+          >
+            <Save className="h-5 w-5 text-[#7B61FF]" />
+          </button>
+        </div>
       </div>
 
       {/* Translation Content */}
@@ -442,6 +458,22 @@ export default function LyricsTranslationViewer({
           )}
         </div>
       </div>
+
+      {/* Fullscreen Modal */}
+      {isFullscreenOpen && (
+        <LyricsTranslationViewerFullscreen
+          translation={translation}
+          songName={songName}
+          artistName={artistName}
+          currentTime={currentTime}
+          syncedLyricsLines={syncedLyricsLines}
+          songDuration={songDuration}
+          onSeekToTime={onSeekToTime}
+          onClose={() => setIsFullscreenOpen(false)}
+          onPlayPause={onPlayPause}
+          isPlaying={isPlaying}
+        />
+      )}
     </div>
   );
 }
