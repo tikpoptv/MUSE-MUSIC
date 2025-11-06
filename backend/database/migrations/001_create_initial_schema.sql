@@ -229,6 +229,11 @@ CREATE TABLE SongAIProcessing (
     
     -- Sharing Link
     shortlink VARCHAR(255), -- Short link for sharing this processing
+    
+    -- Sync Confirmation & Timing
+    syncConfirmed BOOLEAN DEFAULT FALSE, -- Confirms that sync is correct even if lyrics timing doesn't match the video
+    songStartTime DECIMAL(10,3) DEFAULT NULL, -- Time offset in seconds where the song actually starts (for cases where video timing doesn't match)
+    
     FOREIGN KEY (songID) REFERENCES Songs(songID) ON DELETE CASCADE,
     FOREIGN KEY (createdBy) REFERENCES Users(userID) ON DELETE SET NULL,
     FOREIGN KEY (updatedBy) REFERENCES Users(userID) ON DELETE SET NULL,
@@ -499,6 +504,8 @@ CREATE INDEX idx_ai_processing_approved_by ON SongAIProcessing(approvedBy);
 CREATE INDEX idx_ai_processing_public ON SongAIProcessing(isPublic);
 CREATE INDEX idx_ai_processing_approved_at ON SongAIProcessing(approvedAt);
 CREATE INDEX idx_ai_processing_youtube_video_id ON SongAIProcessing(youtubeVideoId) WHERE youtubeVideoId IS NOT NULL;
+CREATE INDEX idx_ai_processing_sync_confirmed ON SongAIProcessing(syncConfirmed) WHERE syncConfirmed = TRUE;
+CREATE INDEX idx_ai_processing_song_start_time ON SongAIProcessing(songStartTime) WHERE songStartTime IS NOT NULL;
 
 -- AIProcessingRatings table indexes
 CREATE INDEX idx_ratings_processing ON AIProcessingRatings(processingID);

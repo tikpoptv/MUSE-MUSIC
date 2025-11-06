@@ -123,8 +123,77 @@ const updateCoverImage = async (req, res) => {
   }
 };
 
+const updateSyncSettings = async (req, res) => {
+  try {
+    let userId = null;
+    const authHeader = req.headers.authorization;
+    if (authHeader) {
+      const token = JWTService.extractTokenFromHeader(authHeader);
+      if (token) {
+        const decoded = JWTService.verifyAccessToken(token);
+        if (decoded && decoded.userID) {
+          userId = decoded.userID;
+        }
+      }
+    }
+
+    const { processingID } = req.params;
+    const { syncConfirmed, songStartTime } = req.body;
+
+    if (!processingID || processingID === 'undefined') {
+      return res.status(400).json(
+        errorResponse('processingID is required', 400)
+      );
+    }
+
+    if (typeof syncConfirmed !== 'boolean') {
+      return res.status(400).json(
+        errorResponse('syncConfirmed must be a boolean', 400)
+      );
+    }
+
+    if (songStartTime !== null && songStartTime !== undefined && (typeof songStartTime !== 'number' || isNaN(songStartTime))) {
+      return res.status(400).json(
+        errorResponse('songStartTime must be a number or null', 400)
+      );
+    }
+
+    logger.info('Updating sync settings', {
+      processingID,
+      userId,
+      syncConfirmed,
+      songStartTime
+    });
+
+    const result = await ProcessingService.updateSyncSettings(
+      processingID,
+      syncConfirmed,
+      songStartTime || null,
+      userId
+    );
+
+    return res.json(
+      successResponse('Sync settings updated successfully', result)
+    );
+
+  } catch (error) {
+    logger.error('Error in updateSyncSettings:', error);
+
+    if (error.message.includes('required') || error.message.includes('not found') || error.message.includes('must be')) {
+      return res.status(400).json(
+        errorResponse(error.message, 400)
+      );
+    }
+
+    return res.status(500).json(
+      errorResponse('Failed to update sync settings', 500, error.message)
+    );
+  }
+};
+
 module.exports = {
   updateYouTubeVideoId,
-  updateCoverImage
+  updateCoverImage,
+  updateSyncSettings
 };
 

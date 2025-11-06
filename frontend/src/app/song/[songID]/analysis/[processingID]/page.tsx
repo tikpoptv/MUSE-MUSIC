@@ -655,12 +655,13 @@ export default function SongAnalysisPage() {
               syncedLyricsLines={syncedLyricsLines}
               durationMatch={durationMatch}
               songDuration={songData?.duration}
-                onSeekToTime={(time) => setSeekToTime(time)}
-                onLanguageChange={handleLanguageChange}
-                onSelectedLanguageChange={setSelectedLanguage}
-                onPlayPause={() => playerPlayPauseRef.current?.()}
-                isPlaying={isPlaying}
-              />
+              onSeekToTime={(time) => setSeekToTime(time)}
+              onLanguageChange={handleLanguageChange}
+              onSelectedLanguageChange={setSelectedLanguage}
+              onPlayPause={() => playerPlayPauseRef.current?.()}
+              isPlaying={isPlaying}
+              syncConfirmed={processingData?.syncConfirmed || false}
+            />
 
             {/* Synced Lyrics Player */}
             {songData?.syncedLyrics ? (
@@ -679,6 +680,17 @@ export default function SongAnalysisPage() {
                   playerPlayPauseRef.current = api.playPause;
                 }}
                 seekToTime={seekToTime}
+                initialSyncConfirmed={processingData?.syncConfirmed || false}
+                initialSongStartTime={processingData?.songStartTime || null}
+                onSyncSettingsChange={(syncConfirmed, songStartTime) => {
+                  if (processingData) {
+                    setProcessingData({
+                      ...processingData,
+                      syncConfirmed,
+                      songStartTime
+                    });
+                  }
+                }}
               />
             ) : (
               <div className="w-full">
