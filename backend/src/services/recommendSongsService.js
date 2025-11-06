@@ -110,7 +110,7 @@ class RecommendSongsService {
         artist: row.artistname || 'Unknown Artist',
         genre: row.genre,
         duration: row.duration,
-        image: row.coverimage || '/images/cover.jpg',
+        image: row.coverimage || null,
         originalLanguage: row.originallanguage || 'Unknown',
         moodType: row.moodtype,
         totalRatings: row.totalratings || 0,

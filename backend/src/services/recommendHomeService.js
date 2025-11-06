@@ -77,7 +77,7 @@ class RecommendHomeService {
         artist: row.artistname || 'Unknown Artist',
         genre: row.genre,
         duration: row.duration,
-        image: row.coverimage || '/images/cover.jpg',
+        image: row.coverimage || null,
         originalLanguage: row.originallanguage || 'Unknown',
         totalRatings: row.totalratings || 0,
         averageRating: row.averagerating ? parseFloat(row.averagerating) : null,

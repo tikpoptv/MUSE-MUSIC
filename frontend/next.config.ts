@@ -1,11 +1,12 @@
 import type { NextConfig } from "next";
 import path from "path";
 
+const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   output: 'standalone',
   trailingSlash: false,
-  // Pin tracing root to this app's directory to avoid monorepo lockfile detection issues
   outputFileTracingRoot: path.join(__dirname),
   images: {
     remotePatterns: [
@@ -46,13 +47,13 @@ const nextConfig: NextConfig = {
         pathname: '/api/images/**',
       },
     ],
+    unoptimized: false,
   },
   async rewrites() {
-    const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
     return [
       {
         source: '/api/:path*',
-        destination: `${apiBase}/api/:path*`,
+        destination: `${apiUrl}/api/:path*`,
       },
     ];
   },
