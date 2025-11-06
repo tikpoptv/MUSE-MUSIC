@@ -25,16 +25,27 @@ const MusicCard: React.FC<MusicCardProps> = ({ image, title, artist, href }) => 
       >
         <div className="w-full aspect-square rounded-xl mb-3 relative overflow-hidden bg-gradient-to-br from-[#7B61FF] to-[#6B51EF] transition-transform duration-300 group-hover:scale-[1.02]">
           {hasImage ? (
-            <Image
-              src={image}
-              alt={title}
-              fill
-              sizes="(max-width: 768px) 50vw, 200px"
-              className={`object-cover transition-opacity duration-500 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
-              priority={false}
-              onLoad={() => setImageLoaded(true)}
-              onError={() => setImageError(true)}
-            />
+            image.startsWith('/api/images') || image.startsWith('http') ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={image}
+                alt={title}
+                className={`object-cover absolute inset-0 w-full h-full transition-opacity duration-500 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
+                onLoad={() => setImageLoaded(true)}
+                onError={() => setImageError(true)}
+              />
+            ) : (
+              <Image
+                src={image}
+                alt={title}
+                fill
+                sizes="(max-width: 768px) 50vw, 200px"
+                className={`object-cover transition-opacity duration-500 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
+                priority={false}
+                onLoad={() => setImageLoaded(true)}
+                onError={() => setImageError(true)}
+              />
+            )
           ) : (
             <div className="absolute inset-0 flex items-center justify-center">
               <Music className="text-white/80" size={64} />

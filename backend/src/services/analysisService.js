@@ -4,6 +4,26 @@ const lyricsService = require('./lyricsService');
 const { logger } = require('../middleware/logger');
 
 class AnalysisService {
+  
+  static async validateUserId(userId) {
+    if (!userId) {
+      return null;
+    }
+    
+    try {
+      const userCheckQuery = `SELECT userid FROM users WHERE userid = $1 LIMIT 1`;
+      const userCheckResult = await DatabaseService.query(userCheckQuery, [userId]);
+      if (userCheckResult.rows && userCheckResult.rows.length > 0) {
+        return userId;
+      } else {
+        logger.warn(`UserId ${userId} not found in Users table, using NULL for createdBy`);
+        return null;
+      }
+    } catch (error) {
+      logger.error(`Error validating userId ${userId}:`, error);
+      return null;
+    }
+  }
   static async process(lyricsRecord, actions, translationConfig, userId = null, shareRequest = false) {
     try {
       let lyricsResult = await this.ensureLyricsSearchResult(lyricsRecord);
@@ -61,6 +81,9 @@ class AnalysisService {
         }
       }
       
+      // Validate userId exists in Users table if provided
+      const validUserId = await this.validateUserId(userId);
+      
       const shareStatus = shareRequest ? 'public_pending' : 'private';
       const approvalStatus = shareRequest ? 'pending' : null;
       const processingInsertQuery = `
@@ -73,7 +96,7 @@ class AnalysisService {
         song.songID,
         'n8n-translate',
         'processing',
-        userId,
+        validUserId,
         shareStatus,
         approvalStatus
       ]);
@@ -504,6 +527,9 @@ class AnalysisService {
       };
     }
     
+    // Validate userId exists in Users table if provided
+    const validUserId = await this.validateUserId(userId);
+    
     let songDuration = null;
     if (lyricsRecord.duration != null) {
       songDuration = parseInt(String(lyricsRecord.duration), 10);
@@ -527,7 +553,7 @@ class AnalysisService {
       null,
       lyricsResult.lyricsSearchResultID,
       'from_lyrics_search',
-      userId
+      validUserId
     ];
     const songInsertResult = await DatabaseService.query(songInsertQuery, songInsertValues);
     const newSong = songInsertResult.rows[0];
