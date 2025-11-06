@@ -601,6 +601,7 @@ export default function SongDetailPage() {
                 onSelectedLanguageChange={setSelectedLanguage}
                 onPlayPause={() => playerPlayPauseRef.current?.()}
                 isPlaying={isPlaying}
+                syncConfirmed={processingData?.syncConfirmed || false}
               />
             </div>
 
@@ -623,6 +624,8 @@ export default function SongDetailPage() {
                   }}
                   seekToTime={seekToTime}
                   readonly={true}
+                  initialSyncConfirmed={processingData?.syncConfirmed || false}
+                  initialSongStartTime={processingData?.songStartTime || null}
                 />
               ) : (
                 <div className="w-full">

@@ -85,6 +85,51 @@ class ProcessingService {
       throw error;
     }
   }
+
+  static async updateSyncSettings(processingID, syncConfirmed, songStartTime = null, userId = null) {
+    try {
+      if (!processingID || processingID === 'undefined') {
+        throw new Error('processingID is required');
+      }
+
+      if (typeof syncConfirmed !== 'boolean') {
+        throw new Error('syncConfirmed must be a boolean');
+      }
+
+      if (songStartTime !== null && (typeof songStartTime !== 'number' || isNaN(songStartTime))) {
+        throw new Error('songStartTime must be a number or null');
+      }
+
+      const updateQuery = `
+        UPDATE songaiprocessing 
+        SET syncconfirmed = $1, songstarttime = $2, updatedby = $3, updatedat = CURRENT_TIMESTAMP
+        WHERE processingid = $4
+        RETURNING *
+      `;
+      
+      const result = await DatabaseService.query(updateQuery, [
+        syncConfirmed,
+        songStartTime,
+        userId,
+        processingID
+      ]);
+
+      if (!result.rows || result.rows.length === 0) {
+        throw new Error('Processing not found');
+      }
+
+      const updated = result.rows[0];
+      
+      return {
+        processingID: updated.processingid,
+        syncConfirmed: updated.syncconfirmed || false,
+        songStartTime: updated.songstarttime ? parseFloat(updated.songstarttime) : null
+      };
+    } catch (error) {
+      logger.error('Error in ProcessingService.updateSyncSettings:', error);
+      throw error;
+    }
+  }
 }
 
 module.exports = ProcessingService;

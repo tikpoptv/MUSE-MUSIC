@@ -626,6 +626,15 @@ class AnalysisService {
           i += 1;
         }
 
+        // Truncate original line to first N characters (code points) to support multi-language
+        const MAX_CHARS_ORIGINAL = 10;
+        if (originalLine) {
+          const chars = Array.from(originalLine);
+          if (chars.length > MAX_CHARS_ORIGINAL) {
+            originalLine = chars.slice(0, MAX_CHARS_ORIGINAL).join('').trim();
+          }
+        }
+
         if (originalLine) {
           result.push(originalLine);
           if (translatedLine) {
