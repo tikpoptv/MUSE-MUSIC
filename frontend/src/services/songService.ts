@@ -54,8 +54,10 @@ export interface ProcessingDetail {
   approvalNote?: string;
   approvedAt?: string;
   isPublic?: boolean;
-  coverImage?: string | null; // Cover image URL from MinIO
-  youtubeVideoId?: string | null; // YouTube video ID for synced lyrics player
+  coverImage?: string | null;
+  youtubeVideoId?: string | null;
+  syncConfirmed?: boolean;
+  songStartTime?: number | null;
 }
 
 export interface SongDetailResponse {
@@ -187,6 +189,23 @@ export const songService = {
     
     if (!res.success) {
       throw new Error(res.error || res.message || 'Failed to update cover image');
+    }
+  },
+
+  async updateSyncSettings(
+    processingID: string,
+    syncConfirmed: boolean,
+    songStartTime: number | null = null
+  ): Promise<void> {
+    const url = `/api/processing/${processingID}/sync-settings`;
+    
+    const res = await apiService.put<{ success: boolean; message?: string }>(
+      url,
+      { syncConfirmed, songStartTime }
+    );
+    
+    if (!res.success) {
+      throw new Error(res.error || res.message || 'Failed to update sync settings');
     }
   },
 

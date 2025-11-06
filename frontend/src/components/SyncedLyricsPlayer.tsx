@@ -26,6 +26,9 @@ interface SyncedLyricsPlayerProps {
   onPlayPauseRequest?: (api: { playPause: () => void }) => void;
   seekToTime?: number;
   readonly?: boolean;
+  initialSyncConfirmed?: boolean;
+  initialSongStartTime?: number | null;
+  onSyncSettingsChange?: (syncConfirmed: boolean, songStartTime: number | null) => void;
 }
 
 type YouTubePlayer = {
@@ -70,7 +73,10 @@ export default function SyncedLyricsPlayer({
   onIsPlayingChange,
   onPlayPauseRequest,
   seekToTime,
-  readonly = false
+  readonly = false,
+  initialSyncConfirmed = false,
+  initialSongStartTime = null,
+  onSyncSettingsChange
 }: SyncedLyricsPlayerProps) {
   const [videoUrl, setVideoUrl] = useState('');
   const [videoId, setVideoId] = useState('');
@@ -119,6 +125,9 @@ export default function SyncedLyricsPlayer({
   const [videoDuration, setVideoDuration] = useState<number | null>(null);
   const [durationMatch, setDurationMatch] = useState<boolean | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [syncConfirmed, setSyncConfirmed] = useState(initialSyncConfirmed);
+  const [songStartTime, setSongStartTime] = useState<number | null>(initialSongStartTime);
+  const [isSavingSyncSettings, setIsSavingSyncSettings] = useState(false);
   const playerRef = useRef<YouTubePlayer | null>(null);
   const playerContainerRef = useRef<HTMLDivElement>(null);
   const playerIdRef = useRef<string>('');
@@ -303,7 +312,13 @@ export default function SyncedLyricsPlayer({
                           if (matches) {
                             toast.success(`✓ Duration matches! (${Math.round(duration)}s)`);
                           } else {
-                            toast.error(`⚠ Duration mismatch: Video (${Math.round(duration)}s) vs Song (${songDuration}s)`);
+                            if (syncConfirmed) {
+                              toast.success(`✓ Sync confirmed as correct (Video: ${Math.round(duration)}s, Song: ${songDuration}s)`, {
+                                duration: 4000
+                              });
+                            } else {
+                              toast.error(`⚠ Duration mismatch: Video (${Math.round(duration)}s) vs Song (${songDuration}s)`);
+                            }
                           }
                           
                           if (onDurationMatchChange) {
@@ -327,7 +342,13 @@ export default function SyncedLyricsPlayer({
                                 if (matches) {
                                   toast.success(`✓ Duration matches! (${Math.round(duration)}s)`);
                                 } else {
-                                  toast.error(`⚠ Duration mismatch: Video (${Math.round(duration)}s) vs Song (${songDuration}s)`);
+                                  if (syncConfirmed) {
+                                    toast.success(`✓ Sync confirmed as correct (Video: ${Math.round(duration)}s, Song: ${songDuration}s)`, {
+                                      duration: 4000
+                                    });
+                                  } else {
+                                    toast.error(`⚠ Duration mismatch: Video (${Math.round(duration)}s) vs Song (${songDuration}s)`);
+                                  }
                                 }
                                 
                                 if (onDurationMatchChange) {
@@ -385,7 +406,7 @@ export default function SyncedLyricsPlayer({
         playerRef.current = null;
       }
     };
-  }, [videoId, songDuration, startSync, stopSync, onDurationMatchChange, onIsPlayingChange]);
+  }, [videoId, songDuration, startSync, stopSync, onDurationMatchChange, onIsPlayingChange, syncConfirmed]);
 
   // Handle external seek request
   useEffect(() => {
@@ -529,8 +550,98 @@ export default function SyncedLyricsPlayer({
               <p className="text-xs text-green-600 font-semibold">✓ Duration matches song!</p>
             )}
             {durationMatch === false && (
-              <p className="text-xs text-red-600 font-semibold">✗ Duration does not match song</p>
+              syncConfirmed ? (
+                <p className="text-xs text-green-600 font-semibold">✓ Sync confirmed as correct</p>
+              ) : (
+                <p className="text-xs text-amber-600 font-semibold">ℹ️ Duration differs - Please confirm sync if correct</p>
+              )
             )}
+          </div>
+        )}
+
+        {/* Sync Settings */}
+        {!readonly && processingID && videoId && (
+          <div className="mt-4 p-4 border border-gray-200 rounded-lg bg-gray-50 space-y-3">
+            <h4 className="text-sm font-semibold text-gray-700">Sync Settings</h4>
+            
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="syncConfirmed"
+                checked={syncConfirmed}
+                onChange={(e) => {
+                  const newValue = e.target.checked;
+                  setSyncConfirmed(newValue);
+                  if (onSyncSettingsChange) {
+                    onSyncSettingsChange(newValue, songStartTime);
+                  }
+                  if (processingID) {
+                    const saveSettings = async () => {
+                      try {
+                        setIsSavingSyncSettings(true);
+                        await songService.updateSyncSettings(processingID, newValue, songStartTime);
+                        toast.success('Sync settings saved!');
+                      } catch (error) {
+                        toast.error(error instanceof Error ? error.message : 'Failed to save sync settings');
+                        setSyncConfirmed(!newValue);
+                        if (onSyncSettingsChange) {
+                          onSyncSettingsChange(!newValue, songStartTime);
+                        }
+                      } finally {
+                        setIsSavingSyncSettings(false);
+                      }
+                    };
+                    const timeoutId = setTimeout(saveSettings, 500);
+                    return () => clearTimeout(timeoutId);
+                  }
+                }}
+                disabled={isSavingSyncSettings}
+                className="w-4 h-4 text-[#7B61FF] border-gray-300 rounded focus:ring-[#7B61FF] disabled:opacity-50"
+              />
+              <label htmlFor="syncConfirmed" className="text-sm text-gray-700 cursor-pointer">
+                Confirm sync is correct (even if timing doesn&apos;t match)
+              </label>
+            </div>
+
+            <div className="space-y-1">
+              <label htmlFor="songStartTime" className="block text-sm text-gray-700">
+                Song Start Time (seconds)
+              </label>
+              <input
+                type="number"
+                id="songStartTime"
+                value={songStartTime ?? ''}
+                onChange={(e) => {
+                  const value = e.target.value === '' ? null : parseFloat(e.target.value);
+                  setSongStartTime(value);
+                  if (onSyncSettingsChange) {
+                    onSyncSettingsChange(syncConfirmed, value);
+                  }
+                  if (processingID) {
+                    const saveSettings = async () => {
+                      try {
+                        setIsSavingSyncSettings(true);
+                        await songService.updateSyncSettings(processingID, syncConfirmed, value);
+                        toast.success('Sync settings saved!');
+                      } catch (error) {
+                        toast.error(error instanceof Error ? error.message : 'Failed to save sync settings');
+                      } finally {
+                        setIsSavingSyncSettings(false);
+                      }
+                    };
+                    const timeoutId = setTimeout(saveSettings, 1000);
+                    return () => clearTimeout(timeoutId);
+                  }
+                }}
+                placeholder="0.0"
+                step="0.1"
+                disabled={isSavingSyncSettings}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#7B61FF] focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60"
+              />
+              <p className="text-xs text-gray-500">
+                Adjust if the song starts at a different time than the video
+              </p>
+            </div>
           </div>
         )}
         {videoUrl && !videoId && (

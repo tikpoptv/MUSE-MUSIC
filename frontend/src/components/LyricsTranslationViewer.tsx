@@ -27,6 +27,7 @@ interface LyricsTranslationViewerProps {
   onSelectedLanguageChange?: (language: string) => void; // Callback when selected language changes
   onPlayPause?: () => void; // Callback to play/pause video
   isPlaying?: boolean; // Whether video is currently playing
+  syncConfirmed?: boolean; // Whether sync is confirmed as correct
 }
 
 export default function LyricsTranslationViewer({
@@ -48,7 +49,8 @@ export default function LyricsTranslationViewer({
   onSeekToTime,
   onSelectedLanguageChange,
   onPlayPause,
-  isPlaying = false
+  isPlaying = false,
+  syncConfirmed = false
 }: LyricsTranslationViewerProps) {
   const [selectedLanguage, setSelectedLanguage] = useState<string>(targetLanguage || defaultLanguage);
   const [isShaking, setIsShaking] = useState(false);
@@ -396,7 +398,7 @@ export default function LyricsTranslationViewer({
         style={{ height: '396px', flexShrink: 0, boxSizing: 'border-box' }}
       >
         {/* Duration Mismatch Warning (Sticky at top, full width and height) */}
-        {durationMatch === false && isSyncMode && (
+        {durationMatch === false && isSyncMode && !syncConfirmed && (
           <div 
             className="sticky top-0 z-10 flex flex-col items-center justify-center transition-all"
             style={{ 

@@ -2,14 +2,20 @@ FROM node:18-alpine
 
 WORKDIR /app
 
+# Create user and group
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nodejs
+
+# Ensure app directory is writable by nodejs before installing deps
+RUN chown -R nodejs:nodejs /app
+
 # Copy package files
-COPY package*.json ./
+COPY --chown=nodejs:nodejs package*.json ./
 
-# Install dependencies
+# Install dependencies as nodejs user
+USER nodejs
 RUN npm ci --only=production
-
-# Copy source code
-COPY . .
+USER root
 
 # Build arguments
 ARG NODE_ENV=production
@@ -29,12 +35,8 @@ ENV DB_PORT=${DB_PORT}
 ENV DB_USER=${DB_USER}
 ENV BACKEND_PORT=${BACKEND_PORT}
 
-# Create user and group
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nodejs
-
-# Change ownership of the app directory
-RUN chown -R nodejs:nodejs /app
+# Copy source code with correct ownership
+COPY --chown=nodejs:nodejs . .
 
 USER nodejs
 

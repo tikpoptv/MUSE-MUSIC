@@ -109,7 +109,9 @@ class SongService {
               approvedAt: procRaw.approvedat,
               isPublic: procRaw.ispublic || false,
               coverImage: procRaw.coverimage || null,
-              youtubeVideoId: procRaw.youtubevideoid || null
+              youtubeVideoId: procRaw.youtubevideoid || null,
+              syncConfirmed: procRaw.syncconfirmed || false,
+              songStartTime: procRaw.songstarttime ? parseFloat(procRaw.songstarttime) : null
             };
           }
         }
