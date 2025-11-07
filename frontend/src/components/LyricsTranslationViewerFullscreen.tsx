@@ -15,6 +15,7 @@ interface LyricsTranslationViewerFullscreenProps {
   onClose: () => void;
   onPlayPause?: () => void;
   isPlaying?: boolean;
+  songStartTime?: number | null;
 }
 
 export default function LyricsTranslationViewerFullscreen({
@@ -27,7 +28,8 @@ export default function LyricsTranslationViewerFullscreen({
   onSeekToTime,
   onClose,
   onPlayPause,
-  isPlaying = false
+  isPlaying = false,
+  songStartTime = null
 }: LyricsTranslationViewerFullscreenProps) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -103,29 +105,34 @@ export default function LyricsTranslationViewerFullscreen({
     if (!pair || !pair.original.trim()) return null;
     
     const originalTrimmed = pair.original.trim();
+    let baseTime: number | null = null;
     
     if (pairIndex < syncedLyricsLines.length) {
       const syncedLine = syncedLyricsLines[pairIndex];
       const syncedText = syncedLine.text.trim();
       
       if (syncedText === originalTrimmed) {
-        return syncedLine.time;
+        baseTime = syncedLine.time;
       }
     }
     
-    const match = syncedLyricsLines.find(syncedLine => {
-      return syncedLine.text.trim() === originalTrimmed;
-    });
-    
-    if (match) {
-      return match.time;
+    if (baseTime === null) {
+      const match = syncedLyricsLines.find(syncedLine => {
+        return syncedLine.text.trim() === originalTrimmed;
+      });
+      
+      if (match) {
+        baseTime = match.time;
+      } else if (pairIndex < syncedLyricsLines.length) {
+        baseTime = syncedLyricsLines[pairIndex].time;
+      }
     }
     
-    if (pairIndex < syncedLyricsLines.length) {
-      return syncedLyricsLines[pairIndex].time;
-    }
+    if (baseTime === null) return null;
     
-    return null;
+    // Apply songStartTime offset if provided
+    const offset = songStartTime !== null && songStartTime !== undefined ? songStartTime : 0;
+    return baseTime + offset;
   };
 
   const pairs = parseTranslationPairs();

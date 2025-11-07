@@ -28,6 +28,7 @@ interface LyricsTranslationViewerProps {
   onPlayPause?: () => void; // Callback to play/pause video
   isPlaying?: boolean; // Whether video is currently playing
   syncConfirmed?: boolean; // Whether sync is confirmed as correct
+  songStartTime?: number | null; // Time offset in seconds where the song actually starts
 }
 
 export default function LyricsTranslationViewer({
@@ -50,7 +51,8 @@ export default function LyricsTranslationViewer({
   onSelectedLanguageChange,
   onPlayPause,
   isPlaying = false,
-  syncConfirmed = false
+  syncConfirmed = false,
+  songStartTime = null
 }: LyricsTranslationViewerProps) {
   const [selectedLanguage, setSelectedLanguage] = useState<string>(targetLanguage || defaultLanguage);
   const [isShaking, setIsShaking] = useState(false);
@@ -172,7 +174,7 @@ export default function LyricsTranslationViewer({
     return pairs;
   };
 
-  // Get line time by index
+  // Get line time by index (with songStartTime offset applied)
   const getLineTime = (pairIndex: number, pairs: Array<{ original: string; translation: string }>): number | null => {
     if (syncedLyricsLines.length === 0) return null;
     
@@ -180,29 +182,34 @@ export default function LyricsTranslationViewer({
     if (!pair || !pair.original.trim()) return null;
     
     const originalTrimmed = pair.original.trim();
+    let baseTime: number | null = null;
     
     if (pairIndex < syncedLyricsLines.length) {
       const syncedLine = syncedLyricsLines[pairIndex];
       const syncedText = syncedLine.text.trim();
       
       if (syncedText === originalTrimmed) {
-        return syncedLine.time;
+        baseTime = syncedLine.time;
       }
     }
     
-    const match = syncedLyricsLines.find(syncedLine => {
-      return syncedLine.text.trim() === originalTrimmed;
-    });
-    
-    if (match) {
-      return match.time;
+    if (baseTime === null) {
+      const match = syncedLyricsLines.find(syncedLine => {
+        return syncedLine.text.trim() === originalTrimmed;
+      });
+      
+      if (match) {
+        baseTime = match.time;
+      } else if (pairIndex < syncedLyricsLines.length) {
+        baseTime = syncedLyricsLines[pairIndex].time;
+      }
     }
     
-    if (pairIndex < syncedLyricsLines.length) {
-      return syncedLyricsLines[pairIndex].time;
-    }
+    if (baseTime === null) return null;
     
-    return null;
+    // Apply songStartTime offset if provided
+    const offset = songStartTime !== null && songStartTime !== undefined ? songStartTime : 0;
+    return baseTime + offset;
   };
 
   // Parse translation pairs
@@ -474,6 +481,7 @@ export default function LyricsTranslationViewer({
           onClose={() => setIsFullscreenOpen(false)}
           onPlayPause={onPlayPause}
           isPlaying={isPlaying}
+          songStartTime={songStartTime}
         />
       )}
     </div>

@@ -199,7 +199,28 @@ class SongService {
       return translationWithPreview;
     }
     
-    const translationLines = translationWithPreview.split('\n');
+    const translationLines = translationWithPreview.split('\n').map(line => line.trim()).filter(line => line);
+    let previewCount = 0;
+    let fullTextCount = 0;
+    const checkLines = Math.min(10, Math.floor(translationLines.length / 2));
+    
+    for (let i = 0; i < checkLines * 2 && i < translationLines.length; i += 2) {
+      const originalLine = translationLines[i];
+      if (originalLine) {
+        if (originalLine.length <= 10) {
+          previewCount++;
+        } else {
+          fullTextCount++;
+        }
+      }
+    }
+    
+    // If most lines are full text (>10 chars), it's already full text, return as-is
+    if (fullTextCount > previewCount) {
+      return translationWithPreview;
+    }
+    
+    // Otherwise, map preview to full lyrics
     const allLyricsLines = fullLyrics.split('\n');
     const lyricsLines = allLyricsLines.map(line => line.trim()).filter(line => line.length > 0);
     const result = [];
@@ -208,17 +229,8 @@ class SongService {
     let lyricsIndex = 0;
     
     while (i < translationLines.length) {
-      while (i < translationLines.length && translationLines[i].trim() === '') {
-        i++;
-      }
-      if (i >= translationLines.length) break;
-      
-      const previewText = translationLines[i].trim();
+      const previewText = translationLines[i];
       i++;
-      
-      while (i < translationLines.length && translationLines[i].trim() === '') {
-        i++;
-      }
       
       let translatedText = '';
       if (i < translationLines.length && translationLines[i].trim() !== '') {
