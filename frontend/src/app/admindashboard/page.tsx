@@ -6,4 +6,5 @@ export default function AdminDashboard() {
             <AdminMenu />
         </div>
     );
+
 }
