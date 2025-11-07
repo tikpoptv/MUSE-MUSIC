@@ -607,7 +607,58 @@ class AnalysisService {
     cleanedText = cleanedText.replace(/\n{2,}$/m, '\n');
     cleanedText = cleanedText.trimEnd();
 
-    return cleanedText;
+    // Parse into pairs and truncate original lines to 10 characters (code points)
+    const lines = cleanedText.split('\n');
+    const result = [];
+    const MAX_CHARS_ORIGINAL = 10;
+    
+    let i = 0;
+    while (i < lines.length) {
+      const line1 = lines[i]?.trim() || '';
+      const line2 = lines[i + 1]?.trim() || '';
+      
+      if (!line1 && !line2) {
+        i++;
+        continue;
+      }
+      
+      // Truncate original line to first N characters (code points) to support multi-language
+      let originalLine = line1;
+      if (originalLine) {
+        const chars = Array.from(originalLine);
+        if (chars.length > MAX_CHARS_ORIGINAL) {
+          originalLine = chars.slice(0, MAX_CHARS_ORIGINAL).join('').trim();
+        }
+      }
+      
+      if (originalLine) {
+        result.push(originalLine);
+        if (line2) {
+          result.push(line2);
+        }
+        result.push('');
+        i += 2;
+      } else if (line2) {
+        // If no original, just add translation
+        result.push(line2);
+        result.push('');
+        i += 2;
+      } else {
+        i++;
+      }
+      
+      // Skip empty lines
+      while (i < lines.length && !lines[i]?.trim()) {
+        i++;
+      }
+    }
+    
+    // Remove trailing empty lines
+    while (result.length > 0 && result[result.length - 1] === '') {
+      result.pop();
+    }
+    
+    return result.join('\n');
   }
   
   static async processTranslation(lyrics, translationConfig, processingID) {
