@@ -157,11 +157,15 @@ class AnalysisService {
         updateFields.push(`interpretation = $${paramIndex++}`);
         updateValues.push(translationResult.interpretation);
         
-        updateFields.push(`originallanguage = $${paramIndex++}`);
-        updateValues.push(translationConfig.originalLanguage || 'auto');
+        if (translationConfig && translationConfig.originalLanguage != null) {
+          updateFields.push(`originallanguage = $${paramIndex++}`);
+          updateValues.push(translationConfig.originalLanguage);
+        }
         
-        updateFields.push(`targetlanguage = $${paramIndex++}`);
-        updateValues.push(translationConfig.targetLanguage);
+        if (translationConfig && translationConfig.targetLanguage != null) {
+          updateFields.push(`targetlanguage = $${paramIndex++}`);
+          updateValues.push(translationConfig.targetLanguage);
+        }
         
         updateFields.push(`translationconfidence = $${paramIndex++}`);
         updateValues.push(0.95);
@@ -206,8 +210,8 @@ class AnalysisService {
         translation: translationResult ? {
           text: translationResult.translation,
           interpretation: translationResult.interpretation,
-          originalLanguage: translationConfig.originalLanguage || 'auto',
-          targetLanguage: translationConfig.targetLanguage
+          originalLanguage: translationConfig.originalLanguage ?? null,
+          targetLanguage: translationConfig.targetLanguage ?? null
         } : null,
         mood: moodResult
       };
@@ -270,7 +274,7 @@ class AnalysisService {
       const existingOriginalLanguage = processingRaw.originallanguage || null;
       const finalTranslationConfig = {
         ...translationConfig,
-        originalLanguage: translationConfig.originalLanguage || existingOriginalLanguage || 'auto'
+        originalLanguage: translationConfig.originalLanguage ?? existingOriginalLanguage ?? null
       };
 
       const startTime = Date.now();
@@ -314,11 +318,15 @@ class AnalysisService {
         updateFields.push(`interpretation = $${paramIndex++}`);
         updateValues.push(translationResult.interpretation);
 
-        updateFields.push(`originallanguage = $${paramIndex++}`);
-        updateValues.push(finalTranslationConfig.originalLanguage);
+        if (finalTranslationConfig.originalLanguage != null) {
+          updateFields.push(`originallanguage = $${paramIndex++}`);
+          updateValues.push(finalTranslationConfig.originalLanguage);
+        }
 
-        updateFields.push(`targetlanguage = $${paramIndex++}`);
-        updateValues.push(finalTranslationConfig.targetLanguage);
+        if (finalTranslationConfig.targetLanguage != null) {
+          updateFields.push(`targetlanguage = $${paramIndex++}`);
+          updateValues.push(finalTranslationConfig.targetLanguage);
+        }
 
         updateFields.push(`translationconfidence = $${paramIndex++}`);
         updateValues.push(0.95);
@@ -358,8 +366,8 @@ class AnalysisService {
         translation: translationResult ? {
           text: translationResult.translation,
           interpretation: translationResult.interpretation,
-          originalLanguage: finalTranslationConfig.originalLanguage,
-          targetLanguage: finalTranslationConfig.targetLanguage
+          originalLanguage: finalTranslationConfig.originalLanguage ?? null,
+          targetLanguage: finalTranslationConfig.targetLanguage ?? null
         } : null,
         mood: moodResult
       };
@@ -587,64 +595,65 @@ class AnalysisService {
     if (!translationText || !translationText.trim()) {
       return translationText;
     }
-    
+
     let cleanedText = translationText.trim();
-    
+
     cleanedText = cleanedText.replace(/^```[\w]*\s*\n?/m, '');
     cleanedText = cleanedText.replace(/```\s*$/m, '');
-    cleanedText = cleanedText.trim();
     cleanedText = cleanedText.replace(/\\n/g, '\n');
-    
-    const sections = cleanedText.split(/\n\n+/);
+
+    // Remove trailing separators such as "---" or multiple blank lines
+    cleanedText = cleanedText.replace(/\n+---\s*$/m, '');
+    cleanedText = cleanedText.replace(/\n{2,}$/m, '\n');
+    cleanedText = cleanedText.trimEnd();
+
+    // Parse into pairs and truncate original lines to 10 characters (code points)
+    const lines = cleanedText.split('\n');
     const result = [];
+    const MAX_CHARS_ORIGINAL = 10;
     
-    for (const section of sections) {
-      if (!section.trim()) continue;
+    let i = 0;
+    while (i < lines.length) {
+      const line1 = lines[i]?.trim() || '';
+      const line2 = lines[i + 1]?.trim() || '';
       
-      const lines = section.split('\n').map(line => line.trim()).filter(line => line);
+      if (!line1 && !line2) {
+        i++;
+        continue;
+      }
       
-      if (lines.length === 0) continue;
+      // Truncate original line to first N characters (code points) to support multi-language
+      let originalLine = line1;
+      if (originalLine) {
+        const chars = Array.from(originalLine);
+        if (chars.length > MAX_CHARS_ORIGINAL) {
+          originalLine = chars.slice(0, MAX_CHARS_ORIGINAL).join('').trim();
+        }
+      }
       
-      let i = 0;
-      while (i < lines.length) {
-        let originalLine = (lines[i] || '').replace(/\*\*/g, '').trim();
-
-        if (/^-{2,}$/.test(originalLine)) {
-          i += 1;
-          continue;
+      if (originalLine) {
+        result.push(originalLine);
+        if (line2) {
+          result.push(line2);
         }
-
-        let translatedLine = '';
-
-        if (i + 1 < lines.length) {
-          const rawNext = (lines[i + 1] || '').trim();
-          if (!/^-{2,}$/.test(rawNext)) {
-            translatedLine = rawNext.replace(/\*\*/g, '').trim();
-          }
-          i += 2;
-        } else {
-          i += 1;
-        }
-
-        // Truncate original line to first N characters (code points) to support multi-language
-        const MAX_CHARS_ORIGINAL = 10;
-        if (originalLine) {
-          const chars = Array.from(originalLine);
-          if (chars.length > MAX_CHARS_ORIGINAL) {
-            originalLine = chars.slice(0, MAX_CHARS_ORIGINAL).join('').trim();
-          }
-        }
-
-        if (originalLine) {
-          result.push(originalLine);
-          if (translatedLine) {
-            result.push(translatedLine);
-          }
-          result.push('');
-        }
+        result.push('');
+        i += 2;
+      } else if (line2) {
+        // If no original, just add translation
+        result.push(line2);
+        result.push('');
+        i += 2;
+      } else {
+        i++;
+      }
+      
+      // Skip empty lines
+      while (i < lines.length && !lines[i]?.trim()) {
+        i++;
       }
     }
     
+    // Remove trailing empty lines
     while (result.length > 0 && result[result.length - 1] === '') {
       result.pop();
     }
@@ -657,8 +666,8 @@ class AnalysisService {
       throw new Error('Lyrics text is required for translation');
     }
     
-    const originalLanguage = translationConfig.originalLanguage || 'auto';
-    const targetLanguage = translationConfig.targetLanguage || 'th';
+    const originalLanguage = translationConfig.originalLanguage ?? null;
+    const targetLanguage = translationConfig.targetLanguage ?? null;
     
     logger.info(`Processing translation for processingID: ${processingID}`, {
       originalLanguage,
@@ -667,8 +676,8 @@ class AnalysisService {
     });
     
     const result = await TranslateService.getTranslate(
-      originalLanguage,
-      targetLanguage,
+      originalLanguage ?? 'auto',
+      targetLanguage ?? 'auto',
       lyrics
     );
     

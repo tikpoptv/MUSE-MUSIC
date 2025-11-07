@@ -151,7 +151,9 @@ docker-compose.override.yml
 # CI/CD
 .gitlab-ci.yml
 
-# Package manager lock files (keep package-lock.json for npm)
+# Package manager lock files
+package-lock.json
+**/package-lock.json
 # yarn.lock
 # pnpm-lock.yaml
 

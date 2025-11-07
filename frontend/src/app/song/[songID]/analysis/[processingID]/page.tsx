@@ -661,6 +661,7 @@ export default function SongAnalysisPage() {
               onPlayPause={() => playerPlayPauseRef.current?.()}
               isPlaying={isPlaying}
               syncConfirmed={processingData?.syncConfirmed || false}
+              songStartTime={processingData?.songStartTime || null}
             />
 
             {/* Synced Lyrics Player */}
