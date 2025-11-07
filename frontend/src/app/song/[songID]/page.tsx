@@ -602,6 +602,7 @@ export default function SongDetailPage() {
                 onPlayPause={() => playerPlayPauseRef.current?.()}
                 isPlaying={isPlaying}
                 syncConfirmed={processingData?.syncConfirmed || false}
+                songStartTime={processingData?.songStartTime || null}
               />
             </div>
 
