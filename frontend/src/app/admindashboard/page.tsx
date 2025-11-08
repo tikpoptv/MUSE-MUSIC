@@ -27,7 +27,6 @@ import AdminMenu from '@/components/AdminMenu';
 import BigStatCard from '@/components/BigStatCard';
 import { ChartArea, Music2, SearchCheck, Activity } from 'lucide-react';
 
-const descriptionLine = "An interactive area chart"
 const chartData = [
     { date: "2024-05-01", desktop: 165, mobile: 220 },
     { date: "2024-05-02", desktop: 293, mobile: 310 },
@@ -138,6 +137,9 @@ const chartConfig_bar = {
 
 export default function AdminDashboard() {
     const [timeRange, setTimeRange] = React.useState("30d")
+    
+    // Dynamic description based on time range
+    const descriptionLine = `Showing total traffic for the last ${timeRange === "7d" ? "7" : "30"} days`
 
     // Combine desktop and mobile into traffic and filter by time range
     const processedData = React.useMemo(() => {
@@ -172,9 +174,7 @@ export default function AdminDashboard() {
                 <CardHeader className="flex items-center gap-2 space-y-0 border-b py-5 sm:flex-row">
                     <div className="grid flex-1 gap-1">
                         <CardTitle>Area Chart - Interactive</CardTitle>
-                        <CardDescription>
-                            Showing total traffic for the last {timeRange === "7d" ? "7" : "30"} days
-                        </CardDescription>
+                        <CardDescription>{descriptionLine}</CardDescription>
                     </div>
                     <Select value={timeRange} onValueChange={setTimeRange}>
                         <SelectTrigger
@@ -250,7 +250,7 @@ export default function AdminDashboard() {
                 <Card>
                     <CardHeader>
                         <CardTitle>Bar Chart</CardTitle>
-                        <CardDescription>Moods of songs</CardDescription>
+                        <CardDescription>{descriptionBar}</CardDescription>
                     </CardHeader>
                     <CardContent>
                         <ChartContainer config={chartConfig_bar}>
