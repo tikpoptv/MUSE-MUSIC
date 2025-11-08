@@ -16,7 +16,7 @@ export default function AdminMenuBar() {
     ];
 
     return (
-        <div className="w-full px-8 sm:px-12 lg:px-16">
+        
             <div className="flex flex-wrap justify-center gap-4 border-1 border-violet-500 rounded-full p-2">
 
                 {items.map((item, idx) => {
@@ -34,6 +34,6 @@ export default function AdminMenuBar() {
                 })}
 
             </div>
-        </div>
+        
     );
 }
