@@ -27,7 +27,7 @@ import AdminMenu from '@/components/AdminMenu';
 import BigStatCard from '@/components/BigStatCard';
 import { ChartArea, Music2, SearchCheck, Activity } from 'lucide-react';
 
-export const description_line = "An interactive area chart"
+const descriptionLine = "An interactive area chart"
 const chartData = [
     { date: "2024-05-01", desktop: 165, mobile: 220 },
     { date: "2024-05-02", desktop: 293, mobile: 310 },
@@ -98,7 +98,7 @@ const chartConfig_line = {
     },
 } satisfies ChartConfig
 
-export const description_bar = "A bar chart"
+const descriptionBar = "A bar chart"
 const chartData_bar = [
     { mood: "Happy", songs: 186 },
     { mood: "Sad", songs: 305 },
