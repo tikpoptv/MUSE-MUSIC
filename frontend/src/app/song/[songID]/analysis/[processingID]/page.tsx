@@ -520,8 +520,8 @@ export default function SongAnalysisPage() {
         </h1>
 
         <div className="grid grid-cols-1 lg:grid-cols-[40%_60%] gap-8">
-          {/* ฝั่งย่อ (40%) */}
-          <div className="space-y-6">
+          {/* ฝั่งย่อ (40%) - Desktop only */}
+          <div className="hidden lg:block space-y-6">
             {/* Centered Section */}
             <div className="flex flex-col items-center">
               {/* Song Cover Card */}
@@ -632,16 +632,66 @@ export default function SongAnalysisPage() {
             )}
           </div>
 
+          {/* Mobile: Cover + Action Icons */}
+          <div className="lg:hidden flex flex-col items-center mb-6">
+            <CoverImageUpload
+              width={304}
+              height={302}
+              onImageChange={async (imageUrl) => {
+                setCoverImage(imageUrl);
+                if (processingID && processingID !== 'undefined') {
+                  try {
+                    setIsSavingCoverImage(true);
+                    await songService.updateCoverImage(processingID, imageUrl);
+                    if (processingData) {
+                      setProcessingData({
+                        ...processingData,
+                        coverImage: imageUrl
+                      });
+                    }
+                    if (imageUrl) {
+                      toast.success('Cover image saved!');
+                    } else {
+                      toast.success('Cover image removed!');
+                    }
+                  } catch (error) {
+                    toast.error(error instanceof Error ? error.message : 'Failed to save cover image');
+                  } finally {
+                    setIsSavingCoverImage(false);
+                  }
+                }
+              }}
+              initialImage={coverImage}
+              isSaving={isSavingCoverImage}
+            />
+            <div className="flex items-center gap-4 justify-center mt-6">
+              <button className="p-3 rounded-full hover:bg-gray-100 transition-colors">
+                <Heart className="h-6 w-6" style={{ color: '#7B61FF' }} />
+              </button>
+              <button className="p-3 rounded-full hover:bg-gray-100 transition-colors">
+                <Share2 className="h-6 w-6" style={{ color: '#7B61FF' }} />
+              </button>
+              <button className="p-3 rounded-full hover:bg-gray-100 transition-colors">
+                <MoreVertical className="h-6 w-6" style={{ color: '#7B61FF' }} />
+              </button>
+            </div>
+          </div>
+
           {/* ฝั่งรายละเอียด (60%) */}
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '54px', width: '100%' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', width: '100%' }} className="lg:items-start items-center">
             {/* Song Details Card */}
-            <SongDetailsCard songData={songData} processingData={processingData} />
+            <div style={{ marginBottom: '54px', width: '100%' }}>
+              <SongDetailsCard songData={songData} processingData={processingData} />
+            </div>
 
             {/* Summary */}
-            <SummarySection processingData={processingData} />
+            <div style={{ marginBottom: '54px', width: '100%' }}>
+              <SummarySection processingData={processingData} />
+            </div>
 
             {/* Lyrics Section */}
-            <LyricsTranslationViewer
+            <div style={{ marginBottom: '54px', width: '100%' }}>
+              <LyricsTranslationViewer
               translation={processingData?.translation}
               originalLyrics={songData?.lyrics}
               defaultLanguage={processingData?.targetLanguage || 'Thai'}
@@ -662,49 +712,115 @@ export default function SongAnalysisPage() {
               isPlaying={isPlaying}
               syncConfirmed={processingData?.syncConfirmed || false}
               songStartTime={processingData?.songStartTime || null}
-            />
+              />
+            </div>
 
             {/* Synced Lyrics Player */}
-            {songData?.syncedLyrics ? (
-              <SyncedLyricsPlayer
-                syncedLyrics={songData.syncedLyrics}
-                songDuration={songData.duration || undefined}
-                processingID={processingID}
-                initialYoutubeVideoId={processingData?.youtubeVideoId || null}
-                songName={songData.songName}
-                artistName={songData.artistName}
-                onCurrentTimeChange={setCurrentTime}
-                onSyncedLyricsParsed={setSyncedLyricsLines}
-                onDurationMatchChange={setDurationMatch}
-                onIsPlayingChange={handleIsPlayingChange}
-                onPlayPauseRequest={(api) => {
-                  playerPlayPauseRef.current = api.playPause;
-                }}
-                seekToTime={seekToTime}
-                initialSyncConfirmed={processingData?.syncConfirmed || false}
-                initialSongStartTime={processingData?.songStartTime || null}
-                onSyncSettingsChange={(syncConfirmed, songStartTime) => {
-                  if (processingData) {
-                    setProcessingData({
-                      ...processingData,
-                      syncConfirmed,
-                      songStartTime
-                    });
-                  }
-                }}
-              />
-            ) : (
-              <div className="w-full">
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                  <p className="text-sm text-yellow-800 text-center">
-                    ⚠️ This song does not have synchronized lyrics available.
-                  </p>
+            <div style={{ marginBottom: '54px', width: '100%' }}>
+              {songData?.syncedLyrics ? (
+                <SyncedLyricsPlayer
+                  syncedLyrics={songData.syncedLyrics}
+                  songDuration={songData.duration || undefined}
+                  processingID={processingID}
+                  initialYoutubeVideoId={processingData?.youtubeVideoId || null}
+                  songName={songData.songName}
+                  artistName={songData.artistName}
+                  onCurrentTimeChange={setCurrentTime}
+                  onSyncedLyricsParsed={setSyncedLyricsLines}
+                  onDurationMatchChange={setDurationMatch}
+                  onIsPlayingChange={handleIsPlayingChange}
+                  onPlayPauseRequest={(api) => {
+                    playerPlayPauseRef.current = api.playPause;
+                  }}
+                  seekToTime={seekToTime}
+                  initialSyncConfirmed={processingData?.syncConfirmed || false}
+                  initialSongStartTime={processingData?.songStartTime || null}
+                  onSyncSettingsChange={(syncConfirmed, songStartTime) => {
+                    if (processingData) {
+                      setProcessingData({
+                        ...processingData,
+                        syncConfirmed,
+                        songStartTime
+                      });
+                    }
+                  }}
+                />
+              ) : (
+                <div className="w-full">
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                    <p className="text-sm text-yellow-800 text-center">
+                      ⚠️ This song does not have synchronized lyrics available.
+                    </p>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
 
             {/* Mood Analyze Section */}
             <MoodAnalyzeSection processingData={processingData} />
+
+            {/* Mobile: Feedback Section - อยู่หลัง Mood Analyze */}
+            <div className="lg:hidden mt-6 w-full flex justify-center">
+              <FeedbackSection 
+                ref={feedbackSectionRef}
+                processingID={processingID} 
+                onRatingSubmitted={handleRatingSubmitted}
+              />
+            </div>
+
+            {/* Mobile: Recommend with language - อยู่หลัง Mood Analyze */}
+            {processingData?.originalLanguage && (
+              <div className="lg:hidden flex flex-col items-center mx-auto mt-6 mb-6" style={{ width: '100%', maxWidth: '304px' }}>
+                <h2 className="text-lg font-semibold text-gray-900 mb-3 w-full">Recommend with language</h2>
+                {loadingRecommendationsByLanguage ? (
+                  <div className="grid grid-cols-2 gap-3 w-full">
+                    <SkeletonCard />
+                    <SkeletonCard />
+                  </div>
+                ) : recommendedByLanguage.length > 0 ? (
+                  <div className="grid grid-cols-2 gap-3 w-full">
+                    {recommendedByLanguage.map((song) => (
+                      <MusicCard
+                        key={`${song.id}-${song.processingID}`}
+                        image={song.image}
+                        title={song.title}
+                        artist={song.artist}
+                        href={`/song/${song.id}?processingID=${song.processingID}`}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500 text-center w-full">No recommendations available</p>
+                )}
+              </div>
+            )}
+
+            {/* Mobile: Recommend with Mood - อยู่หลัง Mood Analyze */}
+            {processingData?.moodType && (
+              <div className="lg:hidden flex flex-col items-center mx-auto mt-6" style={{ width: '100%', maxWidth: '304px' }}>
+                <h2 className="text-lg font-semibold text-gray-900 mb-3 w-full">Recommend with Mood</h2>
+                {loadingRecommendationsByMood ? (
+                  <div className="grid grid-cols-2 gap-3 w-full">
+                    <SkeletonCard />
+                    <SkeletonCard />
+                  </div>
+                ) : recommendedByMood.length > 0 ? (
+                  <div className="grid grid-cols-2 gap-3 w-full">
+                    {recommendedByMood.map((song) => (
+                      <MusicCard
+                        key={`${song.id}-${song.processingID}`}
+                        image={song.image}
+                        title={song.title}
+                        artist={song.artist}
+                        href={`/song/${song.id}?processingID=${song.processingID}`}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500 text-center w-full">No recommendations available</p>
+                )}
+              </div>
+            )}
 
             {/* Action Buttons */}
             <SongActionButtons 
