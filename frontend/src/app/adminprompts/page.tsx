@@ -14,7 +14,6 @@ export default function Page() {
         <div className="text-xl sm:text-2xl font-semibold flex items-center gap-2 text-violet-600 mb-4">
           <UserPen className="w-10 h-10" />
           <span>Song Approved</span>
-          
         </div>
 
 
