@@ -97,7 +97,6 @@ export default function LyricsTranslationViewerFullscreen({
     return pairs;
   };
 
-  // Get line time by index
   const getLineTime = (pairIndex: number, pairs: Array<{ original: string; translation: string }>): number | null => {
     if (syncedLyricsLines.length === 0) return null;
     
@@ -130,27 +129,27 @@ export default function LyricsTranslationViewerFullscreen({
     
     if (baseTime === null) return null;
     
-    // Apply songStartTime offset if provided
-    const offset = songStartTime !== null && songStartTime !== undefined ? songStartTime : 0;
-    return baseTime + offset;
+    return baseTime;
   };
 
   const pairs = parseTranslationPairs();
   const isSyncMode = currentTime > 0 && syncedLyricsLines.length > 0;
   
-  // Find the currently active line index
+  const adjustedCurrentTime = songStartTime !== null && songStartTime !== undefined 
+    ? currentTime - songStartTime 
+    : currentTime;
+  
   let activeIndex = -1;
   if (isSyncMode && pairs.length > 0) {
     for (let i = pairs.length - 1; i >= 0; i--) {
       const lineTime = getLineTime(i, pairs);
-      if (lineTime !== null && currentTime >= lineTime) {
+      if (lineTime !== null && adjustedCurrentTime >= lineTime) {
         activeIndex = i;
         break;
       }
     }
   }
 
-  // Auto-scroll to active line
   useEffect(() => {
     if (isSyncMode && activeIndex >= 0 && lyricsContainerRef.current) {
       const container = lyricsContainerRef.current;
@@ -178,7 +177,6 @@ export default function LyricsTranslationViewerFullscreen({
     }
   }, [activeIndex, isSyncMode, pairs.length]);
 
-  // Seek functions
   const handleSeekBack = () => {
     if (!onSeekToTime || currentTime === undefined) return;
     const newTime = Math.max(0, currentTime - 5);
@@ -191,11 +189,6 @@ export default function LyricsTranslationViewerFullscreen({
     onSeekToTime(newTime);
   };
 
-  const handleLineClick = (lineTime: number | null) => {
-    if (lineTime !== null && onSeekToTime) {
-      onSeekToTime(lineTime);
-    }
-  };
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -232,7 +225,6 @@ export default function LyricsTranslationViewerFullscreen({
       className="fixed inset-0 z-50 flex flex-col overflow-hidden fullscreen-gradient"
       style={{ display: 'flex' }}
     >
-      {/* Header */}
       <div 
         className="flex items-center justify-between px-8 py-4 bg-black/20 backdrop-blur-sm"
         style={{
@@ -277,7 +269,6 @@ export default function LyricsTranslationViewerFullscreen({
         </div>
       </div>
 
-      {/* Lyrics Content */}
       <div
         ref={lyricsContainerRef}
         className="flex-1 overflow-y-auto px-8 py-12"
@@ -289,7 +280,7 @@ export default function LyricsTranslationViewerFullscreen({
           {pairs.map((pair, index) => {
             const lineTime = getLineTime(index, pairs);
             const isActive = isSyncMode
-              ? (lineTime !== null && currentTime >= lineTime)
+              ? (lineTime !== null && adjustedCurrentTime >= lineTime)
               : true;
             const isCurrentLine = isSyncMode && activeIndex === index;
             const isClickable = lineTime !== null && onSeekToTime !== undefined;
@@ -307,7 +298,14 @@ export default function LyricsTranslationViewerFullscreen({
                 className={`text-center ${
                   isClickable ? 'cursor-pointer hover:opacity-90' : ''
                 }`}
-                onClick={() => handleLineClick(lineTime)}
+                onClick={() => {
+                  if (lineTime !== null && onSeekToTime) {
+                    const videoTime = songStartTime !== null && songStartTime !== undefined 
+                      ? lineTime + songStartTime 
+                      : lineTime;
+                    onSeekToTime(videoTime);
+                  }
+                }}
                 style={{
                   opacity: isActive ? 1 : 0.3,
                   transform: isCurrentLine ? 'scale(1.08) translateY(-5px)' : 'scale(1) translateY(0)',
@@ -357,7 +355,6 @@ export default function LyricsTranslationViewerFullscreen({
         </div>
       </div>
 
-      {/* Controls Bar */}
       {onPlayPause && (
         <div className="bg-black/30 backdrop-blur-sm px-8 py-6">
           <div className="max-w-4xl mx-auto flex items-center justify-center gap-6">
