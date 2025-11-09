@@ -1,4 +1,4 @@
-const { pool } = require('../config/database');
+const DatabaseService = require('./databaseService');
 
 class UserSettingsService {
   static async getUserSettings(userID) {
@@ -18,7 +18,7 @@ class UserSettingsService {
       WHERE u.userID = $1
     `;
 
-    const result = await pool.query(query, [userID]);
+    const result = await DatabaseService.query(query, [userID]);
     
     if (result.rows.length === 0) {
       return null;
@@ -47,7 +47,7 @@ class UserSettingsService {
       WHERE userID = $4
     `;
     
-    await pool.query(userQuery, [username, email, fullName, userID]);
+    await DatabaseService.query(userQuery, [username, email, fullName, userID]);
     const customerQuery = `
       INSERT INTO Customers (userID, country, timezone, preferredLanguage, createdAt, updatedAt)
       VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
@@ -59,7 +59,7 @@ class UserSettingsService {
         updatedAt = CURRENT_TIMESTAMP
     `;
     
-    await pool.query(customerQuery, [userID, country, timezone, language]);
+    await DatabaseService.query(customerQuery, [userID, country, timezone, language]);
     
     return true;
   }

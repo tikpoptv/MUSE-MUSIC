@@ -1,5 +1,6 @@
 const { pool } = require('../config/database');
 const { logger } = require('../middleware/logger');
+const { successResponse, errorResponse } = require('../utils/response');
 
 const saveSetupStep = async (req, res) => {
   try {
@@ -7,10 +8,9 @@ const saveSetupStep = async (req, res) => {
     const { step, data } = req.body;
 
     if (!step || !data) {
-      return res.status(400).json({
-        success: false,
-        message: 'Step and data are required'
-      });
+      return res.status(400).json(
+        errorResponse('Step and data are required', 400)
+      );
     }
 
     let query;
@@ -31,6 +31,11 @@ const saveSetupStep = async (req, res) => {
       }
 
       case 'step2':
+        // 2FA step - no database save needed
+        res.json(successResponse(`Step ${step} saved successfully`));
+        return;
+
+      case 'step3':
         query = `
           INSERT INTO Customers (userID, DOB, createdAt, updatedAt)
           VALUES ($1, $2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
@@ -40,7 +45,7 @@ const saveSetupStep = async (req, res) => {
         values = [userId, data.birthday];
         break;
 
-      case 'step3':
+      case 'step4':
         query = `
           INSERT INTO Customers (userID, country, timezone, preferredLanguage, createdAt, updatedAt)
           VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
@@ -54,7 +59,7 @@ const saveSetupStep = async (req, res) => {
         values = [userId, data.country, data.timezone, data.language];
         break;
 
-      case 'step4':
+      case 'step5':
         query = `
           INSERT INTO Customers (userID, musicInterestTypes, createdAt, updatedAt)
           VALUES ($1, $2, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
@@ -67,25 +72,20 @@ const saveSetupStep = async (req, res) => {
         break;
 
       default:
-        return res.status(400).json({
-          success: false,
-          message: 'Invalid step'
-        });
+        return res.status(400).json(
+          errorResponse('Invalid step', 400)
+        );
     }
 
     await pool.query(query, values);
 
-    res.json({
-      success: true,
-      message: `Step ${step} saved successfully`
-    });
+    res.json(successResponse(`Step ${step} saved successfully`));
 
   } catch (error) {
     logger.error('Error saving setup step:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error'
-    });
+    res.status(500).json(
+      errorResponse('Internal server error', 500)
+    );
   }
 };
 
@@ -95,10 +95,9 @@ const skipSetup = async (req, res) => {
     const { termsAccepted } = req.body;
 
     if (!termsAccepted) {
-      return res.status(400).json({
-        success: false,
-        message: 'Terms and conditions must be accepted to skip setup'
-      });
+      return res.status(400).json(
+        errorResponse('Terms and conditions must be accepted to skip setup', 400)
+      );
     }
 
     const query = `
@@ -109,17 +108,13 @@ const skipSetup = async (req, res) => {
 
     await pool.query(query, [userId]);
 
-    res.json({
-      success: true,
-      message: 'Setup skipped successfully'
-    });
+    res.json(successResponse('Setup skipped successfully'));
 
   } catch (error) {
     logger.error('Error skipping setup:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error'
-    });
+    res.status(500).json(
+      errorResponse('Internal server error', 500)
+    );
   }
 };
 
@@ -135,17 +130,13 @@ const completeSetup = async (req, res) => {
 
     await pool.query(query, [userId]);
 
-    res.json({
-      success: true,
-      message: 'Setup completed successfully'
-    });
+    res.json(successResponse('Setup completed successfully'));
 
   } catch (error) {
     logger.error('Error completing setup:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error'
-    });
+    res.status(500).json(
+      errorResponse('Internal server error', 500)
+    );
   }
 };
 

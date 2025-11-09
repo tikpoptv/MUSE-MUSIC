@@ -6,6 +6,7 @@ const commonSchemas = require('../docs/schemas/common');
 const userSchemas = require('../docs/schemas/user');
 const authSchemas = require('../docs/schemas/auth');
 const setupSchemas = require('../docs/schemas/setup');
+const twoFactorSchemas = require('../docs/schemas/twoFactor');
 
 const options = {
   definition: {
@@ -28,7 +29,8 @@ const options = {
         ...commonSchemas,
         ...userSchemas,
         ...authSchemas,
-        ...setupSchemas
+        ...setupSchemas,
+        ...twoFactorSchemas
       },
       securitySchemes: {
         bearerAuth: {

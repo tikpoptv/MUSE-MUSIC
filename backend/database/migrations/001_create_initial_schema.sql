@@ -31,6 +31,10 @@ CREATE TABLE Users (
     passwordResetToken VARCHAR(255),
     passwordResetTokenExpiry TIMESTAMP,
     
+    -- Two-Factor Authentication
+    twoFactorEnabled BOOLEAN DEFAULT FALSE,
+    twoFactorSetupCompleted BOOLEAN DEFAULT FALSE,
+    
     registerDate TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -69,6 +73,32 @@ CREATE TABLE Customers (
 );
 
 -- =========================
+-- Table: LyricsSearchResults (External Lyrics API Results)
+-- =========================
+CREATE TABLE LyricsSearchResults (
+    lyricsSearchResultID UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    externalID INT NOT NULL UNIQUE, -- ID from external API (LRCLIB)
+    trackName VARCHAR(200) NOT NULL,
+    artistName VARCHAR(150) NOT NULL,
+    albumName VARCHAR(200),
+    duration INT, -- duration in seconds
+    instrumental BOOLEAN DEFAULT FALSE,
+    lyricsPreview VARCHAR(500), -- First line of lyrics for mapping (copyright-safe, full lyrics fetched from external API when needed)
+    
+    -- Usage tracking
+    usageCount INT DEFAULT 0, -- จำนวนครั้งที่ถูกนำไปใช้สร้าง Song
+    lastUsedAt TIMESTAMP, -- ครั้งล่าสุดที่ถูกใช้
+    
+    -- Metadata
+    sourceAPI VARCHAR(50) DEFAULT 'lrclib', -- Source API name
+    fetchedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- When this record was fetched from external API
+    createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    CONSTRAINT check_source_api CHECK (sourceAPI IN ('lrclib', 'other'))
+);
+
+-- =========================
 -- Table: Songs
 -- =========================
 CREATE TABLE Songs (
@@ -84,13 +114,25 @@ CREATE TABLE Songs (
     approvedBy UUID, -- who approved this song
     playCount INT DEFAULT 0,
     popularity INT DEFAULT 0,
+    
+    -- Lyrics Search Result Reference
+    lyricsSearchResultID UUID, -- Reference to LyricsSearchResults if song was created from external API
+    
+    -- Song Source Status
+    sourceStatus VARCHAR(50) DEFAULT 'manual', -- 'manual', 'from_lyrics_search', 'external'
+    -- 'manual': เพลงที่ผู้ใช้กรอกเนื้อเพลงเอง
+    -- 'from_lyrics_search': เพลงที่สร้างจาก LyricsSearchResults
+    -- 'external': เพลงจากแหล่งอื่น
+    
     createdBy UUID, -- who added this song
     updatedBy UUID, -- who last updated this song
     createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (createdBy) REFERENCES Users(userID) ON DELETE SET NULL,
     FOREIGN KEY (updatedBy) REFERENCES Users(userID) ON DELETE SET NULL,
-    FOREIGN KEY (approvedBy) REFERENCES Users(userID) ON DELETE SET NULL
+    FOREIGN KEY (approvedBy) REFERENCES Users(userID) ON DELETE SET NULL,
+    FOREIGN KEY (lyricsSearchResultID) REFERENCES LyricsSearchResults(lyricsSearchResultID) ON DELETE SET NULL,
+    CONSTRAINT check_source_status CHECK (sourceStatus IN ('manual', 'from_lyrics_search', 'external'))
 );
 
 -- =========================
@@ -145,6 +187,7 @@ CREATE TABLE SongAIProcessing (
     
     -- Translation Results
     translation TEXT,
+    interpretation TEXT, -- Interpretation/meaning of the translation
     originalLanguage VARCHAR(10),
     targetLanguage VARCHAR(10),
     translationConfidence FLOAT DEFAULT 0.0,
@@ -169,9 +212,34 @@ CREATE TABLE SongAIProcessing (
     updatedBy UUID, -- who last updated this processing
     createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    -- Cover Image
+    coverImage VARCHAR(500), -- URL to cover image (stored in MinIO) - each processing can have its own cover
+    
+    -- Sharing & Approval System
+    shareStatus VARCHAR(20) DEFAULT 'private', -- 'private' (ไม่แชร์), 'public_pending' (ขอแชร์ รออนุมัติ), 'public_approved' (แชร์แล้ว)
+    approvalStatus VARCHAR(20), -- 'pending', 'approved', 'rejected' (NULL ถ้า shareStatus = 'private')
+    approvedBy UUID, -- who approved/rejected this processing
+    approvalNote TEXT, -- optional note from approver explaining the decision
+    approvedAt TIMESTAMP, -- when it was approved/rejected
+    isPublic BOOLEAN DEFAULT FALSE, -- whether this processing result is public or private (true เมื่อ shareStatus = 'public_approved')
+    
+    -- Synchronized Lyrics Player
+    youtubeVideoId VARCHAR(100), -- YouTube video ID for synced lyrics player
+    
+    -- Sharing Link
+    shortlink VARCHAR(255), -- Short link for sharing this processing
+    
+    -- Sync Confirmation & Timing
+    syncConfirmed BOOLEAN DEFAULT FALSE, -- Confirms that sync is correct even if lyrics timing doesn't match the video
+    songStartTime DECIMAL(10,3) DEFAULT NULL, -- Time offset in seconds where the song actually starts (for cases where video timing doesn't match)
+    
     FOREIGN KEY (songID) REFERENCES Songs(songID) ON DELETE CASCADE,
     FOREIGN KEY (createdBy) REFERENCES Users(userID) ON DELETE SET NULL,
-    FOREIGN KEY (updatedBy) REFERENCES Users(userID) ON DELETE SET NULL
+    FOREIGN KEY (updatedBy) REFERENCES Users(userID) ON DELETE SET NULL,
+    FOREIGN KEY (approvedBy) REFERENCES Users(userID) ON DELETE SET NULL,
+    CONSTRAINT check_share_status CHECK (shareStatus IN ('private', 'public_pending', 'public_approved')),
+    CONSTRAINT check_approval_status CHECK (approvalStatus IS NULL OR approvalStatus IN ('pending', 'approved', 'rejected'))
 );
 
 -- =========================
@@ -225,6 +293,69 @@ CREATE TABLE UserSessions (
     createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (userID) REFERENCES Users(userID) ON DELETE CASCADE
+);
+
+-- =========================
+-- Table: UserTwoFactorAuth (Two-Factor Authentication Settings)
+-- =========================
+CREATE TABLE UserTwoFactorAuth (
+    twoFactorID UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    userID UUID NOT NULL,
+    
+    -- 2FA Settings
+    isEnabled BOOLEAN DEFAULT FALSE,
+    secretKey VARCHAR(255), -- TOTP secret key (encrypted)
+    backupCodes TEXT[], -- Array of backup codes (encrypted)
+    
+    -- Recovery Settings
+    recoveryEmail VARCHAR(150),
+    recoveryPhone VARCHAR(20),
+    
+    -- Security & Status
+    lastUsedAt TIMESTAMP,
+    failedAttempts INT DEFAULT 0,
+    isLocked BOOLEAN DEFAULT FALSE,
+    lockedUntil TIMESTAMP,
+    
+    -- Setup Status
+    setupCompleted BOOLEAN DEFAULT FALSE,
+    setupStep VARCHAR(50) DEFAULT 'not_started', -- 'not_started', 'qr_generated', 'verified', 'backup_codes_generated'
+    
+    createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (userID) REFERENCES Users(userID) ON DELETE CASCADE,
+    UNIQUE(userID),
+    CONSTRAINT check_setup_step CHECK (setupStep IN ('not_started', 'qr_generated', 'verified', 'backup_codes_generated'))
+);
+
+-- =========================
+-- Table: TwoFactorVerification (2FA Verification Attempts)
+-- =========================
+CREATE TABLE TwoFactorVerification (
+    verificationID UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    userID UUID NOT NULL,
+    sessionID UUID,
+    
+    -- Verification Details
+    verificationType VARCHAR(20) NOT NULL, -- 'totp', 'backup_code', 'recovery_email', 'recovery_sms'
+    verificationCode VARCHAR(10), -- TOTP code or backup code
+    isSuccessful BOOLEAN DEFAULT FALSE,
+    
+    -- Security Info
+    ipAddress INET,
+    userAgent TEXT,
+    deviceInfo VARCHAR(200),
+    
+    -- Additional Info
+    attemptNumber INT DEFAULT 1, -- Track attempt number for rate limiting
+    errorMessage TEXT, -- Store error message if verification fails
+    
+    createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (userID) REFERENCES Users(userID) ON DELETE CASCADE,
+    FOREIGN KEY (sessionID) REFERENCES UserSessions(sessionID) ON DELETE SET NULL,
+    CONSTRAINT check_verification_type CHECK (verificationType IN ('totp', 'backup_code', 'recovery_email', 'recovery_sms'))
 );
 
 -- =========================
@@ -292,6 +423,8 @@ CREATE INDEX idx_users_login_status ON Users(loginStatus);
 CREATE INDEX idx_users_setup ON Users(setupCompleted);
 CREATE INDEX idx_users_setup_skipped ON Users(setupSkipped);
 CREATE INDEX idx_users_profile_picture ON Users(profilePicture) WHERE profilePicture IS NOT NULL;
+CREATE INDEX idx_users_2fa_enabled ON Users(twoFactorEnabled);
+CREATE INDEX idx_users_2fa_setup_completed ON Users(twoFactorSetupCompleted);
 
 -- Password reset indexes
 CREATE INDEX idx_users_password_reset_token ON Users(passwordResetToken) WHERE passwordResetToken IS NOT NULL;
@@ -311,6 +444,16 @@ CREATE INDEX idx_customers_last_active ON Customers(lastActiveAt);
 CREATE INDEX idx_customers_language ON Customers(preferredLanguage);
 CREATE INDEX idx_customers_audio_quality ON Customers(preferredAudioQuality);
 
+-- LyricsSearchResults table indexes
+CREATE INDEX idx_lyrics_search_external_id ON LyricsSearchResults(externalID);
+CREATE INDEX idx_lyrics_search_track_name ON LyricsSearchResults(trackName);
+CREATE INDEX idx_lyrics_search_artist_name ON LyricsSearchResults(artistName);
+CREATE INDEX idx_lyrics_search_album_name ON LyricsSearchResults(albumName);
+CREATE INDEX idx_lyrics_search_usage_count ON LyricsSearchResults(usageCount);
+CREATE INDEX idx_lyrics_search_last_used ON LyricsSearchResults(lastUsedAt);
+CREATE INDEX idx_lyrics_search_source_api ON LyricsSearchResults(sourceAPI);
+CREATE INDEX idx_lyrics_search_fetched_at ON LyricsSearchResults(fetchedAt);
+
 -- Songs table indexes
 CREATE INDEX idx_songs_artist ON Songs(artistName);
 CREATE INDEX idx_songs_genre ON Songs(genre);
@@ -320,6 +463,9 @@ CREATE INDEX idx_songs_play_count ON Songs(playCount);
 CREATE INDEX idx_songs_created_at ON Songs(createdAt);
 CREATE INDEX idx_songs_created_by ON Songs(createdBy);
 CREATE INDEX idx_songs_updated_by ON Songs(updatedBy);
+CREATE INDEX idx_songs_lyrics_search_result ON Songs(lyricsSearchResultID) WHERE lyricsSearchResultID IS NOT NULL;
+CREATE INDEX idx_songs_source_status ON Songs(sourceStatus);
+CREATE INDEX idx_songs_source_status_lyrics ON Songs(sourceStatus, lyricsSearchResultID) WHERE sourceStatus = 'from_lyrics_search';
 
 -- Playlists table indexes
 CREATE INDEX idx_playlists_user ON Playlists(userID);
@@ -352,6 +498,14 @@ CREATE INDEX idx_ai_processing_rating ON SongAIProcessing(averageRating);
 CREATE INDEX idx_ai_processing_created ON SongAIProcessing(createdAt);
 CREATE INDEX idx_ai_processing_created_by ON SongAIProcessing(createdBy);
 CREATE INDEX idx_ai_processing_updated_by ON SongAIProcessing(updatedBy);
+CREATE INDEX idx_ai_processing_share_status ON SongAIProcessing(shareStatus);
+CREATE INDEX idx_ai_processing_approval_status ON SongAIProcessing(approvalStatus);
+CREATE INDEX idx_ai_processing_approved_by ON SongAIProcessing(approvedBy);
+CREATE INDEX idx_ai_processing_public ON SongAIProcessing(isPublic);
+CREATE INDEX idx_ai_processing_approved_at ON SongAIProcessing(approvedAt);
+CREATE INDEX idx_ai_processing_youtube_video_id ON SongAIProcessing(youtubeVideoId) WHERE youtubeVideoId IS NOT NULL;
+CREATE INDEX idx_ai_processing_sync_confirmed ON SongAIProcessing(syncConfirmed) WHERE syncConfirmed = TRUE;
+CREATE INDEX idx_ai_processing_song_start_time ON SongAIProcessing(songStartTime) WHERE songStartTime IS NOT NULL;
 
 -- AIProcessingRatings table indexes
 CREATE INDEX idx_ratings_processing ON AIProcessingRatings(processingID);
@@ -364,6 +518,25 @@ CREATE INDEX idx_sessions_user ON UserSessions(userID);
 CREATE INDEX idx_sessions_active ON UserSessions(isActive);
 CREATE INDEX idx_sessions_expires ON UserSessions(expiresAt);
 CREATE INDEX idx_sessions_device ON UserSessions(deviceInfo);
+
+-- UserTwoFactorAuth table indexes
+CREATE INDEX idx_2fa_user ON UserTwoFactorAuth(userID);
+CREATE INDEX idx_2fa_enabled ON UserTwoFactorAuth(isEnabled);
+CREATE INDEX idx_2fa_setup_completed ON UserTwoFactorAuth(setupCompleted);
+CREATE INDEX idx_2fa_setup_step ON UserTwoFactorAuth(setupStep);
+CREATE INDEX idx_2fa_locked ON UserTwoFactorAuth(isLocked);
+CREATE INDEX idx_2fa_locked_until ON UserTwoFactorAuth(lockedUntil);
+CREATE INDEX idx_2fa_failed_attempts ON UserTwoFactorAuth(failedAttempts);
+CREATE INDEX idx_2fa_last_used ON UserTwoFactorAuth(lastUsedAt);
+
+-- TwoFactorVerification table indexes
+CREATE INDEX idx_2fa_verification_user ON TwoFactorVerification(userID);
+CREATE INDEX idx_2fa_verification_session ON TwoFactorVerification(sessionID);
+CREATE INDEX idx_2fa_verification_type ON TwoFactorVerification(verificationType);
+CREATE INDEX idx_2fa_verification_successful ON TwoFactorVerification(isSuccessful);
+CREATE INDEX idx_2fa_verification_created ON TwoFactorVerification(createdAt);
+CREATE INDEX idx_2fa_verification_ip ON TwoFactorVerification(ipAddress);
+CREATE INDEX idx_2fa_verification_device ON TwoFactorVerification(deviceInfo);
 
 -- Notifications table indexes
 CREATE INDEX idx_notifications_user ON Notifications(userID);
@@ -403,6 +576,9 @@ CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON Users
 CREATE TRIGGER update_customers_updated_at BEFORE UPDATE ON Customers
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+CREATE TRIGGER update_lyrics_search_results_updated_at BEFORE UPDATE ON LyricsSearchResults
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
 CREATE TRIGGER update_songs_updated_at BEFORE UPDATE ON Songs
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
@@ -419,6 +595,9 @@ CREATE TRIGGER update_history_updated_at BEFORE UPDATE ON History
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 CREATE TRIGGER update_sessions_updated_at BEFORE UPDATE ON UserSessions
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_2fa_updated_at BEFORE UPDATE ON UserTwoFactorAuth
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 CREATE TRIGGER update_notifications_updated_at BEFORE UPDATE ON Notifications
@@ -470,29 +649,43 @@ CREATE TRIGGER normalize_username_trigger
 -- =========================
 CREATE OR REPLACE FUNCTION update_rating_stats()
 RETURNS TRIGGER AS $$
+DECLARE
+    target_processing_id UUID;
 BEGIN
+    -- Determine which processingID to update based on operation type
+    IF TG_OP = 'DELETE' THEN
+        target_processing_id := OLD.processingID;
+    ELSE
+        target_processing_id := NEW.processingID;
+    END IF;
+    
     -- Update rating statistics in SongAIProcessing table
     UPDATE SongAIProcessing 
     SET 
         totalRatings = (
             SELECT COUNT(*) 
             FROM AIProcessingRatings 
-            WHERE processingID = NEW.processingID
+            WHERE processingID = target_processing_id
         ),
         averageRating = (
-            SELECT ROUND(AVG(rating::DECIMAL), 2) 
+            SELECT COALESCE(ROUND(AVG(rating::DECIMAL), 2), 0.00)
             FROM AIProcessingRatings 
-            WHERE processingID = NEW.processingID
+            WHERE processingID = target_processing_id
         ),
         starCount = (
-            SELECT ROUND(AVG(rating::DECIMAL))::INT 
+            SELECT COALESCE(ROUND(AVG(rating::DECIMAL))::INT, 0)
             FROM AIProcessingRatings 
-            WHERE processingID = NEW.processingID
+            WHERE processingID = target_processing_id
         ),
         updatedAt = CURRENT_TIMESTAMP
-    WHERE processingID = NEW.processingID;
+    WHERE processingID = target_processing_id;
     
-    RETURN NEW;
+    -- Return appropriate row based on operation
+    IF TG_OP = 'DELETE' THEN
+        RETURN OLD;
+    ELSE
+        RETURN NEW;
+    END IF;
 END;
 $$ language 'plpgsql';
 
@@ -500,6 +693,66 @@ $$ language 'plpgsql';
 CREATE TRIGGER update_rating_stats_trigger 
     AFTER INSERT OR UPDATE OR DELETE ON AIProcessingRatings
     FOR EACH ROW EXECUTE FUNCTION update_rating_stats();
+
+-- =========================
+-- Create Function to Update LyricsSearchResults Usage Statistics
+-- =========================
+CREATE OR REPLACE FUNCTION update_lyrics_search_usage_stats()
+RETURNS TRIGGER AS $$
+BEGIN
+    -- On INSERT: increment usage count for new reference
+    IF TG_OP = 'INSERT' THEN
+        IF NEW.lyricsSearchResultID IS NOT NULL THEN
+            UPDATE LyricsSearchResults 
+            SET 
+                usageCount = usageCount + 1,
+                lastUsedAt = CURRENT_TIMESTAMP,
+                updatedAt = CURRENT_TIMESTAMP
+            WHERE lyricsSearchResultID = NEW.lyricsSearchResultID;
+        END IF;
+        RETURN NEW;
+    END IF;
+    
+    -- On UPDATE: handle changes in lyricsSearchResultID
+    IF TG_OP = 'UPDATE' THEN
+        -- If lyricsSearchResultID changed
+        IF (OLD.lyricsSearchResultID IS DISTINCT FROM NEW.lyricsSearchResultID) THEN
+            -- Update old record (if existed)
+            IF OLD.lyricsSearchResultID IS NOT NULL THEN
+                -- Note: We don't decrement usageCount as we want to keep historical usage
+                UPDATE LyricsSearchResults 
+                SET updatedAt = CURRENT_TIMESTAMP
+                WHERE lyricsSearchResultID = OLD.lyricsSearchResultID;
+            END IF;
+            
+            -- Update new record (if exists)
+            IF NEW.lyricsSearchResultID IS NOT NULL THEN
+                UPDATE LyricsSearchResults 
+                SET 
+                    usageCount = usageCount + 1,
+                    lastUsedAt = CURRENT_TIMESTAMP,
+                    updatedAt = CURRENT_TIMESTAMP
+                WHERE lyricsSearchResultID = NEW.lyricsSearchResultID;
+            END IF;
+        ELSIF NEW.lyricsSearchResultID IS NOT NULL THEN
+            -- If same lyricsSearchResultID but other fields changed, update lastUsedAt
+            UPDATE LyricsSearchResults 
+            SET 
+                lastUsedAt = CURRENT_TIMESTAMP,
+                updatedAt = CURRENT_TIMESTAMP
+            WHERE lyricsSearchResultID = NEW.lyricsSearchResultID;
+        END IF;
+        RETURN NEW;
+    END IF;
+    
+    RETURN NULL;
+END;
+$$ language 'plpgsql';
+
+-- Create trigger to auto-update lyrics search usage statistics
+CREATE TRIGGER update_lyrics_search_usage_stats_trigger 
+    AFTER INSERT OR UPDATE ON Songs
+    FOR EACH ROW EXECUTE FUNCTION update_lyrics_search_usage_stats();
 
 -- =========================
 -- Table: Prompts (AI Prompts for Translation and Mood Analysis)
@@ -513,3 +766,7 @@ CREATE TABLE Prompts (
     updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT check_prompt_type CHECK (promptType IN ('translation', 'mood'))
 );
+
+-- Trigger for Prompts updatedAt
+CREATE TRIGGER update_prompts_updated_at BEFORE UPDATE ON Prompts
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

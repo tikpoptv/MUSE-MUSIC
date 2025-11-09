@@ -4,12 +4,15 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import GoogleAuthButton from '@/components/GoogleAuthButton';
+import TwoFAVerificationModal from '@/components/modals/TwoFAVerificationModal';
 import { authService } from '@/services/authService';
 import toast from 'react-hot-toast';
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [show2FAModal, setShow2FAModal] = useState(false);
+  const [userID, setUserID] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     username: '',
     password: ''
@@ -60,6 +63,15 @@ export default function LoginPage() {
       const data = await response.json();
 
       if (response.ok && data.success) {
+        // ตรวจสอบว่าต้องการ 2FA หรือไม่
+        if (data.data.requires2FA) {
+          setShow2FAModal(true);
+          setUserID(data.data.userID);
+          toast('Please enter your 2FA code', { icon: '🔐' });
+          return;
+        }
+        
+        // Login สำเร็จ
         authService.setAuthData(data.data);
         toast.success('Successfully signed in!');
         setTimeout(() => {
@@ -74,6 +86,52 @@ export default function LoginPage() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handle2FASubmit = async (twoFactorToken: string) => {
+    if (!userID) {
+      toast.error('User ID not found');
+      return;
+    }
+
+    setIsLoading(true);
+    
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:7662'}/api/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          username: formData.username,
+          password: formData.password,
+          twoFactorToken: twoFactorToken
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        authService.setAuthData(data.data);
+        toast.success('Successfully signed in!');
+        setShow2FAModal(false);
+        setTimeout(() => {
+          window.location.href = '/';
+        }, 1500);
+      } else {
+        toast.error(data.message || '2FA verification failed');
+      }
+    } catch (error) {
+      console.error('2FA verification error:', error);
+      toast.error('An error occurred during 2FA verification');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handle2FAClose = () => {
+    setShow2FAModal(false);
+    setUserID(null);
   };
 
 
@@ -173,6 +231,15 @@ export default function LoginPage() {
           </Link>
         </div>
       </div>
+
+      {/* 2FA Verification Modal */}
+      <TwoFAVerificationModal
+        isOpen={show2FAModal}
+        onClose={handle2FAClose}
+        onSuccess={handle2FASubmit}
+        title="Two-Factor Authentication"
+        description="Enter the 6-digit code from your authenticator app"
+      />
     </div>
   );
 }

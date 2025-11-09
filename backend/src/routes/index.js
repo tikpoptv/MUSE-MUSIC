@@ -7,6 +7,15 @@ const userRoutes = require('./user');
 const setupRoutes = require('./setup');
 const setupSaveRoutes = require('./setupSave');
 const translateRoutes = require('./analysis');
+const twoFactorRoutes = require('./twoFactor');
+const lyricsRoutes = require('./lyrics');
+const songsRoutes = require('./songs');
+const ratingsRoutes = require('./ratings');
+const processingRoutes = require('./processing');
+const imagesRoutes = require('./images');
+const youtubeRoutes = require('./youtube');
+const recommendHomeRoutes = require('./recommendHome');
+const recommendSongsRoutes = require('./recommendSongs');
 
 router.get('/', (req, res) => {
   res.json({
@@ -25,8 +34,15 @@ router.use('/api/auth', authRoutes);
 router.use('/api/user', userRoutes);
 router.use('/api/setup', setupRoutes);
 router.use('/api/setup', setupSaveRoutes);
-
-// Mount them
+router.use('/api/2fa', twoFactorRoutes);
+router.use('/api/lyrics', lyricsRoutes);
+router.use('/api/songs', songsRoutes);
+router.use('/api/ratings', ratingsRoutes);
+router.use('/api/processing', processingRoutes);
+router.use('/api/images', imagesRoutes);
+router.use('/api/youtube', youtubeRoutes);
+router.use('/api/home', recommendHomeRoutes);
+router.use('/api/recommend', recommendSongsRoutes);
 router.use('/api/analysis', translateRoutes);
 
 module.exports = router;

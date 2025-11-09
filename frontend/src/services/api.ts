@@ -1,3 +1,6 @@
+import { LocalStorageManager } from '../utils/localStorageManager';
+import { localStorageKeys } from '../utils/localStorageKeys';
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:7662';
 
 interface ApiResponse<T = unknown> {
@@ -7,7 +10,6 @@ interface ApiResponse<T = unknown> {
   error?: string;
 }
 
-// Import authService for auto refresh
 let authService: {
   refreshAccessToken: () => Promise<boolean>;
   logout: () => void;
@@ -25,34 +27,31 @@ class ApiService {
     };
   }
 
+  private isRedirectingToLogin = false;
+
   private async request<T>(
     endpoint: string,
     options: RequestInit = {}
   ): Promise<ApiResponse<T>> {
     const url = `${this.baseURL}${endpoint}`;
     
-    // Auto-set token from localStorage if not already set
-    const token = localStorage.getItem('auth_token');
+    const token = LocalStorageManager.get<string>(localStorageKeys.AUTH_TOKEN);
     if (token && !this.hasAuthToken()) {
       this.setAuthToken(token);
     }
     
+    // Use headers from options if provided, otherwise use defaults
+    // This allows post/put methods to override headers (e.g., for FormData)
     const config: RequestInit = {
       ...options,
-      headers: {
-        ...this.defaultHeaders,
-        ...options.headers,
-      },
+      headers: options.headers || this.defaultHeaders,
     };
 
     try {
       const response = await fetch(url, config);
       const data = await response.json();
 
-      // ตรวจสอบ 401 Unauthorized และพยายาม refresh token
-      if (response.status === 401 && this.hasAuthToken()) {
-        
-        // Import authService dynamically to avoid circular dependency
+      if (response.status === 401 && this.hasAuthToken() && endpoint !== '/api/auth/refresh') {
         if (!authService) {
           const authServiceModule = await import('./authService');
           authService = authServiceModule.authService;
@@ -61,7 +60,6 @@ class ApiService {
         const refreshSuccess = await authService.refreshAccessToken();
         
         if (refreshSuccess) {
-          // Retry the original request with new token
           const retryConfig: RequestInit = {
             ...config,
             headers: {
@@ -76,7 +74,7 @@ class ApiService {
           if (!retryResponse.ok) {
             return {
               success: false,
-              error: retryData.message || `HTTP ${retryResponse.status}`,
+              error: retryData.error || retryData.message || 'Request failed',
             };
           }
           
@@ -85,9 +83,17 @@ class ApiService {
             data: retryData,
           };
         } else {
-          // Clear auth data and redirect to login
           authService.logout();
-          window.location.href = '/login';
+
+          if (!this.isRedirectingToLogin && 
+              typeof window !== 'undefined' && 
+              window.location && 
+              window.location.pathname !== '/login' && 
+              process.env.NODE_ENV !== 'test') {
+            this.isRedirectingToLogin = true;
+            window.location.href = '/login';
+          }
+
           return {
             success: false,
             error: 'Session expired, please login again',
@@ -98,7 +104,7 @@ class ApiService {
       if (!response.ok) {
         return {
           success: false,
-          error: data.message || `HTTP ${response.status}`,
+          error: data.error || data.message || 'Request failed',
         };
       }
 
@@ -126,10 +132,41 @@ class ApiService {
     data?: unknown,
     headers?: HeadersInit
   ): Promise<ApiResponse<T>> {
+    // Check if data is FormData - if so, don't stringify and let browser set Content-Type
+    const isFormData = data instanceof FormData;
+    
+    // For FormData, we need to keep Authorization but remove Content-Type
+    let requestHeaders: HeadersInit;
+    
+    if (isFormData) {
+      // Build headers manually to preserve Authorization but remove Content-Type
+      requestHeaders = {};
+      
+      // Copy Authorization from defaultHeaders if exists
+      const authToken = this.getAuthToken();
+      if (authToken) {
+        requestHeaders['Authorization'] = `Bearer ${authToken}`;
+      }
+      
+      // Merge any additional headers provided
+      if (headers) {
+        Object.assign(requestHeaders, headers);
+      }
+      
+      // Explicitly remove Content-Type to let browser set it with boundary
+      delete (requestHeaders as Record<string, string>)['Content-Type'];
+    } else {
+      // For JSON, use default headers
+      requestHeaders = { ...this.defaultHeaders };
+      if (headers) {
+        Object.assign(requestHeaders, headers);
+      }
+    }
+    
     return this.request<T>(endpoint, {
       method: 'POST',
-      body: data ? JSON.stringify(data) : undefined,
-      headers,
+      body: data ? (isFormData ? data : JSON.stringify(data)) : undefined,
+      headers: requestHeaders,
     });
   }
 
@@ -145,9 +182,14 @@ class ApiService {
     });
   }
 
-  async delete<T>(endpoint: string, headers?: HeadersInit): Promise<ApiResponse<T>> {
+  async delete<T>(
+    endpoint: string,
+    data?: unknown,
+    headers?: HeadersInit
+  ): Promise<ApiResponse<T>> {
     return this.request<T>(endpoint, {
       method: 'DELETE',
+      body: data ? JSON.stringify(data) : undefined,
       headers,
     });
   }

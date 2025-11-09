@@ -16,20 +16,16 @@ export default function Page() {
           <span>Song Approved</span>
         </div>
 
-
         <div className="flex flex-wrap justify-center gap-6 mb-6">
           <AdminCard name="Tikpop" role="Admin" initials="TP" />
           <AdminCard name="Tikpop" role="Admin" initials="TP" />
           <AdminCard name="Tikpop" role="Admin" initials="TP" />
         </div>
 
-        
         <div className="flex flex-wrap justify-center gap-6 mb-6">
-            <ADD_admin />
+          <ADD_admin />
         </div>
-
-
-    </div>
+      </div>
     </div>
   );
 }
