@@ -17,9 +17,9 @@ const buttonVariants = cva(
         link: "text-violet-600 underline-offset-4 hover:underline",
       },
       size: {
-        default: "h-9 px-4 py-2",
-        sm: "h-8 rounded-md px-3 text-sm",
-        lg: "h-10 rounded-md px-6 text-base",
+        default: "w-[155px] h-[38px] px-4 text-sm", 
+        sm: "w-[130px] h-[34px] rounded-md px-3 text-sm",
+        lg: "w-[180px] h-[42px] rounded-md px-6 text-base",
         icon: "size-9",
       },
     },
@@ -41,6 +41,7 @@ function Button({
     asChild?: boolean;
   }) {
   const Comp = asChild ? Slot : "button";
+
   return (
     <Comp
       data-slot="button"
