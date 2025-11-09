@@ -9,6 +9,14 @@ import { UserData, UserStats, RecommendedAlbum } from '@/types/user';
 import NavMenuItem from '@/components/NavMenuItem';
 import Image from 'next/image';
 
+// Dev-only logger helper
+const devLog = (...args: any[]) => {
+  if (process.env.NODE_ENV === 'development') {
+    // eslint-disable-next-line no-console
+    console.error(...args);
+  }
+};
+
 export default function AccountSettingsPage() {
   const [userData, setUserData] = useState<UserData | null>(null);
   const [userStats, setUserStats] = useState<UserStats | null>(null);
@@ -129,7 +137,7 @@ export default function AccountSettingsPage() {
         loadSaveTranslation();
         loadRecommend();
       } catch (error) {
-        console.error('Error loading data:', error);
+        devLog('Error loading data:', error);
         toast.error('Error loading data');
       }
     };
@@ -139,7 +147,7 @@ export default function AccountSettingsPage() {
         await fetchFavouriteSongs();
         setIsLoadingFavourites(false);
       } catch (error) {
-        console.error('Error loading favourites:', error);
+        devLog('Error loading favourites:', error);
         setIsLoadingFavourites(false);
       }
     };
@@ -149,7 +157,7 @@ export default function AccountSettingsPage() {
         await fetchSavedTranslations();
         setIsLoadingSaveTranslation(false);
       } catch (error) {
-        console.error('Error loading save translation:', error);
+        devLog('Error loading save translation:', error);
         setIsLoadingSaveTranslation(false);
       }
     };
@@ -160,7 +168,7 @@ export default function AccountSettingsPage() {
         setRecommendedAlbums(recommendations);
         setIsLoadingRecommend(false);
       } catch (error) {
-        console.error('Error loading recommendations:', error);
+        devLog('Error loading recommendations:', error);
         setIsLoadingRecommend(false);
       }
     };
@@ -219,7 +227,7 @@ export default function AccountSettingsPage() {
                           window.location.href = '/';
                         }, 1500);
                       } catch (error) {
-                        console.error('Logout error:', error);
+                        devLog('Logout error:', error);
                         toast.error('Logout failed. Please try again.');
                       }
                     }}

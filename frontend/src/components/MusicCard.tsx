@@ -23,14 +23,14 @@ const MusicCard: React.FC<MusicCardProps> = ({ image, title, artist, href }) => 
         tabIndex={0}
         aria-label={`Listen to ${title} by ${artist}`}
       >
-        <div className="w-full aspect-square rounded-xl mb-3 relative overflow-hidden bg-gradient-to-br from-[#7B61FF] to-[#6B51EF] transition-transform duration-300 group-hover:scale-[1.02]">
+        <div className="w-full aspect-square rounded-xl mb-3 relative overflow-hidden bg-gradient-to-br from-[#7B61FF] to-[#6B51EF] transition-transform duration-300 group-hover:scale-[1.02]">                                                                    
           {hasImage ? (
             image.startsWith('/api/images') || image.startsWith('http') ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={image}
                 alt={title}
-                className={`object-cover absolute inset-0 w-full h-full transition-opacity duration-500 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
+                className={`object-cover absolute inset-0 w-full h-full transition-opacity duration-500 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}                                                                                                              
                 onLoad={() => setImageLoaded(true)}
                 onError={() => setImageError(true)}
               />

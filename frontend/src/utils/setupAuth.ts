@@ -20,7 +20,11 @@ export const useSetupAuth = () => {
 
       return await setupService.getSetupStatus();
     } catch (error) {
-      console.error('Error fetching setup status:', error);
+      // eslint-disable-next-line no-console
+      if (process.env.NODE_ENV === 'development') {
+        // eslint-disable-next-line no-console
+        console.error('Error fetching setup status:', error);
+      }
       toast.error('Authentication failed. Please login again.');
       setTimeout(() => {
         router.push('/login');
