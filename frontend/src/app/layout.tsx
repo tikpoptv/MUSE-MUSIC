@@ -12,7 +12,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://muse-music.example.com'),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://musemusic.phitik.com'),
   title: {
     default: 'MUSE MUSIC',
     template: '%s | MUSE MUSIC',
@@ -32,7 +32,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     type: 'website',
-    url: process.env.NEXT_PUBLIC_SITE_URL || 'https://muse-music.example.com',
+    url: process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://musemusic.phitik.com',
     title: 'MUSE MUSIC',
     description: 'Discover lyrics meanings, moods, and translations — MUSE MUSIC',
     siteName: 'MUSE MUSIC',

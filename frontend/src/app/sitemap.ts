@@ -1,7 +1,7 @@
 import type { MetadataRoute } from 'next';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://muse-music.example.com';
+  const siteUrl = process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://musemusic.phitik.com';
   const isDevDomain = /dev\.musemusic\.phitik\.com$/i.test(siteUrl);
 
   if (isDevDomain) {

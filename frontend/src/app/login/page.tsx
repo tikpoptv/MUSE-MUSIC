@@ -81,8 +81,7 @@ export default function LoginPage() {
         toast.error(data.message || 'Login failed');
       }
     } catch (error) {
-      console.error('Login error:', error);
-      toast.error('An error occurred during login');
+      toast.error(error instanceof Error ? error.message : 'An error occurred during login');
     } finally {
       setIsLoading(false);
     }
@@ -122,8 +121,7 @@ export default function LoginPage() {
         toast.error(data.message || '2FA verification failed');
       }
     } catch (error) {
-      console.error('2FA verification error:', error);
-      toast.error('An error occurred during 2FA verification');
+      toast.error(error instanceof Error ? error.message : 'An error occurred during 2FA verification');
     } finally {
       setIsLoading(false);
     }

@@ -585,8 +585,39 @@ export default function SongDetailPage() {
     );
   }
 
+  // Generate structured data (JSON-LD) for SEO
+  const structuredData = songData && processingData ? {
+    '@context': 'https://schema.org',
+    '@type': 'MusicRecording',
+    name: songData.songName,
+    byArtist: {
+      '@type': 'MusicGroup',
+      name: songData.artistName,
+    },
+    ...(processingData.targetLanguage && { inLanguage: processingData.targetLanguage }),
+    ...(Array.isArray(processingData.mood) && processingData.mood.length > 0 && {
+      genre: (processingData.mood as Array<{ type: string; percentage?: number }>)
+        .map((m) => m.type)
+        .slice(0, 4),
+    }),
+    ...(processingData.translation && {
+      description: `Lyrics translation of ${songData.songName} by ${songData.artistName} to ${processingData.targetLanguage || 'Thai'}`,
+    }),
+    ...(coverImage && {
+      image: coverImage.startsWith('http') ? coverImage : `${process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://musemusic.phitik.com'}${coverImage}`,
+    }),
+    url: `${process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://musemusic.phitik.com'}/song/${songID}?processingID=${processingID}`,
+  } : null;
+
   return (
     <main className="min-h-screen bg-white">
+      {/* Structured Data for SEO */}
+      {structuredData && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+        />
+      )}
       <div className="mx-auto max-w-7xl px-6 py-8">
         {/* Title - Different based on route */}
         {isAnalysisRoute ? (
