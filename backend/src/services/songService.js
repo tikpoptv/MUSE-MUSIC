@@ -99,7 +99,9 @@ class SongService {
                   if (Array.isArray(parsed)) {
                     return parsed;
                   }
+                  // eslint-disable-next-line no-empty
                 } catch (e) {
+                  // Invalid JSON, fall through to legacy format
                 }
                 if (procRaw.moodtype && procRaw.moodscore) {
                   return [{

@@ -101,12 +101,12 @@ const MusicCard: React.FC<MusicCardProps> = ({ image, title, artist, href, mood 
                     className="w-5 h-5"
                   />
                 ) : moodIcon.type === 'lucide' && moodIcon.icon ? (
-                  <moodIcon.icon className="text-[#7B61FF]" size={20} />
+                  <moodIcon.icon className="text-[#7B61FF] w-5 h-5" />
                 ) : (
-                  <Smile className="text-[#7B61FF]" size={20} />
+                  <Smile className="text-[#7B61FF] w-5 h-5" />
                 )
               ) : (
-                <Smile className="text-[#7B61FF]" size={20} />
+                <Smile className="text-[#7B61FF] w-5 h-5" />
               )}
             </div>
           </div>

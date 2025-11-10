@@ -6,9 +6,11 @@ class DatabaseService {
     try {
       const result = await pool.query(text, params);
       const duration = Date.now() - start;
+      // eslint-disable-next-line no-console
       console.log('\x1b[90m📊 Query executed:\x1b[0m', { text, duration: `${duration}ms`, rows: result.rowCount });
       return result;
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error('\x1b[31m❌ Query error:\x1b[0m', error.message);
       throw error;
     }
