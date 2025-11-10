@@ -13,10 +13,10 @@ const languageCodeToName: Record<string, string> = {
 };
 
 export async function generateMetadata(
-  { params, searchParams }: { params: { songID: string }; searchParams: { processingID?: string } }
+  { params, searchParams }: { params: Promise<{ songID: string }>; searchParams: Promise<{ processingID?: string }> }
 ): Promise<Metadata> {
-  const songID = params.songID;
-  const processingID = searchParams.processingID;
+  const { songID } = await params;
+  const { processingID } = await searchParams;
 
   // Default metadata
   const defaultMetadata: Metadata = {
