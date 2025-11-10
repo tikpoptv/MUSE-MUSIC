@@ -92,6 +92,23 @@ class SongService {
               moodType: procRaw.moodtype,
               moodScore: procRaw.moodscore ? parseFloat(procRaw.moodscore) : null,
               moodConfidence: procRaw.moodconfidence,
+              mood: (() => {
+                if (!procRaw.moodtype) return null;
+                try {
+                  const parsed = JSON.parse(procRaw.moodtype);
+                  if (Array.isArray(parsed)) {
+                    return parsed;
+                  }
+                } catch (e) {
+                }
+                if (procRaw.moodtype && procRaw.moodscore) {
+                  return [{
+                    type: procRaw.moodtype,
+                    percentage: parseFloat(procRaw.moodscore) <= 1 ? parseFloat(procRaw.moodscore) * 100 : parseFloat(procRaw.moodscore)
+                  }];
+                }
+                return null;
+              })(),
               totalRatings: procRaw.totalratings,
               averageRating: procRaw.averagerating ? parseFloat(procRaw.averagerating) : null,
               starCount: procRaw.starcount,

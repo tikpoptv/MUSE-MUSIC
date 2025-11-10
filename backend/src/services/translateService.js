@@ -2,7 +2,7 @@ const { config } = require('../config/env');
 const { logger } = require('../middleware/logger');
 
 class TranslateService {
-    static async getTranslate(language1, language2, lyrics) {
+    static async getTranslate(language1, language2, lyrics, moodEnabled = null, moodTopK = 4) {
         const translateWebHookURL = config.n8n.translateWebHook;
         
         if (!translateWebHookURL) {
@@ -30,11 +30,21 @@ class TranslateService {
                 lyrics: lyrics
             };
             
+            // Add mood parameters if moodEnabled is provided
+            if (moodEnabled !== null && moodEnabled !== undefined) {
+                data.moodEnabled = moodEnabled;
+                if (moodTopK !== null && moodTopK !== undefined) {
+                    data.moodTopK = moodTopK;
+                }
+            }
+            
             logger.info('Calling translate webhook:', { 
                 url: translateWebHookURL,
                 language1, 
                 language2, 
-                lyricsLength: lyrics.length 
+                lyricsLength: lyrics.length,
+                moodEnabled: moodEnabled !== null && moodEnabled !== undefined ? moodEnabled : null,
+                moodTopK: moodEnabled !== null && moodEnabled !== undefined ? moodTopK : null
             });
             
             const response = await fetch(translateWebHookURL, {

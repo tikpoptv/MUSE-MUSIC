@@ -36,7 +36,17 @@ class RecommendSongsService {
       }
 
       if (mood) {
-        conditions.push(`p.moodtype = $${queryParams.length + 1}`);
+        conditions.push(`EXISTS (
+          SELECT 1 
+          FROM jsonb_array_elements(
+            CASE 
+              WHEN p.moodtype::text LIKE '[%' THEN p.moodtype::jsonb
+              WHEN p.moodtype IS NOT NULL THEN p.moodtype::jsonb
+              ELSE '[]'::jsonb
+            END
+          ) AS mood_item
+          WHERE mood_item->>'type' = $${queryParams.length + 1}
+        )`);
         queryParams.push(mood);
       }
 

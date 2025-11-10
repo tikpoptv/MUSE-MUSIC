@@ -352,6 +352,14 @@ export default function LyricsTranslationViewerFullscreen({
               </div>
             );
           })}
+          {/* Disclaimer */}
+          {translation && pairs.length > 0 && (
+            <div className="mt-12 pt-8 border-t border-white/20 flex justify-center w-full">
+              <p className="text-xs text-white/60 text-center">
+                All data is generated using LLM OSS 120B. Results are AI predictions and may not be accurate.
+              </p>
+            </div>
+          )}
         </div>
       </div>
 

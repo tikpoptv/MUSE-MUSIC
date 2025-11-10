@@ -159,29 +159,47 @@ export default function SongDetailPage() {
 
   useEffect(() => {
     const fetchRecommendationsByMood = async () => {
-      if (!processingData?.moodType) return;
+      if (!processingData) return;
+
+      let topMood: string | null = null;
+      
+      if (processingData.mood && Array.isArray(processingData.mood) && processingData.mood.length > 0) {
+        const sortedMoods = [...processingData.mood].sort((a, b) => (b.percentage || 0) - (a.percentage || 0));
+        topMood = sortedMoods[0].type;
+      } else if (processingData.moodType) {
+        try {
+          const parsed = JSON.parse(processingData.moodType) as Array<{ type: string; percentage: number }>;
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            const sortedMoods = [...parsed].sort((a, b) => (b.percentage || 0) - (a.percentage || 0));
+            topMood = sortedMoods[0].type;
+          }
+        } catch {
+          topMood = processingData.moodType;
+        }
+      }
+
+      if (!topMood || !processingData.originalLanguage) return;
 
       try {
         setLoadingRecommendationsByMood(true);
         
         const moodSongs = await recommendSongsService.getRecommendedSongsByLanguageAndMood(
-          undefined,
-          processingData.moodType,
+          processingData.originalLanguage,
+          topMood,
           2,
           songID
         );
         setRecommendedByMood(moodSongs);
       } catch {
-        // Silently fail - recommendations are optional
       } finally {
         setLoadingRecommendationsByMood(false);
       }
     };
 
-    if (processingData?.moodType) {
+    if (processingData) {
       fetchRecommendationsByMood();
     }
-  }, [processingData?.moodType, songID]);
+  }, [processingData, songID]);
 
   const handleLanguageChange = async (language: string) => {
     if (!songID || songID === 'undefined') return;
@@ -223,9 +241,18 @@ export default function SongDetailPage() {
       return;
     }
 
-    const targetLanguageCode = pendingLanguageChange 
-      ? languageNameToCode[pendingLanguageChange] 
-      : languageNameToCode[selectedLanguage] || 'th';
+    if (!processingData) {
+      toast.error('Processing data not loaded');
+      return;
+    }
+
+    const rawTarget = pendingLanguageChange 
+      ? pendingLanguageChange 
+      : processingData.targetLanguage || selectedLanguage;
+    const targetLanguage = languageCodeToName[rawTarget as keyof typeof languageCodeToName] || rawTarget;
+
+    const rawOriginal = processingData.originalLanguage;
+    const originalLanguage = rawOriginal ? (languageCodeToName[rawOriginal as keyof typeof languageCodeToName] || rawOriginal) : undefined;
 
     try {
       setIsReAnalyzing(true);
@@ -235,9 +262,7 @@ export default function SongDetailPage() {
           translate: true,
           mood: true
         },
-        translationConfig: {
-          targetLanguage: targetLanguageCode
-        }
+        translationConfig: { originalLanguage, targetLanguage }
       });
 
       toast.success('Re-analyzing... Please wait a moment.');
