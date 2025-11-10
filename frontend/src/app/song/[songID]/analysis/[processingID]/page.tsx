@@ -620,6 +620,7 @@ export default function SongAnalysisPage() {
                         title={song.title}
                         artist={song.artist}
                         href={`/song/${song.id}?processingID=${song.processingID}`}
+                        mood={song.mood || null}
                       />
                     ))}
                   </div>
@@ -812,6 +813,7 @@ export default function SongAnalysisPage() {
                         title={song.title}
                         artist={song.artist}
                         href={`/song/${song.id}?processingID=${song.processingID}`}
+                        mood={song.mood || null}
                       />
                     ))}
                   </div>
