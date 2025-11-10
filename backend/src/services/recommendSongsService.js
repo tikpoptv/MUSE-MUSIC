@@ -36,8 +36,8 @@ class RecommendSongsService {
       }
 
       if (mood) {
-        conditions.push(`EXISTS (
-          SELECT 1 
+        conditions.push(`(
+          SELECT mood_item->>'type'
           FROM jsonb_array_elements(
             CASE 
               WHEN p.moodtype::text LIKE '[%' THEN p.moodtype::jsonb
@@ -45,8 +45,9 @@ class RecommendSongsService {
               ELSE '[]'::jsonb
             END
           ) AS mood_item
-          WHERE mood_item->>'type' = $${queryParams.length + 1}
-        )`);
+          ORDER BY (mood_item->>'percentage')::numeric DESC
+          LIMIT 1
+        ) = $${queryParams.length + 1}`);
         queryParams.push(mood);
       }
 
