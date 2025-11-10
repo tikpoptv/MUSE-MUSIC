@@ -113,20 +113,39 @@ class RecommendSongsService {
         return [];
       }
 
-      const songs = result.rows.map(row => ({
-        id: row.songid,
-        processingID: row.processingid,
-        title: row.songname,
-        artist: row.artistname || 'Unknown Artist',
-        genre: row.genre,
-        duration: row.duration,
-        image: row.coverimage || null,
-        originalLanguage: row.originallanguage || 'Unknown',
-        moodType: row.moodtype,
-        totalRatings: row.totalratings || 0,
-        averageRating: row.averagerating ? parseFloat(row.averagerating) : null,
-        createdAt: row.createdat
-      }));
+      const songs = result.rows.map(row => {
+        let topMood = null;
+        if (row.moodtype) {
+          try {
+            const parsed = JSON.parse(row.moodtype);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              const sortedMoods = [...parsed].sort((a, b) => (b.percentage || 0) - (a.percentage || 0));
+              topMood = sortedMoods[0];
+            }
+          } catch (e) {
+            // Fallback for non-JSON moodType (backward compatibility)
+            if (row.moodtype) {
+              topMood = { type: row.moodtype, percentage: 0 };
+            }
+          }
+        }
+
+        return {
+          id: row.songid,
+          processingID: row.processingid,
+          title: row.songname,
+          artist: row.artistname || 'Unknown Artist',
+          genre: row.genre,
+          duration: row.duration,
+          image: row.coverimage || null,
+          originalLanguage: row.originallanguage || 'Unknown',
+          moodType: row.moodtype,
+          mood: topMood,
+          totalRatings: row.totalratings || 0,
+          averageRating: row.averagerating ? parseFloat(row.averagerating) : null,
+          createdAt: row.createdat
+        };
+      });
 
       logger.info(`Retrieved ${songs.length} recommended songs`, { language, mood, limit });
 
