@@ -68,7 +68,7 @@ export default function RootLayout({
         <SetupRedirect />
         <Navbar />
         <div className="min-h-screen pt-16 md:pt-20 lg:pt-[100px]">
-          {children}
+        {children}
         </div>
         <Footer />
         <Toaster 
