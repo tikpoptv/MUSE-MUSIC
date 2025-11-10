@@ -67,7 +67,7 @@ export default function RootLayout({
       <body className={`${inter.variable} antialiased`}>
         <SetupRedirect />
         <Navbar />
-        <div className="min-h-screen">
+        <div className="min-h-screen pt-16 md:pt-20 lg:pt-[100px]">
           {children}
         </div>
         <Footer />

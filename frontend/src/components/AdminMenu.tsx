@@ -20,7 +20,7 @@ export default function AdminMenuBar({ children }: AdminMenuBarProps) {
     ];
 
     return (
-        <div className="w-full pt-20 sm:pt-24 md:pt-28 pb-12 sm:pb-16 md:pb-20">
+        <div className="w-full pt-4 sm:pt-4 md:pt-3 pb-12 sm:pb-16 md:pb-20">
             <div className="max-w-8xl mx-auto px-4 sm:px-6 md:px-8 lg:px-12 xl:px-16">
                 <div className="my-4">
                     {/* Mobile: Horizontal scrollable menu */}

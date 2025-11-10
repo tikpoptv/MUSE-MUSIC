@@ -139,7 +139,7 @@ export default function LoginPage() {
     <div 
       className="min-h-screen flex items-start justify-center relative overflow-hidden" 
       style={{ 
-        paddingTop: '80px', 
+        paddingTop: '0px', 
         paddingBottom: '0px',
         marginTop: '0px',
         backgroundImage: 'url(/login-background.svg)',
