@@ -63,11 +63,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" className="light" style={{ colorScheme: 'light' }}>
       <body className={`${inter.variable} antialiased`}>
         <SetupRedirect />
         <Navbar />
-        {children}
+        <div className="min-h-screen">
+          {children}
+        </div>
         <Footer />
         <Toaster 
           position="top-right"
