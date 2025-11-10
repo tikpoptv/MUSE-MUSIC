@@ -16,6 +16,7 @@ import SyncedLyricsPlayer, { type SyncedLyricsLine } from '@/components/SyncedLy
 import { songService, type SongDetail, type ProcessingDetail } from '@/services/songService';
 import { analysisService } from '@/services/analysisService';
 import { recommendSongsService, type RecommendedSong } from '@/services/recommendSongsService';
+import shareService from '@/services/shareService';
 import ReAnalyzeConfirmModal from '@/components/modals/ReAnalyzeConfirmModal';
 import NavigateAwayConfirmModal from '@/components/modals/NavigateAwayConfirmModal';
 import toast from 'react-hot-toast';
@@ -76,6 +77,7 @@ export default function SongAnalysisPage() {
   const [recommendedByMood, setRecommendedByMood] = useState<RecommendedSong[]>([]);
   const [loadingRecommendationsByLanguage, setLoadingRecommendationsByLanguage] = useState(false);
   const [loadingRecommendationsByMood, setLoadingRecommendationsByMood] = useState(false);
+  const [isCreatingShareLink, setIsCreatingShareLink] = useState(false);
 
   useEffect(() => {
     const fetchSongData = async () => {
@@ -262,6 +264,25 @@ export default function SongAnalysisPage() {
 
   const handleReAnalyzeClick = () => {
     setIsReAnalyzeModalOpen(true);
+  };
+
+  const handleShare = async () => {
+    if (!processingID || processingID === 'undefined') {
+      toast.error('No processing ID available');
+      return;
+    }
+
+    try {
+      setIsCreatingShareLink(true);
+      const shareLink = await shareService.createShareLink(processingID);
+      
+      await navigator.clipboard.writeText(shareLink.shareUrl);
+      toast.success(shareLink.alreadyExists ? 'Share link copied to clipboard!' : 'Share link created and copied to clipboard!');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to create share link');
+    } finally {
+      setIsCreatingShareLink(false);
+    }
   };
 
   const handleReAnalyzeConfirm = async () => {
@@ -586,7 +607,11 @@ export default function SongAnalysisPage() {
                 <button className="p-3 rounded-full hover:bg-gray-100 transition-colors">
                   <Heart className="h-6 w-6" style={{ color: '#7B61FF' }} />
                 </button>
-                <button className="p-3 rounded-full hover:bg-gray-100 transition-colors">
+                <button 
+                  onClick={handleShare}
+                  disabled={isCreatingShareLink || !processingID}
+                  className="p-3 rounded-full hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
                   <Share2 className="h-6 w-6" style={{ color: '#7B61FF' }} />
                 </button>
                 <button className="p-3 rounded-full hover:bg-gray-100 transition-colors">
@@ -620,6 +645,7 @@ export default function SongAnalysisPage() {
                         title={song.title}
                         artist={song.artist}
                         href={`/song/${song.id}?processingID=${song.processingID}`}
+                        mood={song.mood || null}
                       />
                     ))}
                   </div>
@@ -812,6 +838,7 @@ export default function SongAnalysisPage() {
                         title={song.title}
                         artist={song.artist}
                         href={`/song/${song.id}?processingID=${song.processingID}`}
+                        mood={song.mood || null}
                       />
                     ))}
                   </div>
