@@ -471,8 +471,8 @@ export default function SongDetailPage() {
         </h1>
 
         <div className="grid grid-cols-1 lg:grid-cols-[40%_60%] gap-8">
-          {/* ฝั่งย่อ (40%) */}
-          <div className="space-y-6">
+          {/* ฝั่งย่อ (40%) - Desktop only */}
+          <div className="hidden lg:block space-y-6">
             {/* Centered Section */}
             <div className="flex flex-col items-center">
               {/* Song Cover Card - Read Only */}
@@ -561,8 +561,31 @@ export default function SongDetailPage() {
             )}
           </div>
 
+          {/* Mobile: Cover + Action Icons */}
+          <div className="lg:hidden flex flex-col items-center mb-6">
+            <CoverImageUpload
+              width={304}
+              height={302}
+              onImageChange={undefined}
+              initialImage={coverImage}
+              isSaving={false}
+              readonly={true}
+            />
+            <div className="flex items-center gap-4 justify-center mt-6">
+              <button className="p-3 rounded-full hover:bg-gray-100 transition-colors">
+                <Heart className="h-6 w-6" style={{ color: '#7B61FF' }} />
+              </button>
+              <button className="p-3 rounded-full hover:bg-gray-100 transition-colors">
+                <Share2 className="h-6 w-6" style={{ color: '#7B61FF' }} />
+              </button>
+              <button className="p-3 rounded-full hover:bg-gray-100 transition-colors">
+                <MoreVertical className="h-6 w-6" style={{ color: '#7B61FF' }} />
+              </button>
+            </div>
+          </div>
+
           {/* ฝั่งรายละเอียด (60%) */}
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', width: '100%' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', width: '100%' }} className="lg:items-start items-center">
             {/* Processing Version Bar */}
             {processingData && (
               <div style={{ width: '100%', marginBottom: '16px' }}>
@@ -641,6 +664,69 @@ export default function SongDetailPage() {
 
             {/* Mood Analyze Section */}
             <MoodAnalyzeSection processingData={processingData} />
+
+            {/* Mobile: Feedback Section - อยู่หลัง Mood Analyze */}
+            <div className="lg:hidden mt-6 w-full flex justify-center">
+              <FeedbackSection 
+                ref={feedbackSectionRef}
+                processingID={processingID} 
+                onRatingSubmitted={handleRatingSubmitted}
+              />
+            </div>
+
+            {/* Mobile: Recommend with language - อยู่หลัง Mood Analyze */}
+            {processingData?.originalLanguage && (
+              <div className="lg:hidden flex flex-col items-center mx-auto mt-6 mb-6" style={{ width: '100%', maxWidth: '304px' }}>
+                <h2 className="text-lg font-semibold text-gray-900 mb-3 w-full">Recommend with language</h2>
+                {loadingRecommendationsByLanguage ? (
+                  <div className="grid grid-cols-2 gap-3 w-full">
+                    <SkeletonCard />
+                    <SkeletonCard />
+                  </div>
+                ) : recommendedByLanguage.length > 0 ? (
+                  <div className="grid grid-cols-2 gap-3 w-full">
+                    {recommendedByLanguage.map((song) => (
+                      <MusicCard
+                        key={`${song.id}-${song.processingID}`}
+                        image={song.image}
+                        title={song.title}
+                        artist={song.artist}
+                        href={`/song/${song.id}?processingID=${song.processingID}`}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500 text-center w-full">No recommendations available</p>
+                )}
+              </div>
+            )}
+
+            {/* Mobile: Recommend with Mood - อยู่หลัง Mood Analyze */}
+            {processingData?.moodType && (
+              <div className="lg:hidden flex flex-col items-center mx-auto mt-6" style={{ width: '100%', maxWidth: '304px' }}>
+                <h2 className="text-lg font-semibold text-gray-900 mb-3 w-full">Recommend with Mood</h2>
+                {loadingRecommendationsByMood ? (
+                  <div className="grid grid-cols-2 gap-3 w-full">
+                    <SkeletonCard />
+                    <SkeletonCard />
+                  </div>
+                ) : recommendedByMood.length > 0 ? (
+                  <div className="grid grid-cols-2 gap-3 w-full">
+                    {recommendedByMood.map((song) => (
+                      <MusicCard
+                        key={`${song.id}-${song.processingID}`}
+                        image={song.image}
+                        title={song.title}
+                        artist={song.artist}
+                        href={`/song/${song.id}?processingID=${song.processingID}`}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500 text-center w-full">No recommendations available</p>
+                )}
+              </div>
+            )}
 
             {/* Action Buttons */}
             <SongActionButtons 
