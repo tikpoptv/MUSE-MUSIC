@@ -449,7 +449,15 @@ export default function LyricsTranslationViewer({
             </div>
           )}
           {translation ? (
-            renderTranslation()
+            <>
+              {renderTranslation()}
+              {/* Disclaimer */}
+              <div className="mt-4 pt-4 border-t border-gray-200 flex justify-center w-full">
+                <p className="text-xs text-gray-400 text-center">
+                  All data is generated using LLM OSS 120B. Results are AI predictions and may not be accurate.
+                </p>
+              </div>
+            </>
           ) : originalLyrics ? (
             renderOriginalLyrics()
           ) : (

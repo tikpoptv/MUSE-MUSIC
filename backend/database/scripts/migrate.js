@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+/* eslint-disable no-console */
 
 const { Pool } = require('pg');
 const fs = require('fs');

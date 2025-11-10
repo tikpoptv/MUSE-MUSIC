@@ -348,7 +348,8 @@ export default function Home() {
                       image={a.image} 
                       title={a.title} 
                       artist={a.artist} 
-                      href={`/song/${a.id}?processingID=${a.processingID}`} 
+                      href={`/song/${a.id}?processingID=${a.processingID}`}
+                      mood={a.mood || null}
                     />
                   ))}
                 </div>

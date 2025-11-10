@@ -4,6 +4,10 @@ export interface HomeTrackItem {
   title: string;
   artist: string;
   image: string;
+  mood?: {
+    type: string;
+    percentage: number;
+  } | null;
 }
 
 export interface HomeSection {

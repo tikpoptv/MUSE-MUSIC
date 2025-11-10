@@ -10,6 +10,7 @@ export interface RecommendedSong {
   image: string;
   originalLanguage?: string;
   moodType?: string;
+  mood?: { type: string; percentage: number } | null;
   totalRatings?: number;
   averageRating?: number | null;
   createdAt?: string;
