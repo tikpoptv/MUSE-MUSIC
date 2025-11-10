@@ -160,10 +160,7 @@ export default function AdminDashboard() {
     }, [timeRange])
 
     return (
-        <div className="w-full px-8 sm:px-12 lg:px-16">
-            <div className="my-4">
-                <AdminMenu />
-            </div>
+        <AdminMenu>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 my-4 gap-6">
                 <BigStatCard stat_icon={<ChartArea className="w-6 h-6" />} stat_name="Total Users" stat_value={232} stat_description="Increase of 12 user" />
                 <BigStatCard stat_icon={<Music2 className="w-6 h-6" />} stat_name="Total Songs" stat_value={3675} stat_description="All moods" />
@@ -277,7 +274,7 @@ export default function AdminDashboard() {
                     </CardContent>
                 </Card>
             </div>
-        </div>
+        </AdminMenu>
     );
 
 }

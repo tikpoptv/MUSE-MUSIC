@@ -59,9 +59,9 @@ export default function Navbar() {
 
 
   return (
-    <nav className="bg-white shadow-sm border-b border-gray-200">
-      <div className="max-w-8xl mx-auto px-8 sm:px-12 lg:px-16">
-        <div className="flex items-center justify-between h-16 md:h-[100px]">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-white shadow-sm border-b border-gray-200 dark:bg-white dark:border-gray-200" style={{ colorScheme: 'light' }}>
+      <div className="max-w-8xl mx-auto px-4 sm:px-6 md:px-8 lg:px-12 xl:px-16">
+        <div className="flex items-center justify-between h-16 md:h-20 lg:h-[100px]">
           <div className="flex items-center space-x-2 sm:space-x-4">
             <Link href="/" className="flex items-center space-x-2 sm:space-x-3">
               <Image 
@@ -72,7 +72,7 @@ export default function Navbar() {
                 className="w-5 h-5 sm:w-6 sm:h-6"
               />
               
-              <span className="text-sm md:text-sm xl:text-2xl font-bold text-black tracking-wider">
+              <span className="text-sm md:text-sm xl:text-2xl font-bold text-black dark:text-black tracking-wider">
                 MUSE MUSIC
               </span>
             </Link>
@@ -110,19 +110,19 @@ export default function Navbar() {
           <div className="items-center space-x-8" id="nav-container" style={{ display: 'flex' }}>
             <Link 
               href="/" 
-              className="text-gray-700 hover:text-black transition-colors duration-200 font-medium text-xs md:text-xs xl:text-sm"
+              className="text-gray-700 dark:text-gray-700 hover:text-black dark:hover:text-black transition-colors duration-200 font-medium text-xs md:text-xs xl:text-sm"
             >
               Home
             </Link>
             <Link 
               href="/for-you" 
-              className="text-gray-700 hover:text-black transition-colors duration-200 font-medium text-xs md:text-xs xl:text-sm"
+              className="text-gray-700 dark:text-gray-700 hover:text-black dark:hover:text-black transition-colors duration-200 font-medium text-xs md:text-xs xl:text-sm"
             >
               For you
             </Link>
             <Link 
               href="/archive" 
-              className="text-gray-700 hover:text-black transition-colors duration-200 font-medium text-xs md:text-xs xl:text-sm"
+              className="text-gray-700 dark:text-gray-700 hover:text-black dark:hover:text-black transition-colors duration-200 font-medium text-xs md:text-xs xl:text-sm"
             >
               Archive
             </Link>
@@ -190,7 +190,7 @@ export default function Navbar() {
             ? 'max-h-96 opacity-100' 
             : 'max-h-0 opacity-0 overflow-hidden'
         }`} id="mobile-menu" style={{ display: 'none' }}>
-          <div className="px-2 pt-2 pb-4 space-y-1 bg-white border-t border-gray-200">
+          <div className="px-2 pt-2 pb-4 space-y-1 bg-white dark:bg-white border-t border-gray-200 dark:border-gray-200">
             {!shouldHideSearch && (
               <div className="px-3 py-3">
                 <div className="relative">

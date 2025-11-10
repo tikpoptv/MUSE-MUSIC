@@ -5,12 +5,8 @@ import { PenLine } from "lucide-react";
 
 export default function Page() {
   return (
-    <div className="p-6">
-      <div className="my-4">
-        <AdminMenu />
-      </div>
-
-        <div className="w-full px-8 sm:px-12 lg:px-16">
+    <AdminMenu>
+      <div className="w-full">
             <div className="text-xl sm:text-2xl font-semibold flex items-center gap-2 text-violet-600 mb-4">
             <PenLine className="w-5 h-5" />
             <span> Edit Prompt</span>
@@ -21,6 +17,6 @@ export default function Page() {
             </div>
 
         </div>
-    </div>
+    </AdminMenu>
   );
 }

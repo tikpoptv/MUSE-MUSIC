@@ -5,12 +5,8 @@ import { UserPen } from 'lucide-react';
 
 export default function Page() {
   return (
-    <div className="p-6">
-      <div className="my-4">
-        <AdminMenu />
-      </div>
-
-      <div className="w-full px-8 sm:px-12 lg:px-16">
+    <AdminMenu>
+      <div className="w-full">
         <div className="text-xl sm:text-2xl font-semibold flex items-center gap-2 text-violet-600 mb-4">
           <UserPen className="w-10 h-10" />
           <span>Song Approved</span>
@@ -26,6 +22,6 @@ export default function Page() {
           <ADD_admin />
         </div>
       </div>
-    </div>
+    </AdminMenu>
   );
 }
