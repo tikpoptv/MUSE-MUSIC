@@ -3,6 +3,32 @@ const TranslateService = require('./translateService');
 const lyricsService = require('./lyricsService');
 const { logger } = require('../middleware/logger');
 
+// Mood Class Mapping (from n8n AI model)
+const MOOD_CLASS_MAP = {
+  0: 'Happy',
+  1: 'Sad',
+  2: 'Anger',
+  3: 'Disgust',
+  4: 'Fear',
+  5: 'Fear',
+  6: 'Surprise',
+  7: 'Sleepy',
+  8: 'Playful',
+  9: 'Love',
+  10: 'Calm',
+  11: 'Neutral',
+  12: 'Sick',
+  13: 'Embarrassed',
+  14: 'Dizzy',
+  15: 'Broken Heart',
+  16: 'Cool',
+  17: 'Mixed',
+  18: 'Awkward',
+  19: 'Wink',
+  20: 'Hearts',
+  21: 'Angel'
+};
+
 class AnalysisService {
   
   static async validateUserId(userId) {
@@ -120,21 +146,46 @@ class AnalysisService {
       let translationResult = null;
       let moodResult = null;
       
-      if (actions.translate) {
-        const fullLyrics = await this.fetchFullLyrics(
+      let fullLyrics = null;
+      if (actions.translate || actions.mood) {
+        fullLyrics = await this.fetchFullLyrics(
           lyricsRecord.plainLyrics || lyricsRecord.lyrics,
           lyricsResult.externalID
         );
-        
+      }
+      
+      if (actions.translate) {
+        // Pass moodEnabled to processTranslation if mood is requested
+        const moodEnabled = actions.mood ? true : null;
         translationResult = await this.processTranslation(
           fullLyrics,
           translationConfig,
-          processing.processingID
+          processing.processingID,
+          moodEnabled,
+          4 // moodTopK default to 4
         );
+        logger.info('Translation result received:', {
+          hasTranslation: !!translationResult?.translation,
+          hasInterpretation: !!translationResult?.interpretation,
+          hasSummary: !!translationResult?.summary,
+          hasMood: !!translationResult?.mood,
+          interpretationLength: translationResult?.interpretation?.length || 0,
+          summaryLength: translationResult?.summary?.length || 0
+        });
       }
       
-      if (actions.mood) {
-        moodResult = null;
+      // Mood analysis is now handled by n8n webhook if translate is enabled
+      // If only mood is requested without translate, we still need to handle it separately
+      if (actions.mood && !actions.translate) {
+        // If mood is requested but no translate, we can't use n8n mood analysis
+        // This case should be handled separately if needed
+        logger.warn('Mood analysis without translation is not supported. Please enable translation for mood analysis.');
+        throw new Error('Mood analysis requires translation to be enabled');
+      }
+      
+      // Mood result is extracted from translation result if available
+      if (actions.mood && translationResult && translationResult.mood) {
+        moodResult = translationResult.mood;
       }
       
       const processingTime = Date.now() - startTime;
@@ -173,13 +224,13 @@ class AnalysisService {
       
       if (moodResult) {
         updateFields.push(`moodtype = $${paramIndex++}`);
-        updateValues.push(moodResult.moodType || null);
+        updateValues.push(JSON.stringify(moodResult.moods));
         
         updateFields.push(`moodscore = $${paramIndex++}`);
-        updateValues.push(moodResult.moodScore || 0.00);
+        updateValues.push(moodResult.topScore || 0.00);
         
         updateFields.push(`moodconfidence = $${paramIndex++}`);
-        updateValues.push(moodResult.moodConfidence || 0.0);
+        updateValues.push(moodResult.confidence || 0.0);
       }
       
       const requestedActions = [];
@@ -281,21 +332,43 @@ class AnalysisService {
       let translationResult = null;
       let moodResult = null;
 
-      if (actions.translate) {
-        const fullLyrics = await this.fetchFullLyrics(
+      let fullLyrics = null;
+      if (actions.translate || actions.mood) {
+        fullLyrics = await this.fetchFullLyrics(
           lyricsRecord.plainLyrics || lyricsRecord.lyrics,
           lyricsResult.externalID
         );
+      }
 
+      if (actions.translate) {
+        // Pass moodEnabled to processTranslation if mood is requested
+        const moodEnabled = actions.mood ? true : null;
         translationResult = await this.processTranslation(
           fullLyrics,
           finalTranslationConfig,
-          processingID
+          processingID,
+          moodEnabled,
+          4 // moodTopK default to 4
         );
+        logger.info('Translation result received (reAnalyze):', {
+          hasTranslation: !!translationResult?.translation,
+          hasInterpretation: !!translationResult?.interpretation,
+          hasSummary: !!translationResult?.summary,
+          hasMood: !!translationResult?.mood,
+          interpretationLength: translationResult?.interpretation?.length || 0,
+          summaryLength: translationResult?.summary?.length || 0
+        });
       }
 
-      if (actions.mood) {
-        moodResult = null;
+      // Mood analysis is now handled by n8n webhook if translate is enabled
+      if (actions.mood && !actions.translate) {
+        logger.warn('Mood analysis without translation is not supported. Please enable translation for mood analysis.');
+        throw new Error('Mood analysis requires translation to be enabled');
+      }
+      
+      // Mood result is extracted from translation result if available
+      if (actions.mood && translationResult && translationResult.mood) {
+        moodResult = translationResult.mood;
       }
 
       const processingTime = Date.now() - startTime;
@@ -334,13 +407,13 @@ class AnalysisService {
 
       if (moodResult) {
         updateFields.push(`moodtype = $${paramIndex++}`);
-        updateValues.push(moodResult.moodType || null);
+        updateValues.push(JSON.stringify(moodResult.moods));
 
         updateFields.push(`moodscore = $${paramIndex++}`);
-        updateValues.push(moodResult.moodScore || 0.00);
+        updateValues.push(moodResult.topScore || 0.00);
 
         updateFields.push(`moodconfidence = $${paramIndex++}`);
-        updateValues.push(moodResult.moodConfidence || 0.0);
+        updateValues.push(moodResult.confidence || 0.0);
       }
 
       const requestedActions = [];
@@ -661,7 +734,77 @@ class AnalysisService {
     return result.join('\n');
   }
   
-  static async processTranslation(lyrics, translationConfig, processingID) {
+  static parseMoodFromText(moodText) {
+    if (!moodText || typeof moodText !== 'string') {
+      return null;
+    }
+
+    // Remove "MoodAnalyze:" prefix if present (case insensitive)
+    let cleanText = moodText.trim();
+    if (cleanText.toLowerCase().startsWith('moodanalyze:')) {
+      cleanText = cleanText.substring(12).trim();
+    }
+
+    // Split by newline and filter empty lines
+    const moodLines = cleanText.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+    const moodItems = [];
+
+    logger.debug('Parsing mood lines:', { 
+      originalText: moodText.substring(0, 100),
+      cleanText: cleanText.substring(0, 100),
+      moodLines, 
+      count: moodLines.length 
+    });
+
+    for (const line of moodLines) {
+      // Match format: "1 40%" or "17 27%" etc. (with optional whitespace)
+      const match = line.trim().match(/^(\d+)\s+(\d+)%$/);
+      if (match) {
+        const classIndex = parseInt(match[1], 10);
+        const percentage = parseFloat(match[2]);
+        
+        if (!isNaN(classIndex) && !isNaN(percentage) && MOOD_CLASS_MAP[classIndex]) {
+          moodItems.push({
+            type: MOOD_CLASS_MAP[classIndex],
+            percentage: percentage
+          });
+          logger.debug('Parsed mood item:', { classIndex, type: MOOD_CLASS_MAP[classIndex], percentage });
+        } else {
+          logger.warn('Invalid mood line or unknown class index:', { line, classIndex, percentage });
+        }
+      } else {
+        logger.warn('Mood line format mismatch:', { line });
+      }
+    }
+
+    // Sort by percentage descending (should already be sorted, but ensure it)
+    moodItems.sort((a, b) => b.percentage - a.percentage);
+
+    if (moodItems.length === 0) {
+      logger.warn('No valid mood items parsed from text');
+      return null;
+    }
+
+    const topMood = moodItems[0];
+    const totalScore = moodItems.reduce((sum, item) => sum + item.percentage / 100, 0);
+    const confidence = Math.min(totalScore, 1.0);
+
+    logger.info('Successfully parsed mood from text:', {
+      moodsCount: moodItems.length,
+      topMood: topMood.type,
+      topPercentage: topMood.percentage,
+      allMoods: moodItems.map(m => `${m.type}: ${m.percentage}%`)
+    });
+
+    return {
+      moods: moodItems,
+      topMood: topMood.type,
+      topScore: topMood.percentage / 100,
+      confidence: confidence
+    };
+  }
+
+  static async processTranslation(lyrics, translationConfig, processingID, moodEnabled = null, moodTopK = 4) {
     if (!lyrics) {
       throw new Error('Lyrics text is required for translation');
     }
@@ -672,13 +815,17 @@ class AnalysisService {
     logger.info(`Processing translation for processingID: ${processingID}`, {
       originalLanguage,
       targetLanguage,
-      lyricsLength: lyrics.length
+      lyricsLength: lyrics.length,
+      moodEnabled: moodEnabled !== null && moodEnabled !== undefined ? moodEnabled : null,
+      moodTopK: moodEnabled !== null && moodEnabled !== undefined ? moodTopK : null
     });
     
     const result = await TranslateService.getTranslate(
       originalLanguage ?? 'auto',
       targetLanguage ?? 'auto',
-      lyrics
+      lyrics,
+      moodEnabled,
+      moodTopK
     );
     
     if (!result.success || !result.data) {
@@ -700,9 +847,42 @@ class AnalysisService {
       throw new Error('Invalid translation result format');
     }
     
+    // Parse mood from moodAnalyze field or interpretation if moodEnabled was true
+    let moodResult = null;
+    if (moodEnabled) {
+      // Try to parse from moodAnalyze field first (preferred)
+      if (translated.moodAnalyze) {
+        logger.debug('Found moodAnalyze field in response');
+        moodResult = this.parseMoodFromText(translated.moodAnalyze);
+      }
+      
+      // Fallback to parsing from interpretation if moodAnalyze not found
+      if (!moodResult && translated.interpretation) {
+        logger.debug('No moodAnalyze field, trying to parse from interpretation');
+        moodResult = this.parseMoodFromText(translated.interpretation);
+      }
+      
+      if (moodResult) {
+        logger.info('Mood analysis parsed from n8n response:', {
+          source: translated.moodAnalyze ? 'moodAnalyze field' : 'interpretation field',
+          moodsCount: moodResult.moods.length,
+          topMood: moodResult.topMood,
+          moods: moodResult.moods.map(m => `${m.type}: ${m.percentage}%`)
+        });
+      } else {
+        logger.warn('Mood analysis was enabled but no mood data found in response', {
+          hasMoodAnalyze: !!translated.moodAnalyze,
+          hasInterpretation: !!translated.interpretation,
+          moodAnalyzePreview: translated.moodAnalyze ? translated.moodAnalyze.substring(0, 100) : null
+        });
+      }
+    }
+    
     return {
       translation: translated.translation || '',
-      interpretation: translated.interpretation || null
+      interpretation: translated.interpretation || null,
+      summary: translated.summary || null,
+      mood: moodResult
     };
   }
 }

@@ -36,7 +36,18 @@ class RecommendSongsService {
       }
 
       if (mood) {
-        conditions.push(`p.moodtype = $${queryParams.length + 1}`);
+        conditions.push(`(
+          SELECT mood_item->>'type'
+          FROM jsonb_array_elements(
+            CASE 
+              WHEN p.moodtype::text LIKE '[%' THEN p.moodtype::jsonb
+              WHEN p.moodtype IS NOT NULL THEN p.moodtype::jsonb
+              ELSE '[]'::jsonb
+            END
+          ) AS mood_item
+          ORDER BY (mood_item->>'percentage')::numeric DESC
+          LIMIT 1
+        ) = $${queryParams.length + 1}`);
         queryParams.push(mood);
       }
 
@@ -103,20 +114,39 @@ class RecommendSongsService {
         return [];
       }
 
-      const songs = result.rows.map(row => ({
-        id: row.songid,
-        processingID: row.processingid,
-        title: row.songname,
-        artist: row.artistname || 'Unknown Artist',
-        genre: row.genre,
-        duration: row.duration,
-        image: row.coverimage || null,
-        originalLanguage: row.originallanguage || 'Unknown',
-        moodType: row.moodtype,
-        totalRatings: row.totalratings || 0,
-        averageRating: row.averagerating ? parseFloat(row.averagerating) : null,
-        createdAt: row.createdat
-      }));
+      const songs = result.rows.map(row => {
+        let topMood = null;
+        if (row.moodtype) {
+          try {
+            const parsed = JSON.parse(row.moodtype);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              const sortedMoods = [...parsed].sort((a, b) => (b.percentage || 0) - (a.percentage || 0));
+              topMood = sortedMoods[0];
+            }
+          } catch (e) {
+            // Fallback for non-JSON moodType (backward compatibility)
+            if (row.moodtype) {
+              topMood = { type: row.moodtype, percentage: 0 };
+            }
+          }
+        }
+
+        return {
+          id: row.songid,
+          processingID: row.processingid,
+          title: row.songname,
+          artist: row.artistname || 'Unknown Artist',
+          genre: row.genre,
+          duration: row.duration,
+          image: row.coverimage || null,
+          originalLanguage: row.originallanguage || 'Unknown',
+          moodType: row.moodtype,
+          mood: topMood,
+          totalRatings: row.totalratings || 0,
+          averageRating: row.averagerating ? parseFloat(row.averagerating) : null,
+          createdAt: row.createdat
+        };
+      });
 
       logger.info(`Retrieved ${songs.length} recommended songs`, { language, mood, limit });
 

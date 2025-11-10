@@ -1,14 +1,12 @@
 import apiService from './api';
-import type { AnalysisRequest, AnalysisResult } from '@/types/analysis';
+import type { AnalysisRequest, AnalysisResult, TranslationConfig } from '@/types/analysis';
 
 export interface ReAnalyzeRequest {
   actions: {
     translate: boolean;
     mood: boolean;
   };
-  translationConfig?: {
-    targetLanguage: string;
-  };
+  translationConfig?: TranslationConfig;
 }
 
 export const analysisService = {

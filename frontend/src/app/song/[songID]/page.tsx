@@ -16,6 +16,7 @@ import ProcessingVersionBar from '@/components/ProcessingVersionBar';
 import { songService, type SongDetail, type ProcessingDetail } from '@/services/songService';
 import { analysisService } from '@/services/analysisService';
 import { recommendSongsService, type RecommendedSong } from '@/services/recommendSongsService';
+import shareService from '@/services/shareService';
 import ReAnalyzeConfirmModal from '@/components/modals/ReAnalyzeConfirmModal';
 import toast from 'react-hot-toast';
 
@@ -65,6 +66,7 @@ export default function SongDetailPage() {
   const [recommendedByMood, setRecommendedByMood] = useState<RecommendedSong[]>([]);
   const [loadingRecommendationsByLanguage, setLoadingRecommendationsByLanguage] = useState(false);
   const [loadingRecommendationsByMood, setLoadingRecommendationsByMood] = useState(false);
+  const [isCreatingShareLink, setIsCreatingShareLink] = useState(false);
 
   const languageNameToCode: Record<string, string> = {
     'Thai': 'th',
@@ -159,29 +161,47 @@ export default function SongDetailPage() {
 
   useEffect(() => {
     const fetchRecommendationsByMood = async () => {
-      if (!processingData?.moodType) return;
+      if (!processingData) return;
+
+      let topMood: string | null = null;
+      
+      if (processingData.mood && Array.isArray(processingData.mood) && processingData.mood.length > 0) {
+        const sortedMoods = [...processingData.mood].sort((a, b) => (b.percentage || 0) - (a.percentage || 0));
+        topMood = sortedMoods[0].type;
+      } else if (processingData.moodType) {
+        try {
+          const parsed = JSON.parse(processingData.moodType) as Array<{ type: string; percentage: number }>;
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            const sortedMoods = [...parsed].sort((a, b) => (b.percentage || 0) - (a.percentage || 0));
+            topMood = sortedMoods[0].type;
+          }
+        } catch {
+          topMood = processingData.moodType;
+        }
+      }
+
+      if (!topMood || !processingData.originalLanguage) return;
 
       try {
         setLoadingRecommendationsByMood(true);
         
         const moodSongs = await recommendSongsService.getRecommendedSongsByLanguageAndMood(
-          undefined,
-          processingData.moodType,
+          processingData.originalLanguage,
+          topMood,
           2,
           songID
         );
         setRecommendedByMood(moodSongs);
       } catch {
-        // Silently fail - recommendations are optional
       } finally {
         setLoadingRecommendationsByMood(false);
       }
     };
 
-    if (processingData?.moodType) {
+    if (processingData) {
       fetchRecommendationsByMood();
     }
-  }, [processingData?.moodType, songID]);
+  }, [processingData, songID]);
 
   const handleLanguageChange = async (language: string) => {
     if (!songID || songID === 'undefined') return;
@@ -217,15 +237,43 @@ export default function SongDetailPage() {
     setIsReAnalyzeModalOpen(true);
   };
 
+  const handleShare = async () => {
+    if (!processingID || processingID === 'undefined') {
+      toast.error('No processing ID available');
+      return;
+    }
+
+    try {
+      setIsCreatingShareLink(true);
+      const shareLink = await shareService.createShareLink(processingID);
+      
+      await navigator.clipboard.writeText(shareLink.shareUrl);
+      toast.success(shareLink.alreadyExists ? 'Share link copied to clipboard!' : 'Share link created and copied to clipboard!');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to create share link');
+    } finally {
+      setIsCreatingShareLink(false);
+    }
+  };
+
   const handleReAnalyzeConfirm = async () => {
     if (!processingID || processingID === 'undefined') {
       toast.error('Invalid processing ID');
       return;
     }
 
-    const targetLanguageCode = pendingLanguageChange 
-      ? languageNameToCode[pendingLanguageChange] 
-      : languageNameToCode[selectedLanguage] || 'th';
+    if (!processingData) {
+      toast.error('Processing data not loaded');
+      return;
+    }
+
+    const rawTarget = pendingLanguageChange 
+      ? pendingLanguageChange 
+      : processingData.targetLanguage || selectedLanguage;
+    const targetLanguage = languageCodeToName[rawTarget as keyof typeof languageCodeToName] || rawTarget;
+
+    const rawOriginal = processingData.originalLanguage;
+    const originalLanguage = rawOriginal ? (languageCodeToName[rawOriginal as keyof typeof languageCodeToName] || rawOriginal) : undefined;
 
     try {
       setIsReAnalyzing(true);
@@ -235,9 +283,7 @@ export default function SongDetailPage() {
           translate: true,
           mood: true
         },
-        translationConfig: {
-          targetLanguage: targetLanguageCode
-        }
+        translationConfig: { originalLanguage, targetLanguage }
       });
 
       toast.success('Re-analyzing... Please wait a moment.');
@@ -471,8 +517,8 @@ export default function SongDetailPage() {
         </h1>
 
         <div className="grid grid-cols-1 lg:grid-cols-[40%_60%] gap-8">
-          {/* ฝั่งย่อ (40%) */}
-          <div className="space-y-6">
+          {/* ฝั่งย่อ (40%) - Desktop only */}
+          <div className="hidden lg:block space-y-6">
             {/* Centered Section */}
             <div className="flex flex-col items-center">
               {/* Song Cover Card - Read Only */}
@@ -490,7 +536,11 @@ export default function SongDetailPage() {
                 <button className="p-3 rounded-full hover:bg-gray-100 transition-colors">
                   <Heart className="h-6 w-6" style={{ color: '#7B61FF' }} />
                 </button>
-                <button className="p-3 rounded-full hover:bg-gray-100 transition-colors">
+                <button 
+                  onClick={handleShare}
+                  disabled={isCreatingShareLink || !processingID}
+                  className="p-3 rounded-full hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
                   <Share2 className="h-6 w-6" style={{ color: '#7B61FF' }} />
                 </button>
                 <button className="p-3 rounded-full hover:bg-gray-100 transition-colors">
@@ -524,6 +574,7 @@ export default function SongDetailPage() {
                         title={song.title}
                         artist={song.artist}
                         href={`/song/${song.id}?processingID=${song.processingID}`}
+                        mood={song.mood || null}
                       />
                     ))}
                   </div>
@@ -551,6 +602,7 @@ export default function SongDetailPage() {
                         title={song.title}
                         artist={song.artist}
                         href={`/song/${song.id}?processingID=${song.processingID}`}
+                        mood={song.mood || null}
                       />
                     ))}
                   </div>
@@ -561,8 +613,31 @@ export default function SongDetailPage() {
             )}
           </div>
 
+          {/* Mobile: Cover + Action Icons */}
+          <div className="lg:hidden flex flex-col items-center mb-6">
+            <CoverImageUpload
+              width={304}
+              height={302}
+              onImageChange={undefined}
+              initialImage={coverImage}
+              isSaving={false}
+              readonly={true}
+            />
+            <div className="flex items-center gap-4 justify-center mt-6">
+              <button className="p-3 rounded-full hover:bg-gray-100 transition-colors">
+                <Heart className="h-6 w-6" style={{ color: '#7B61FF' }} />
+              </button>
+              <button className="p-3 rounded-full hover:bg-gray-100 transition-colors">
+                <Share2 className="h-6 w-6" style={{ color: '#7B61FF' }} />
+              </button>
+              <button className="p-3 rounded-full hover:bg-gray-100 transition-colors">
+                <MoreVertical className="h-6 w-6" style={{ color: '#7B61FF' }} />
+              </button>
+            </div>
+          </div>
+
           {/* ฝั่งรายละเอียด (60%) */}
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', width: '100%' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', width: '100%' }} className="lg:items-start items-center">
             {/* Processing Version Bar */}
             {processingData && (
               <div style={{ width: '100%', marginBottom: '16px' }}>
@@ -641,6 +716,71 @@ export default function SongDetailPage() {
 
             {/* Mood Analyze Section */}
             <MoodAnalyzeSection processingData={processingData} />
+
+            {/* Mobile: Feedback Section - อยู่หลัง Mood Analyze */}
+            <div className="lg:hidden mt-6 w-full flex justify-center">
+              <FeedbackSection 
+                ref={feedbackSectionRef}
+                processingID={processingID} 
+                onRatingSubmitted={handleRatingSubmitted}
+              />
+            </div>
+
+            {/* Mobile: Recommend with language - อยู่หลัง Mood Analyze */}
+            {processingData?.originalLanguage && (
+              <div className="lg:hidden flex flex-col items-center mx-auto mt-6 mb-6" style={{ width: '100%', maxWidth: '304px' }}>
+                <h2 className="text-lg font-semibold text-gray-900 mb-3 w-full">Recommend with language</h2>
+                {loadingRecommendationsByLanguage ? (
+                  <div className="grid grid-cols-2 gap-3 w-full">
+                    <SkeletonCard />
+                    <SkeletonCard />
+                  </div>
+                ) : recommendedByLanguage.length > 0 ? (
+                  <div className="grid grid-cols-2 gap-3 w-full">
+                    {recommendedByLanguage.map((song) => (
+                      <MusicCard
+                        key={`${song.id}-${song.processingID}`}
+                        image={song.image}
+                        title={song.title}
+                        artist={song.artist}
+                        href={`/song/${song.id}?processingID=${song.processingID}`}
+                        mood={song.mood || null}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500 text-center w-full">No recommendations available</p>
+                )}
+              </div>
+            )}
+
+            {/* Mobile: Recommend with Mood - อยู่หลัง Mood Analyze */}
+            {processingData?.moodType && (
+              <div className="lg:hidden flex flex-col items-center mx-auto mt-6" style={{ width: '100%', maxWidth: '304px' }}>
+                <h2 className="text-lg font-semibold text-gray-900 mb-3 w-full">Recommend with Mood</h2>
+                {loadingRecommendationsByMood ? (
+                  <div className="grid grid-cols-2 gap-3 w-full">
+                    <SkeletonCard />
+                    <SkeletonCard />
+                  </div>
+                ) : recommendedByMood.length > 0 ? (
+                  <div className="grid grid-cols-2 gap-3 w-full">
+                    {recommendedByMood.map((song) => (
+                      <MusicCard
+                        key={`${song.id}-${song.processingID}`}
+                        image={song.image}
+                        title={song.title}
+                        artist={song.artist}
+                        href={`/song/${song.id}?processingID=${song.processingID}`}
+                        mood={song.mood || null}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500 text-center w-full">No recommendations available</p>
+                )}
+              </div>
+            )}
 
             {/* Action Buttons */}
             <SongActionButtons 

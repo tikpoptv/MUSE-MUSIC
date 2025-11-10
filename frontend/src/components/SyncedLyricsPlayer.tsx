@@ -128,6 +128,14 @@ export default function SyncedLyricsPlayer({
   const [syncConfirmed, setSyncConfirmed] = useState(initialSyncConfirmed);
   const [songStartTime, setSongStartTime] = useState<number | null>(initialSongStartTime);
   const [isSavingSyncSettings, setIsSavingSyncSettings] = useState(false);
+
+  useEffect(() => {
+    setSyncConfirmed(initialSyncConfirmed);
+  }, [initialSyncConfirmed]);
+
+  useEffect(() => {
+    setSongStartTime(initialSongStartTime);
+  }, [initialSongStartTime]);
   const playerRef = useRef<YouTubePlayer | null>(null);
   const playerContainerRef = useRef<HTMLDivElement>(null);
   const playerIdRef = useRef<string>('');

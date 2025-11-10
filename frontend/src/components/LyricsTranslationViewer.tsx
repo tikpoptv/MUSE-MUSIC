@@ -174,7 +174,6 @@ export default function LyricsTranslationViewer({
     return pairs;
   };
 
-  // Get line time by index (with songStartTime offset applied)
   const getLineTime = (pairIndex: number, pairs: Array<{ original: string; translation: string }>): number | null => {
     if (syncedLyricsLines.length === 0) return null;
     
@@ -207,18 +206,16 @@ export default function LyricsTranslationViewer({
     
     if (baseTime === null) return null;
     
-    // Apply songStartTime offset if provided
-    const offset = songStartTime !== null && songStartTime !== undefined ? songStartTime : 0;
-    return baseTime + offset;
+    return baseTime;
   };
 
-  // Parse translation pairs
   const pairs = parseTranslationPairs();
-
-  // Determine if we're in sync mode (playing with synced lyrics)
   const isSyncMode = currentTime > 0 && syncedLyricsLines.length > 0;
   
-  // Find the currently active line index for auto-scroll
+  const adjustedCurrentTime = songStartTime !== null && songStartTime !== undefined 
+    ? currentTime - songStartTime 
+    : currentTime;
+  
   let activeIndex = -1;
   let lastLyricsTime = 0;
   if (isSyncMode && pairs.length > 0) {
@@ -226,7 +223,7 @@ export default function LyricsTranslationViewer({
       const lineTime = getLineTime(i, pairs);
       if (lineTime !== null) {
         lastLyricsTime = Math.max(lastLyricsTime, lineTime);
-        if (currentTime >= lineTime) {
+        if (adjustedCurrentTime >= lineTime) {
           activeIndex = i;
           break;
         }
@@ -234,11 +231,9 @@ export default function LyricsTranslationViewer({
     }
   }
   
-  // Check if song is still playing but lyrics have ended
-  const hasTimeRemaining = songDuration ? currentTime < songDuration - 5 : true;
-  const lyricsEnded = isSyncMode && lastLyricsTime > 0 && currentTime > lastLyricsTime + 2 && hasTimeRemaining;
+  const hasTimeRemaining = songDuration ? adjustedCurrentTime < songDuration - 5 : true;
+  const lyricsEnded = isSyncMode && lastLyricsTime > 0 && adjustedCurrentTime > lastLyricsTime + 2 && hasTimeRemaining;
 
-  // Auto-scroll to active line when playing (center it)
   useEffect(() => {
     if (isSyncMode && activeIndex >= 0 && lyricsContainerRef.current) {
       const container = lyricsContainerRef.current;
@@ -246,19 +241,16 @@ export default function LyricsTranslationViewer({
       
       if (!activeLine) return;
       
-      // Calculate scroll position to center the active line
       const containerScrollTop = container.scrollTop;
       const containerHeight = container.clientHeight;
       const activeLineOffsetTop = activeLine.offsetTop;
       const activeLineHeight = activeLine.offsetHeight;
       
-      // Calculate where the active line should be positioned (center of viewport)
       const targetScrollTop = activeLineOffsetTop - (containerHeight / 2) + (activeLineHeight / 2);
       
-      // Only scroll if the active line is not already centered (with some tolerance)
       const currentCenter = containerScrollTop + (containerHeight / 2);
       const activeLineCenter = activeLineOffsetTop + (activeLineHeight / 2);
-      const tolerance = 50; // pixels
+      const tolerance = 50;
       
       if (Math.abs(currentCenter - activeLineCenter) > tolerance) {
         container.scrollTo({
@@ -279,16 +271,17 @@ export default function LyricsTranslationViewer({
             return <div key={index} className="h-2" />;
           }
 
-          // Get time for this line by index (only for highlighting, not changing content)
           const lineTime = getLineTime(index, pairs);
-          // If not in sync mode (not playing or no synced lyrics), show all as active (normal mode)
           const isActive = isSyncMode 
-            ? (lineTime !== null && currentTime >= lineTime)
-            : true; // Normal mode: show all as active (not grayed out)
+            ? (lineTime !== null && adjustedCurrentTime >= lineTime)
+            : true;
           
           const handleLineClick = () => {
             if (lineTime !== null && onSeekToTime) {
-              onSeekToTime(lineTime);
+              const videoTime = songStartTime !== null && songStartTime !== undefined 
+                ? lineTime + songStartTime 
+                : lineTime;
+              onSeekToTime(videoTime);
             }
           };
 
@@ -344,7 +337,7 @@ export default function LyricsTranslationViewer({
 
   return (
     <div style={{ width: '100%', height: '466px', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }}>
-      {/* Header with Language Selector and Save Icon */}
+      {/* Header */}
       <div className="flex items-center justify-between px-4 w-full" style={{ height: '70px', flexShrink: 0, backgroundColor: '#F5F5F5', boxSizing: 'border-box' }}>
         <div className="flex items-center gap-2">
           <LanguagesIcon className="h-5 w-5 text-[#7B61FF]" />
@@ -398,13 +391,11 @@ export default function LyricsTranslationViewer({
         </div>
       </div>
 
-      {/* Translation Content */}
       <div 
         ref={lyricsContainerRef}
         className="bg-white border border-gray-200 rounded-lg overflow-y-auto w-full relative" 
         style={{ height: '396px', flexShrink: 0, boxSizing: 'border-box' }}
       >
-        {/* Duration Mismatch Warning (Sticky at top, full width and height) */}
         {durationMatch === false && isSyncMode && !syncConfirmed && (
           <div 
             className="sticky top-0 z-10 flex flex-col items-center justify-center transition-all"
@@ -434,7 +425,6 @@ export default function LyricsTranslationViewer({
         )}
         
         <div className="p-6 relative">
-          {/* Lyrics Ended Warning (small notification at top right, sticky to scroll) */}
           {lyricsEnded && (
             <div 
               className="sticky top-4 z-20 flex items-center gap-2 transition-all rounded-lg"
@@ -459,7 +449,15 @@ export default function LyricsTranslationViewer({
             </div>
           )}
           {translation ? (
-            renderTranslation()
+            <>
+              {renderTranslation()}
+              {/* Disclaimer */}
+              <div className="mt-4 pt-4 border-t border-gray-200 flex justify-center w-full">
+                <p className="text-xs text-gray-400 text-center">
+                  All data is generated using LLM OSS 120B. Results are AI predictions and may not be accurate.
+                </p>
+              </div>
+            </>
           ) : originalLyrics ? (
             renderOriginalLyrics()
           ) : (
@@ -468,7 +466,6 @@ export default function LyricsTranslationViewer({
         </div>
       </div>
 
-      {/* Fullscreen Modal */}
       {isFullscreenOpen && (
         <LyricsTranslationViewerFullscreen
           translation={translation}

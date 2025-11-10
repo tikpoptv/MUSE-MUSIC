@@ -12,7 +12,7 @@ export default function SongActionButtons({ onReAnalyzeClick, isReAnalyzing = fa
   const router = useRouter();
 
   return (
-    <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between w-full gap-3 sm:gap-[22px]">
+    <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between w-full gap-3 sm:gap-[22px] mt-6 lg:mt-8">
       {/* Re-analyze Button */}
       <button
         onClick={onReAnalyzeClick}
