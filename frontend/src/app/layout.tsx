@@ -12,7 +12,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://muse-music.example.com'),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://musemusic.phitik.com'),
   title: {
     default: 'MUSE MUSIC',
     template: '%s | MUSE MUSIC',
@@ -32,7 +32,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     type: 'website',
-    url: process.env.NEXT_PUBLIC_SITE_URL || 'https://muse-music.example.com',
+    url: process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://musemusic.phitik.com',
     title: 'MUSE MUSIC',
     description: 'Discover lyrics meanings, moods, and translations — MUSE MUSIC',
     siteName: 'MUSE MUSIC',
@@ -63,11 +63,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" className="light" style={{ colorScheme: 'light' }}>
       <body className={`${inter.variable} antialiased`}>
         <SetupRedirect />
         <Navbar />
-        {children}
+        <div className="min-h-screen pt-16 md:pt-20 lg:pt-[100px]">
+          {children}
+        </div>
         <Footer />
         <Toaster 
           position="top-right"

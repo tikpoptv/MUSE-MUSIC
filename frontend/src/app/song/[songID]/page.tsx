@@ -1,11 +1,12 @@
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { useParams, useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { Heart, Share2, MoreVertical } from 'lucide-react';
 import MusicCard from '@/components/MusicCard';
 import SkeletonCard from '@/components/SkeletonCard';
 import LyricsTranslationViewer from '@/components/LyricsTranslationViewer';
+import SongDetailsCard from '@/components/SongDetailsCard';
 import SummarySection from '@/components/SummarySection';
 import MoodAnalyzeSection from '@/components/MoodAnalyzeSection';
 import SongActionButtons from '@/components/SongActionButtons';
@@ -18,7 +19,15 @@ import { analysisService } from '@/services/analysisService';
 import { recommendSongsService, type RecommendedSong } from '@/services/recommendSongsService';
 import shareService from '@/services/shareService';
 import ReAnalyzeConfirmModal from '@/components/modals/ReAnalyzeConfirmModal';
+import NavigateAwayConfirmModal from '@/components/modals/NavigateAwayConfirmModal';
 import toast from 'react-hot-toast';
+
+const languageNameToCode: Record<string, string> = {
+  'Thai': 'th',
+  'English': 'en',
+  'Japanese': 'ja',
+  'Korean': 'ko'
+};
 
 const languageCodeToName: Record<string, string> = {
   'th': 'Thai',
@@ -35,8 +44,14 @@ export default function SongDetailPage() {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const pathname = usePathname();
   const songID = params.songID as string;
-  const processingID = searchParams.get('processingID') || '';
+  
+  // Check if this is the analysis route (editable) or detail route (read-only)
+  const isAnalysisRoute = pathname?.includes('/analysis/');
+  const processingID = isAnalysisRoute 
+    ? (params.processingID as string)
+    : (searchParams.get('processingID') || '');
 
   const [songData, setSongData] = useState<SongDetail | null>(null);
   const [processingData, setProcessingData] = useState<ProcessingDetail | null>(null);
@@ -51,7 +66,9 @@ export default function SongDetailPage() {
   const handleIsPlayingChange = useCallback((playing: boolean) => {
     setIsPlaying(playing);
   }, []);
+  
   const [coverImage, setCoverImage] = useState<string | null>(null);
+  const [isSavingCoverImage, setIsSavingCoverImage] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [syncedLyricsLines, setSyncedLyricsLines] = useState<SyncedLyricsLine[]>([]);
   const [durationMatch, setDurationMatch] = useState<boolean | null>(null);
@@ -61,20 +78,14 @@ export default function SongDetailPage() {
   const [isReAnalyzeModalOpen, setIsReAnalyzeModalOpen] = useState(false);
   const [isReAnalyzing, setIsReAnalyzing] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState<string>('Thai');
+  const [isNavigateAwayModalOpen, setIsNavigateAwayModalOpen] = useState(false);
   const [pendingLanguageChange, setPendingLanguageChange] = useState<string | null>(null);
+  const [pendingProcessingID, setPendingProcessingID] = useState<string | null>(null);
   const [recommendedByLanguage, setRecommendedByLanguage] = useState<RecommendedSong[]>([]);
   const [recommendedByMood, setRecommendedByMood] = useState<RecommendedSong[]>([]);
   const [loadingRecommendationsByLanguage, setLoadingRecommendationsByLanguage] = useState(false);
   const [loadingRecommendationsByMood, setLoadingRecommendationsByMood] = useState(false);
   const [isCreatingShareLink, setIsCreatingShareLink] = useState(false);
-
-  const languageNameToCode: Record<string, string> = {
-    'Thai': 'th',
-    'English': 'en',
-    'Japanese': 'ja',
-    'Korean': 'ko'
-  };
-
 
   useEffect(() => {
     const fetchSongData = async () => {
@@ -94,17 +105,30 @@ export default function SongDetailPage() {
         setLoading(true);
         const data = await songService.getSongDetail(songID, processingID);
         
-                setSongData(data.song);
-                if (data.processing) {
-                  setProcessingData(data.processing);
-                  if (data.processing.coverImage) {
-                    const coverImageUrl = data.processing.coverImage;
-                    setCoverImage(coverImageUrl.startsWith('http') ? new URL(coverImageUrl).pathname : coverImageUrl);
-                  }
-                  if (data.processing.targetLanguage) {
-                    setSelectedLanguage(data.processing.targetLanguage);
-                  }
-                }
+        setSongData(data.song);
+        if (data.processing) {
+          const processing = data.processing;
+          
+          // Only check approval status in analysis route
+          if (isAnalysisRoute) {
+            const isApproved = processing.approvalStatus === 'approved' && processing.shareStatus === 'public_approved';
+            
+            if (isApproved) {
+              toast.error('This processing has been reviewed and approved. You can no longer edit it.');
+              window.location.href = `/song/${songID}?processingID=${processingID}`;
+              return;
+            }
+          }
+          
+          setProcessingData(processing);
+          if (processing.coverImage) {
+            const coverImageUrl = processing.coverImage;
+            setCoverImage(coverImageUrl.startsWith('http') ? new URL(coverImageUrl).pathname : coverImageUrl);
+          }
+          if (processing.targetLanguage) {
+            setSelectedLanguage(processing.targetLanguage);
+          }
+        }
       } catch (error) {
         toast.error(error instanceof Error ? error.message : 'Failed to load song details');
         router.push('/');
@@ -114,7 +138,7 @@ export default function SongDetailPage() {
     };
 
     fetchSongData();
-  }, [songID, processingID, router]);
+  }, [songID, processingID, router, isAnalysisRoute]);
 
   useEffect(() => {
     const fetchRecommendationsByLanguage = async () => {
@@ -221,8 +245,13 @@ export default function SongDetailPage() {
       const checkResult = await songService.checkProcessingByLanguage(songID, languageCode);
 
       if (checkResult.exists && checkResult.processingID) {
-        toast.success('Found existing translation for this language');
-        window.location.href = `/song/${songID}?processingID=${checkResult.processingID}`;
+        if (isAnalysisRoute) {
+          setPendingProcessingID(checkResult.processingID);
+          setIsNavigateAwayModalOpen(true);
+        } else {
+          toast.success('Found existing translation for this language');
+          window.location.href = `/song/${songID}?processingID=${checkResult.processingID}`;
+        }
       } else {
         setIsReAnalyzeModalOpen(true);
         setPendingLanguageChange(language);
@@ -231,6 +260,22 @@ export default function SongDetailPage() {
       toast.error(error instanceof Error ? error.message : 'Failed to check processing');
       setPendingLanguageChange(null);
     }
+  };
+
+  const handleNavigateAwayConfirm = () => {
+    if (pendingProcessingID) {
+      window.location.href = `/song/${songID}?processingID=${pendingProcessingID}`;
+    } else {
+      setIsNavigateAwayModalOpen(false);
+      setPendingLanguageChange(null);
+      setPendingProcessingID(null);
+    }
+  };
+
+  const handleNavigateAwayCancel = () => {
+    setIsNavigateAwayModalOpen(false);
+    setPendingLanguageChange(null);
+    setPendingProcessingID(null);
   };
 
   const handleReAnalyzeClick = () => {
@@ -316,6 +361,33 @@ export default function SongDetailPage() {
       setIsReAnalyzing(false);
       setIsReAnalyzeModalOpen(false);
       setPendingLanguageChange(null);
+    }
+  };
+
+  const handleCoverImageChange = async (imageUrl: string | null) => {
+    if (!isAnalysisRoute) return;
+    
+    setCoverImage(imageUrl);
+    if (processingID && processingID !== 'undefined') {
+      try {
+        setIsSavingCoverImage(true);
+        await songService.updateCoverImage(processingID, imageUrl || '');
+        if (processingData) {
+          setProcessingData({
+            ...processingData,
+            coverImage: imageUrl || ''
+          });
+        }
+        if (imageUrl) {
+          toast.success('Cover image saved!');
+        } else {
+          toast.success('Cover image removed!');
+        }
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : 'Failed to save cover image');
+      } finally {
+        setIsSavingCoverImage(false);
+      }
     }
   };
 
@@ -409,6 +481,20 @@ export default function SongDetailPage() {
               
               {/* ฝั่งรายละเอียด Skeleton */}
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '54px', width: '100%' }}>
+                {/* Song Details Card Skeleton (only in analysis route) */}
+                {isAnalysisRoute && (
+                  <div className="p-6 w-full">
+                    <div className="flex flex-col gap-4">
+                      {[1, 2, 3, 4, 5].map((i) => (
+                        <div key={i} className="flex items-center" style={{ gap: '12px' }}>
+                          <div className="h-4 bg-gray-200 rounded" style={{ width: '100px' }}></div>
+                          <div className="bg-gray-200 rounded" style={{ width: '300px', height: '36px', borderRadius: '6px' }}></div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
                 {/* Summary Skeleton */}
                 <div style={{ width: '100%' }}>
                   <div className="h-4 bg-gray-200 rounded w-20 mb-2"></div>
@@ -499,36 +585,76 @@ export default function SongDetailPage() {
     );
   }
 
+  // Generate structured data (JSON-LD) for SEO
+  const structuredData = songData && processingData ? {
+    '@context': 'https://schema.org',
+    '@type': 'MusicRecording',
+    name: songData.songName,
+    byArtist: {
+      '@type': 'MusicGroup',
+      name: songData.artistName,
+    },
+    ...(processingData.targetLanguage && { inLanguage: processingData.targetLanguage }),
+    ...(Array.isArray(processingData.mood) && processingData.mood.length > 0 && {
+      genre: (processingData.mood as Array<{ type: string; percentage?: number }>)
+        .map((m) => m.type)
+        .slice(0, 4),
+    }),
+    ...(processingData.translation && {
+      description: `Lyrics translation of ${songData.songName} by ${songData.artistName} to ${processingData.targetLanguage || 'Thai'}`,
+    }),
+    ...(coverImage && {
+      image: coverImage.startsWith('http') ? coverImage : `${process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://musemusic.phitik.com'}${coverImage}`,
+    }),
+    url: `${process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://musemusic.phitik.com'}/song/${songID}?processingID=${processingID}`,
+  } : null;
+
   return (
     <main className="min-h-screen bg-white">
+      {/* Structured Data for SEO */}
+      {structuredData && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+        />
+      )}
       <div className="mx-auto max-w-7xl px-6 py-8">
-        <p className="text-center mb-4" style={{ fontFamily: 'Inter', fontSize: '24px', fontStyle: 'normal', fontWeight: 600, lineHeight: 'normal', color: '#000' }}>
-          We Gave It Another Spin.
-        </p>
-        <h1 className="text-center mb-8" style={{ fontFamily: 'Inter', fontSize: '32px', fontStyle: 'normal', fontWeight: 700, lineHeight: 'normal', color: '#000' }}>
-          {songData?.songName && songData?.artistName ? (
-            <>
-              {songData.songName} - {songData.artistName}
-              {songData.country && ` (${songData.country})`}
-            </>
-          ) : (
-            'Song Details'
-          )}
-        </h1>
+        {/* Title - Different based on route */}
+        {isAnalysisRoute ? (
+          <h1 className="text-center text-black font-semibold mb-8" style={{ fontFamily: 'Inter', fontSize: '32px', fontWeight: 600 }}>
+            You&apos;re the First Explorer of this song!
+          </h1>
+        ) : (
+          <>
+            <p className="text-center mb-4" style={{ fontFamily: 'Inter', fontSize: '24px', fontStyle: 'normal', fontWeight: 600, lineHeight: 'normal', color: '#000' }}>
+              We Gave It Another Spin.
+            </p>
+            <h1 className="text-center mb-8" style={{ fontFamily: 'Inter', fontSize: '32px', fontStyle: 'normal', fontWeight: 700, lineHeight: 'normal', color: '#000' }}>
+              {songData?.songName && songData?.artistName ? (
+                <>
+                  {songData.songName} - {songData.artistName}
+                  {songData.country && ` (${songData.country})`}
+                </>
+              ) : (
+                'Song Details'
+              )}
+            </h1>
+          </>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-[40%_60%] gap-8">
           {/* ฝั่งย่อ (40%) - Desktop only */}
           <div className="hidden lg:block space-y-6">
             {/* Centered Section */}
             <div className="flex flex-col items-center">
-              {/* Song Cover Card - Read Only */}
+              {/* Song Cover Card */}
               <CoverImageUpload
                 width={304}
                 height={302}
-                onImageChange={undefined}
+                onImageChange={isAnalysisRoute ? handleCoverImageChange : undefined}
                 initialImage={coverImage}
-                isSaving={false}
-                readonly={true}
+                isSaving={isSavingCoverImage}
+                readonly={!isAnalysisRoute}
               />
 
               {/* Action Icons */}
@@ -618,16 +744,20 @@ export default function SongDetailPage() {
             <CoverImageUpload
               width={304}
               height={302}
-              onImageChange={undefined}
+              onImageChange={isAnalysisRoute ? handleCoverImageChange : undefined}
               initialImage={coverImage}
-              isSaving={false}
-              readonly={true}
+              isSaving={isSavingCoverImage}
+              readonly={!isAnalysisRoute}
             />
             <div className="flex items-center gap-4 justify-center mt-6">
               <button className="p-3 rounded-full hover:bg-gray-100 transition-colors">
                 <Heart className="h-6 w-6" style={{ color: '#7B61FF' }} />
               </button>
-              <button className="p-3 rounded-full hover:bg-gray-100 transition-colors">
+              <button 
+                onClick={handleShare}
+                disabled={isCreatingShareLink || !processingID}
+                className="p-3 rounded-full hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
                 <Share2 className="h-6 w-6" style={{ color: '#7B61FF' }} />
               </button>
               <button className="p-3 rounded-full hover:bg-gray-100 transition-colors">
@@ -638,16 +768,22 @@ export default function SongDetailPage() {
 
           {/* ฝั่งรายละเอียด (60%) */}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', width: '100%' }} className="lg:items-start items-center">
-            {/* Processing Version Bar */}
-            {processingData && (
-              <div style={{ width: '100%', marginBottom: '16px' }}>
-                <ProcessingVersionBar
-                  versionNumber={1}
-                  processingID={processingData.processingID}
-                  rating={processingData.averageRating ? Math.round(processingData.averageRating) : undefined}
-                  onNewAnalyze={handleReAnalyzeClick}
-                />
+            {/* Processing Version Bar (read-only route) or Song Details Card (analysis route) */}
+            {isAnalysisRoute ? (
+              <div style={{ marginBottom: '54px', width: '100%' }}>
+                <SongDetailsCard songData={songData} processingData={processingData} />
               </div>
+            ) : (
+              processingData && (
+                <div style={{ width: '100%', marginBottom: '16px' }}>
+                  <ProcessingVersionBar
+                    versionNumber={1}
+                    processingID={processingData.processingID}
+                    rating={processingData.averageRating ? Math.round(processingData.averageRating) : undefined}
+                    onNewAnalyze={handleReAnalyzeClick}
+                  />
+                </div>
+              )
             )}
 
             {/* Summary */}
@@ -699,9 +835,18 @@ export default function SongDetailPage() {
                     playerPlayPauseRef.current = api.playPause;
                   }}
                   seekToTime={seekToTime}
-                  readonly={true}
+                  readonly={!isAnalysisRoute}
                   initialSyncConfirmed={processingData?.syncConfirmed || false}
                   initialSongStartTime={processingData?.songStartTime || null}
+                  onSyncSettingsChange={isAnalysisRoute ? ((syncConfirmed, songStartTime) => {
+                    if (processingData) {
+                      setProcessingData({
+                        ...processingData,
+                        syncConfirmed,
+                        songStartTime
+                      });
+                    }
+                  }) : undefined}
                 />
               ) : (
                 <div className="w-full">
@@ -791,6 +936,16 @@ export default function SongDetailPage() {
         </div>
       </div>
 
+      {/* Navigate Away Confirm Modal - Only in analysis route */}
+      {isAnalysisRoute && (
+        <NavigateAwayConfirmModal
+          isOpen={isNavigateAwayModalOpen}
+          onClose={handleNavigateAwayCancel}
+          onConfirm={handleNavigateAwayConfirm}
+          targetLanguage={pendingLanguageChange || selectedLanguage}
+        />
+      )}
+
       {/* Re-Analyze Confirm Modal */}
       <ReAnalyzeConfirmModal
         isOpen={isReAnalyzeModalOpen}
@@ -805,4 +960,3 @@ export default function SongDetailPage() {
     </main>
   );
 }
-
