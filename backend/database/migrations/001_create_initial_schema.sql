@@ -193,7 +193,7 @@ CREATE TABLE SongAIProcessing (
     translationConfidence FLOAT DEFAULT 0.0,
     
     -- Mood Analysis Results
-    moodType VARCHAR(50),
+    moodType TEXT, -- Changed from VARCHAR(50) to TEXT to support JSON array of top 5 moods
     moodScore DECIMAL(3,2) DEFAULT 0.00, -- mood intensity 0.00-1.00
     moodConfidence FLOAT DEFAULT 0.0,
     

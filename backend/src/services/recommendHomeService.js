@@ -16,6 +16,7 @@ class RecommendHomeService {
             p.sharestatus,
             p.approvalstatus,
             p.originallanguage,
+            p.moodtype,
             s.songname,
             s.artistname,
             s.genre,
@@ -48,7 +49,8 @@ class RecommendHomeService {
           totalratings,
           averagerating,
           createdat,
-          originallanguage
+          originallanguage,
+          moodtype
         FROM RankedProcessing
         WHERE rn = 1
         ORDER BY 
@@ -70,19 +72,37 @@ class RecommendHomeService {
         };
       }
 
-      const songs = result.rows.map(row => ({
-        id: row.songid,
-        processingID: row.processingid,
-        title: row.songname,
-        artist: row.artistname || 'Unknown Artist',
-        genre: row.genre,
-        duration: row.duration,
-        image: row.coverimage || null,
-        originalLanguage: row.originallanguage || 'Unknown',
-        totalRatings: row.totalratings || 0,
-        averageRating: row.averagerating ? parseFloat(row.averagerating) : null,
-        createdAt: row.createdat
-      }));
+      const songs = result.rows.map(row => {
+        let topMood = null;
+        if (row.moodtype) {
+          try {
+            const parsed = JSON.parse(row.moodtype);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              topMood = parsed[0];
+            }
+          } catch (e) {
+            // Fallback for non-JSON moodType (backward compatibility)
+            if (row.moodtype) {
+              topMood = { type: row.moodtype, percentage: 0 };
+            }
+          }
+        }
+
+        return {
+          id: row.songid,
+          processingID: row.processingid,
+          title: row.songname,
+          artist: row.artistname || 'Unknown Artist',
+          genre: row.genre,
+          duration: row.duration,
+          image: row.coverimage || null,
+          originalLanguage: row.originallanguage || 'Unknown',
+          totalRatings: row.totalratings || 0,
+          averageRating: row.averagerating ? parseFloat(row.averagerating) : null,
+          createdAt: row.createdat,
+          mood: topMood
+        };
+      });
 
       const sectionsByLanguage = {};
 
@@ -97,7 +117,8 @@ class RecommendHomeService {
           processingID: song.processingID,
           title: song.title,
           artist: song.artist,
-          image: song.image
+          image: song.image,
+          mood: song.mood
         });
         }
       });
@@ -137,7 +158,8 @@ class RecommendHomeService {
             processingID: song.processingID,
             title: song.title,
             artist: song.artist,
-            image: song.image
+            image: song.image,
+            mood: song.mood
           }))
         });
       }
