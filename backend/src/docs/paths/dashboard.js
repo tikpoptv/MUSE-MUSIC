@@ -15,7 +15,7 @@
  *           default: 30
  *           minimum: 1
  *           maximum: 365
- *         description: Number of days for traffic data (default: 30)
+ *         description: Number of days for traffic data
  *     responses:
  *       200:
  *         description: Dashboard data retrieved successfully

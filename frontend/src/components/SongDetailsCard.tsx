@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { SongDetail, ProcessingDetail } from '@/services/songService';
 
 // Map language to country code
@@ -26,10 +26,17 @@ export default function SongDetailsCard({
 }: SongDetailsCardProps) {
   const [songNameEnglish, setSongNameEnglish] = useState(songData?.songNameEnglish || '');
   const [country, setCountry] = useState(songData?.country || '');
+  const previousSongIDRef = useRef<string>(songData?.songID || '');
 
   const currentLanguage = processingData?.originalLanguage || songData?.language || '';
 
   useEffect(() => {
+    const isNewSong = previousSongIDRef.current !== songData?.songID;
+    
+    if (isNewSong) {
+      previousSongIDRef.current = songData?.songID || '';
+    }
+    
     setSongNameEnglish(songData?.songNameEnglish || '');
     
     // Auto-set country based on language if country is not set
@@ -38,7 +45,8 @@ export default function SongDetailsCard({
       // Only auto-set if country is empty or matches the mapped country
       if (!songData?.country || songData.country === mappedCountry) {
         setCountry(mappedCountry);
-        if (onCountryChange) {
+        // Only call onCountryChange when song changes (new song selected) to sync with parent
+        if (isNewSong && onCountryChange) {
           onCountryChange(mappedCountry);
         }
       } else {
@@ -47,7 +55,8 @@ export default function SongDetailsCard({
     } else {
       setCountry(songData?.country || '');
     }
-  }, [songData, currentLanguage, onCountryChange]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [songData?.songID, songData?.songNameEnglish, songData?.country, currentLanguage]);
 
   const handleSongNameEnglishChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;

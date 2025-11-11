@@ -18,6 +18,7 @@ import { songService, type SongDetail, type ProcessingDetail } from '@/services/
 import { analysisService } from '@/services/analysisService';
 import { recommendSongsService, type RecommendedSong } from '@/services/recommendSongsService';
 import shareService from '@/services/shareService';
+import { authService } from '@/services/authService';
 import ReAnalyzeConfirmModal from '@/components/modals/ReAnalyzeConfirmModal';
 import NavigateAwayConfirmModal from '@/components/modals/NavigateAwayConfirmModal';
 import SocialShareModal from '@/components/SocialShareModal';
@@ -58,6 +59,7 @@ export default function SongDetailPage() {
   const [processingData, setProcessingData] = useState<ProcessingDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [hasSubmittedRating, setHasSubmittedRating] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const feedbackSectionRef = useRef<FeedbackSectionRef>(null);
   
   const handleRatingSubmitted = useCallback(() => {
@@ -91,6 +93,23 @@ export default function SongDetailPage() {
   const [shareUrl, setShareUrl] = useState<string>('');
 
   useEffect(() => {
+    const checkAdminStatus = async () => {
+      if (authService.isAuthenticated()) {
+        try {
+          const adminStatus = await authService.checkAdminStatus();
+          setIsAdmin(adminStatus);
+        } catch {
+          setIsAdmin(false);
+        }
+      } else {
+        setIsAdmin(false);
+      }
+    };
+
+    checkAdminStatus();
+  }, []);
+
+  useEffect(() => {
     const fetchSongData = async () => {
       if (!songID || songID === 'undefined') {
         toast.error('Invalid song ID');
@@ -112,11 +131,10 @@ export default function SongDetailPage() {
         if (data.processing) {
           const processing = data.processing;
           
-          // Only check approval status in analysis route
           if (isAnalysisRoute) {
             const isApproved = processing.approvalStatus === 'approved' && processing.shareStatus === 'public_approved';
             
-            if (isApproved) {
+            if (isApproved && !isAdmin) {
               toast.error('This processing has been reviewed and approved. You can no longer edit it.');
               window.location.href = `/song/${songID}?processingID=${processingID}`;
               return;
@@ -141,7 +159,7 @@ export default function SongDetailPage() {
     };
 
     fetchSongData();
-  }, [songID, processingID, router, isAnalysisRoute]);
+  }, [songID, processingID, router, isAnalysisRoute, isAdmin]);
 
   useEffect(() => {
     const fetchRecommendationsByLanguage = async () => {
