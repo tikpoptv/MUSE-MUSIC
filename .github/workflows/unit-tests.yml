@@ -29,8 +29,13 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Rebuild native dependencies
+        run: npm rebuild @swc/core || true
+
       - name: Run unit tests
         run: npm run test:unit:ci
+        env:
+          USE_TS_JEST: 'true'
 
       - name: Upload coverage reports
         uses: codecov/codecov-action@v4
