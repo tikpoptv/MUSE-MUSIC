@@ -586,7 +586,7 @@ export default function SongDetailPage() {
         </div>
       </main>
     );
-  }
+  } 
 
   // Generate structured data (JSON-LD) for SEO
   const structuredData = songData && processingData ? {

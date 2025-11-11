@@ -5,6 +5,7 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Toaster } from "react-hot-toast";
 import SetupRedirect from "../components/SetupRedirect";
+import ScrollToTop from "../components/ScrollToTop";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -65,6 +66,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="light" style={{ colorScheme: 'light' }}>
       <body className={`${inter.variable} antialiased`}>
+        <ScrollToTop />
         <SetupRedirect />
         <Navbar />
         <div className="min-h-screen pt-16 md:pt-20 lg:pt-[100px]">
