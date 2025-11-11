@@ -17,6 +17,8 @@ const youtubeRoutes = require('./youtube');
 const recommendHomeRoutes = require('./recommendHome');
 const recommendSongsRoutes = require('./recommendSongs');
 const shareRoutes = require('./share');
+const dashboardRoutes = require('./dashboard');
+const adminManageRoutes = require('./adminManage');
 
 router.get('/', (req, res) => {
   res.json({
@@ -46,5 +48,7 @@ router.use('/api/home', recommendHomeRoutes);
 router.use('/api/recommend', recommendSongsRoutes);
 router.use('/api/analysis', translateRoutes);
 router.use('/api/share', shareRoutes);
+router.use('/api/dashboard', dashboardRoutes);
+router.use('/api/admin/manage', adminManageRoutes);
 
 module.exports = router;

@@ -243,5 +243,30 @@ export const authService = {
       console.error('Validate reset token error:', error);
       return { success: false, message: 'An error occurred while validating reset token' };
     }
+  },
+
+  async checkAdminStatus(): Promise<boolean> {
+    try {
+      const response = await apiService.get<{ 
+        success: boolean; 
+        data: { 
+          isAdmin: boolean; 
+          role: string; 
+          user: UserData;
+        } 
+      }>('/api/auth/check-admin');
+
+      if (response.success && response.data?.data) {
+        const { isAdmin, user } = response.data.data;
+        
+        this.setUserData(user);
+        
+        return isAdmin;
+      }
+      
+      return false;
+    } catch {
+      return false;
+    }
   }
 };

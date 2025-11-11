@@ -1,7 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const { register, login, googleLogin, googleCallback, refreshToken, forgotPassword, resetPassword, validateResetToken } = require('../controllers/authController');
+const { register, login, googleLogin, googleCallback, refreshToken, forgotPassword, resetPassword, validateResetToken, checkAdminStatus } = require('../controllers/authController');
 const { logout } = require('../controllers/logoutController');
+const { authenticateToken } = require('../middleware/authMiddleware');
 
 router.post('/register', register);
 router.post('/login', login);
@@ -12,5 +13,6 @@ router.post('/logout', logout);
 router.post('/forgot-password', forgotPassword);
 router.post('/reset-password', resetPassword);
 router.get('/validate-reset-token/:token', validateResetToken);
+router.get('/check-admin', authenticateToken, checkAdminStatus);
 
 module.exports = router;
