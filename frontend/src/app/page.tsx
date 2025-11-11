@@ -26,7 +26,7 @@ export default function Home() {
   const [analyzing, setAnalyzing] = useState<boolean>(false);
   const [showLanguageModal, setShowLanguageModal] = useState<boolean>(false);
   const [translationConfig, setTranslationConfig] = useState<{ originalLanguage: string; targetLanguage: string }>({
-    originalLanguage: 'Auto Detect',
+    originalLanguage: 'English',
     targetLanguage: 'Thai'
   });
   const skipNextSearchRef = useRef<boolean>(false);

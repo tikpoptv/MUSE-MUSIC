@@ -3,13 +3,41 @@ import { SetupStatusResponse } from '../types/setup';
 
 export const setupService = {
   async getSetupStatus(): Promise<SetupStatusResponse['data']> {
-    const response = await apiService.get<SetupStatusResponse>('/api/setup/status');
+    const response = await apiService.get<{
+      success: boolean;
+      message?: string;
+      data: SetupStatusResponse['data'];
+    }>('/api/setup/status');
 
     if (!response.success || !response.data) {
       throw new Error(response.error || 'Failed to fetch setup status');
     }
 
-    return response.data.data;
+    // Handle nested response structure from apiService
+    const backendResponse = response.data as {
+      success?: boolean;
+      message?: string;
+      data?: SetupStatusResponse['data'];
+    };
+
+    if (backendResponse.data) {
+      return backendResponse.data;
+    }
+
+    // If data is directly in response.data (not nested)
+    if ('setupCompleted' in response.data || 'allStatus' in response.data) {
+      // Type guard to ensure we have the correct structure
+      const directData = response.data as unknown;
+      if (
+        typeof directData === 'object' &&
+        directData !== null &&
+        ('setupCompleted' in directData || 'allStatus' in directData)
+      ) {
+        return directData as SetupStatusResponse['data'];
+      }
+    }
+
+    throw new Error('Invalid response structure from setup status API');
   },
 
   async saveSetupStep(step: string, data: Record<string, unknown>): Promise<{ success: boolean; message: string }> {

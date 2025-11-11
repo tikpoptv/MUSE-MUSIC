@@ -11,7 +11,6 @@ interface TranslationLanguageModalProps {
 }
 
 const languages = [
-  { code: 'auto', name: 'Auto Detect' },
   { code: 'en', name: 'English' },
   { code: 'th', name: 'Thai' },
   { code: 'ja', name: 'Japanese' },
@@ -26,13 +25,13 @@ const languages = [
   { code: 'vi', name: 'Vietnamese' }
 ];
 
-const targetLanguages = languages.filter(lang => lang.code !== 'auto');
+const targetLanguages = languages;
 
 export default function TranslationLanguageModal({
   isOpen,
   onClose,
   onConfirm,
-  defaultOriginalLanguage = 'Auto Detect',
+  defaultOriginalLanguage = 'English',
   defaultTargetLanguage = 'Thai'
 }: TranslationLanguageModalProps) {
   const [originalLanguage, setOriginalLanguage] = useState<string>(defaultOriginalLanguage);
@@ -43,12 +42,17 @@ export default function TranslationLanguageModal({
   useEffect(() => {
     if (isOpen) {
       setShareRequest(true);
+      setOriginalLanguage(defaultOriginalLanguage);
+      setTargetLanguage(defaultTargetLanguage);
     }
-  }, [isOpen]);
+  }, [isOpen, defaultOriginalLanguage, defaultTargetLanguage]);
 
   if (!isOpen) return null;
 
   const handleConfirm = () => {
+    if (!originalLanguage || originalLanguage.trim() === '') {
+      return;
+    }
     onConfirm(originalLanguage, targetLanguage, shareRequest);
     onClose();
   };
@@ -142,7 +146,8 @@ export default function TranslationLanguageModal({
         <div className="flex space-x-3 mt-6">
           <button
             onClick={handleConfirm}
-            className="flex-1 bg-[#7B61FF] text-white py-3 rounded-lg hover:bg-[#6B51EF] transition-colors font-medium"
+            disabled={!originalLanguage || originalLanguage.trim() === ''}
+            className="flex-1 bg-[#7B61FF] text-white py-3 rounded-lg hover:bg-[#6B51EF] transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Confirm
           </button>

@@ -54,6 +54,7 @@ export default function ForgotPasswordPage() {
         toast.error(result.message || 'Failed to send email');
       }
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error('Forgot password error:', error);
       toast.error('Failed to send email');
     } finally {
@@ -64,11 +65,8 @@ export default function ForgotPasswordPage() {
   if (isEmailSent) {
     return (
       <div 
-        className="min-h-screen flex items-start justify-center relative overflow-hidden" 
+        className="min-h-screen flex items-center justify-center relative overflow-hidden pb-8" 
         style={{ 
-          paddingTop: '80px', 
-          paddingBottom: '0px',
-          marginTop: '0px',
           backgroundImage: 'url(/login-background.svg)',
           backgroundSize: 'cover',
           backgroundPosition: 'center',
@@ -124,11 +122,8 @@ export default function ForgotPasswordPage() {
 
   return (
     <div 
-      className="min-h-screen flex items-start justify-center relative overflow-hidden" 
+      className="min-h-screen flex items-center justify-center relative overflow-hidden pb-8" 
       style={{ 
-        paddingTop: '80px', 
-        paddingBottom: '0px',
-        marginTop: '0px',
         backgroundImage: 'url(/login-background.svg)',
         backgroundSize: 'cover',
         backgroundPosition: 'center',
