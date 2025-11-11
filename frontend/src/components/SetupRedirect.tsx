@@ -16,7 +16,8 @@ export default function SetupRedirect() {
       if (pathname.startsWith('/setup') || 
           pathname.startsWith('/login') || 
           pathname.startsWith('/register') ||
-          pathname.startsWith('/auth')) {
+          pathname.startsWith('/auth') ||
+          pathname.startsWith('/admin')) {
         return;
       }
 
@@ -26,7 +27,7 @@ export default function SetupRedirect() {
 
       setIsChecking(true);
 
-        try {
+      try {
         const setupStatus = await setupService.getSetupStatus();
         
         if (setupStatus) {
@@ -54,12 +55,18 @@ export default function SetupRedirect() {
             }
           }
         }
-        } catch (error) {
+      } catch (error) {
         // eslint-disable-next-line no-console
-          console.error('Error fetching user data:', error);
-          toast.error('Failed to fetch user data. Please try again.');
-        } finally {
-          setIsChecking(false);
+        console.error('Error fetching setup status:', error);
+        // Don't show error toast for 401/403 errors (user not authenticated)
+        if (error instanceof Error && !error.message.includes('401') && !error.message.includes('403')) {
+          // Only show error for other failures, and only if user is on a page that needs setup check
+          if (!pathname.startsWith('/admin')) {
+            // Don't show error on admin pages
+          }
+        }
+      } finally {
+        setIsChecking(false);
       }
     };
 
