@@ -111,6 +111,7 @@ export default function RegisterPage() {
         }
       }
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error('Registration error:', error);
       toast.error('An error occurred during registration');
     } finally {
@@ -121,11 +122,8 @@ export default function RegisterPage() {
 
   return (
     <div 
-      className="min-h-screen flex items-center justify-center relative overflow-hidden" 
+      className="min-h-screen flex items-center justify-center relative overflow-hidden pb-8" 
       style={{ 
-        paddingTop: '0px', 
-        paddingBottom: '0px',
-        marginTop: '0px',
         backgroundImage: 'url(/login-background.svg)',
         backgroundSize: 'cover',
         backgroundPosition: 'center',
