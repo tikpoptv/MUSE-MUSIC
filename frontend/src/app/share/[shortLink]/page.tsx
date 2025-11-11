@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import ShareLinkClient from './ShareLinkClient';
 
 type Props = {
-  params: { shortLink: string };
+  params: Promise<{ shortLink: string }>;
 };
 
 async function fetchProcessing(shortLink: string) {
@@ -22,7 +22,8 @@ async function fetchProcessing(shortLink: string) {
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const processing = await fetchProcessing(params.shortLink);
+  const { shortLink } = await params;
+  const processing = await fetchProcessing(shortLink);
 
   const titleBase = 'MUSE MUSIC';
   const title =
@@ -54,7 +55,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 
   // Ensure URL is absolute for Open Graph
-  const url = `${baseUrl}/share/${params.shortLink}`;
+  const url = `${baseUrl}/share/${shortLink}`;
 
   return {
     title,
@@ -85,7 +86,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default function ShareLinkPage({ params }: Props) {
-  return <ShareLinkClient shortLink={params.shortLink} />;
+export default async function ShareLinkPage({ params }: Props) {
+  const { shortLink } = await params;
+  return <ShareLinkClient shortLink={shortLink} />;
 }
 
