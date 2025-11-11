@@ -30,7 +30,7 @@ const ADD_admin: React.FC<ADD_adminProps> = ({ onAdminAdded }) => {
       const { adminManageService } = await import('@/services/adminManageService');
       await adminManageService.addAdminUser(email.trim(), 'admin');
       toast.success('Admin user added successfully');
-      setEmail("");
+    setEmail("");
       onAdminAdded();
     } catch (error: unknown) {
       let errorMessage = 'Failed to add admin user';
@@ -71,26 +71,26 @@ const ADD_admin: React.FC<ADD_adminProps> = ({ onAdminAdded }) => {
         <div className="flex flex-col sm:flex-row items-center gap-4">
           <div className="flex items-center w-full sm:flex-1 border border-gray-300 rounded-lg bg-white shadow-sm min-h-[42px] hover:border-violet-400 transition-colors duration-200">
             <div className="relative w-full">
-              <Input
-                type="email"
+          <Input
+            type="email"
                 placeholder="Enter user email address"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
                 onKeyPress={handleKeyPress}
                 disabled={isLoading}
                 className="justify-center pl-4 pr-4 w-full text-gray-600 border-none focus-visible:ring-0 focus-visible:outline-none"
-              />
-            </div>
-          </div>
+          />
+        </div>
+      </div>
 
-          <div className="w-full sm:w-auto">
-            <Button
-              onClick={handleInvite}
+      <div className="w-full sm:w-auto">
+        <Button
+          onClick={handleInvite}
               disabled={isLoading}
               className="w-full sm:w-auto bg-violet-600 hover:bg-violet-700 text-white text-sm px-6 py-2 rounded-lg min-w-[155px] min-h-[42px] disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
-            >
+        >
               {isLoading ? 'Adding...' : 'Add Admin'}
-            </Button>
+        </Button>
           </div>
         </div>
       </div>

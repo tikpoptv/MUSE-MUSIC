@@ -26,9 +26,9 @@ export default function SetupRedirect() {
 
       setIsChecking(true);
 
-      try {
+        try {
         const setupStatus = await setupService.getSetupStatus();
-
+        
         if (setupStatus) {
           // Update user data in localStorage with latest setup status
           const user = authService.getUserData();
@@ -54,12 +54,12 @@ export default function SetupRedirect() {
             }
           }
         }
-      } catch (error) {
+        } catch (error) {
         // eslint-disable-next-line no-console
-        console.error('Error fetching user data:', error);
-        toast.error('Failed to fetch user data. Please try again.');
-      } finally {
-        setIsChecking(false);
+          console.error('Error fetching user data:', error);
+          toast.error('Failed to fetch user data. Please try again.');
+        } finally {
+          setIsChecking(false);
       }
     };
 

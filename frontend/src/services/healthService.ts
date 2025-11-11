@@ -5,22 +5,22 @@ export const healthService = {
   async getHealth(): Promise<HealthData | null> {
     try {
       const response = await apiService.get<{ success: boolean; message?: string; data: HealthData; statusCode?: number }>('/api/health');
-      
-      if (response.success && response.data) {
+    
+    if (response.success && response.data) {
         const backendResponse = response.data as { success?: boolean; message?: string; data?: HealthData; statusCode?: number };
         if (backendResponse.data) {
           return backendResponse.data;
         }
         if ('status' in response.data && 'database' in response.data) {
           return response.data as unknown as HealthData;
-        }
+    }
       }
       
       return null;
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error('Health check failed:', error);
-      return null;
+    return null;
     }
   },
 
