@@ -190,7 +190,7 @@ export default function AdminDashboard() {
                         </SelectContent>
                     </Select>
                 </CardHeader>
-                <CardContent className="px-2 sm:p-6">
+                <CardContent className="p-6">
                     <ChartContainer
                         config={chartConfig_line}
                         className="aspect-auto h-[250px] w-full"

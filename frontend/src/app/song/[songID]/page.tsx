@@ -20,6 +20,7 @@ import { recommendSongsService, type RecommendedSong } from '@/services/recommen
 import shareService from '@/services/shareService';
 import ReAnalyzeConfirmModal from '@/components/modals/ReAnalyzeConfirmModal';
 import NavigateAwayConfirmModal from '@/components/modals/NavigateAwayConfirmModal';
+import SocialShareModal from '@/components/SocialShareModal';
 import toast from 'react-hot-toast';
 
 const languageNameToCode: Record<string, string> = {
@@ -86,6 +87,8 @@ export default function SongDetailPage() {
   const [loadingRecommendationsByLanguage, setLoadingRecommendationsByLanguage] = useState(false);
   const [loadingRecommendationsByMood, setLoadingRecommendationsByMood] = useState(false);
   const [isCreatingShareLink, setIsCreatingShareLink] = useState(false);
+  const [isSocialShareModalOpen, setIsSocialShareModalOpen] = useState(false);
+  const [shareUrl, setShareUrl] = useState<string>('');
 
   useEffect(() => {
     const fetchSongData = async () => {
@@ -283,17 +286,17 @@ export default function SongDetailPage() {
   };
 
   const handleShare = async () => {
-    if (!processingID || processingID === 'undefined') {
+    const effectiveProcessingID = processingID || processingData?.processingID || '';
+    if (!effectiveProcessingID || effectiveProcessingID === 'undefined') {
       toast.error('No processing ID available');
       return;
     }
 
     try {
       setIsCreatingShareLink(true);
-      const shareLink = await shareService.createShareLink(processingID);
-      
-      await navigator.clipboard.writeText(shareLink.shareUrl);
-      toast.success(shareLink.alreadyExists ? 'Share link copied to clipboard!' : 'Share link created and copied to clipboard!');
+      const shareLink = await shareService.createShareLink(effectiveProcessingID);
+      setShareUrl(shareLink.shareUrl);
+      setIsSocialShareModalOpen(true);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to create share link');
     } finally {
@@ -664,7 +667,7 @@ export default function SongDetailPage() {
                 </button>
                 <button 
                   onClick={handleShare}
-                  disabled={isCreatingShareLink || !processingID}
+                  disabled={isCreatingShareLink || !(processingID || processingData?.processingID)}
                   className="p-3 rounded-full hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Share2 className="h-6 w-6" style={{ color: '#7B61FF' }} />
@@ -755,7 +758,7 @@ export default function SongDetailPage() {
               </button>
               <button 
                 onClick={handleShare}
-                disabled={isCreatingShareLink || !processingID}
+                disabled={isCreatingShareLink || !(processingID || processingData?.processingID)}
                 className="p-3 rounded-full hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Share2 className="h-6 w-6" style={{ color: '#7B61FF' }} />
@@ -945,6 +948,15 @@ export default function SongDetailPage() {
           targetLanguage={pendingLanguageChange || selectedLanguage}
         />
       )}
+
+      {/* Social Share Modal */}
+      <SocialShareModal
+        isOpen={isSocialShareModalOpen}
+        shareUrl={shareUrl}
+        title={songData?.songName ? `${songData.songName}${songData.artistName ? ` - ${songData.artistName}` : ''}` : 'Check out this song!'}
+        description={processingData?.summary || ''}
+        onClose={() => setIsSocialShareModalOpen(false)}
+      />
 
       {/* Re-Analyze Confirm Modal */}
       <ReAnalyzeConfirmModal
