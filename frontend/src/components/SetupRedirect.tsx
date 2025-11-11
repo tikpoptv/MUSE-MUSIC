@@ -23,114 +23,43 @@ export default function SetupRedirect() {
       if (!authService.isAuthenticated() || isChecking) {
         return;
       }
-      const userData = localStorage.getItem('user_data');
-      if (userData && userData !== 'undefined' && userData !== 'null') {
+
+      setIsChecking(true);
+
         try {
-          const user = JSON.parse(userData);
+        const setupStatus = await setupService.getSetupStatus();
         
+        if (setupStatus) {
+          // Update user data in localStorage with latest setup status
+          const user = authService.getUserData();
           if (user) {
-          if (!user.setupCompleted && !user.setupSkipped) {
+            const updatedUser = {
+              ...user,
+              setupCompleted: setupStatus.setupCompleted,
+              setupSkipped: setupStatus.setupSkipped
+            };
+            authService.setUserData(updatedUser);
+          }
+
+          if (setupStatus.setupCompleted || setupStatus.setupSkipped) {
+            return;
+          }
+
+          if (!setupStatus.setupCompleted && !setupStatus.setupSkipped) {
             toast.success('Welcome! Let\'s set up your profile to get started.');
-            if (user.provider === 'google') {
+            if (user?.provider === 'google') {
               router.push('/setup/step1');
             } else {
               router.push('/setup/step2');
             }
-          } else if (user.setupSkipped && !user.setupCompleted) {
-            const handleSetupClick = () => {
-              if (user.provider === 'google') {
-                router.push('/setup/step1');
-              } else {
-                router.push('/setup/step2');
-              }
-            };
-
-            const toastId = toast.error('Setup not completed yet. Click here to continue setup.', {
-              duration: 8000,
-              position: 'bottom-right',
-              style: {
-                cursor: 'pointer',
-                background: '#fee2e2',
-                color: '#dc2626',
-                border: '1px solid #fca5a5',
-                borderRadius: '8px',
-                padding: '12px 16px',
-                fontSize: '14px',
-                fontWeight: '500'
-              }
-            });
-            
-            setTimeout(() => {
-              const toastElement = document.querySelector(`[data-toast-id="${toastId}"]`) || 
-                                 document.querySelector('[data-testid="toast"]') ||
-                                 document.querySelector('.go2072408551');
-              if (toastElement) {
-                toastElement.addEventListener('click', handleSetupClick);
-              }
-            }, 100);
-          } else {
           }
         }
         } catch (error) {
-          console.error('Error parsing user data from localStorage:', error);
-          localStorage.removeItem('user_data');
-        }
-      } else {
-        setIsChecking(true);
-        
-        try {
-          const user = await setupService.getSetupStatus();
-          localStorage.setItem('user_data', JSON.stringify(user));
-        
-          if (user) {
-            if (!user.setupCompleted && !user.setupSkipped) {
-              toast.success('Welcome! Let\'s set up your profile to get started.');
-              if (user.provider === 'google') {
-                router.push('/setup/step1');
-              } else {
-                router.push('/setup/step2');
-              }
-            } else if (user.setupSkipped && !user.setupCompleted) {
-              const handleSetupClick = () => {
-                if (user.provider === 'google') {
-                  router.push('/setup/step1');
-                } else {
-                  router.push('/setup/step2');
-                }
-              };
-
-              const toastId = toast.error('Setup not completed yet. Click here to continue setup.', {
-                duration: 8000,
-                position: 'bottom-right',
-                style: {
-                  cursor: 'pointer',
-                  background: '#fee2e2',
-                  color: '#dc2626',
-                  border: '1px solid #fca5a5',
-                  borderRadius: '8px',
-                  padding: '12px 16px',
-                  fontSize: '14px',
-                  fontWeight: '500'
-                }
-              });
-              
-              setTimeout(() => {
-                const toastElement = document.querySelector(`[data-toast-id="${toastId}"]`) || 
-                                   document.querySelector('[data-testid="toast"]') ||
-                                   document.querySelector('.go2072408551');
-                if (toastElement) {
-                  toastElement.addEventListener('click', handleSetupClick);
-                }
-              }, 100);
-            } else {
-            }
-          }
-        } catch (error) {
+        // eslint-disable-next-line no-console
           console.error('Error fetching user data:', error);
           toast.error('Failed to fetch user data. Please try again.');
         } finally {
           setIsChecking(false);
-        }
       }
     };
 

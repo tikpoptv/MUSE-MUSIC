@@ -95,8 +95,13 @@ class ShareService {
       const query = `
         SELECT 
           p.processingid,
-          p.songid
+          p.songid,
+          p.coverimage,
+          p.summary,
+          s.songname,
+          s.artistname
         FROM songaiprocessing p
+        LEFT JOIN songs s ON p.songid = s.songid
         WHERE p.shortlink = $1
         AND p.sharestatus = 'public_approved'
         AND p.approvalstatus = 'approved'
@@ -113,7 +118,11 @@ class ShareService {
 
       return {
         processingID: row.processingid,
-        songID: row.songid
+        songID: row.songid,
+        coverImage: row.coverimage,
+        summary: row.summary,
+        songName: row.songname,
+        artistName: row.artistname
       };
     } catch (error) {
       logger.error('Error in ShareService.getProcessingByShortLink:', error);

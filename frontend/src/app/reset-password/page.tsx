@@ -35,6 +35,7 @@ function ResetPasswordContent() {
         router.push('/forgot-password');
       }
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error('Token validation error:', error);
       toast.error('An error occurred while validating reset token');
       router.push('/forgot-password');
@@ -128,6 +129,7 @@ function ResetPasswordContent() {
         toast.error(data.message || 'Failed to reset password');
       }
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error('Reset password error:', error);
       toast.error('An error occurred while resetting password');
     } finally {
@@ -138,11 +140,8 @@ function ResetPasswordContent() {
   if (isSuccess) {
     return (
       <div 
-        className="min-h-screen flex items-start justify-center relative overflow-hidden" 
+        className="min-h-screen flex items-center justify-center relative overflow-hidden pb-8" 
         style={{ 
-          paddingTop: '80px', 
-          paddingBottom: '0px',
-          marginTop: '0px',
           backgroundImage: 'url(/login-background.svg)',
           backgroundSize: 'cover',
           backgroundPosition: 'center',
@@ -185,11 +184,8 @@ function ResetPasswordContent() {
   if (isValidatingToken) {
     return (
       <div 
-        className="min-h-screen flex items-start justify-center relative overflow-hidden" 
+        className="min-h-screen flex items-center justify-center relative overflow-hidden pb-8" 
         style={{ 
-          paddingTop: '80px', 
-          paddingBottom: '0px',
-          marginTop: '0px',
           backgroundImage: 'url(/login-background.svg)',
           backgroundSize: 'cover',
           backgroundPosition: 'center',
@@ -221,11 +217,8 @@ function ResetPasswordContent() {
   if (!token) {
     return (
       <div 
-        className="min-h-screen flex items-start justify-center relative overflow-hidden" 
+        className="min-h-screen flex items-center justify-center relative overflow-hidden pb-8" 
         style={{ 
-          paddingTop: '80px', 
-          paddingBottom: '0px',
-          marginTop: '0px',
           backgroundImage: 'url(/login-background.svg)',
           backgroundSize: 'cover',
           backgroundPosition: 'center',
@@ -262,11 +255,8 @@ function ResetPasswordContent() {
 
   return (
     <div 
-      className="min-h-screen flex items-start justify-center relative overflow-hidden" 
+      className="min-h-screen flex items-center justify-center relative overflow-hidden pb-8" 
       style={{ 
-        paddingTop: '80px', 
-        paddingBottom: '0px',
-        marginTop: '0px',
         backgroundImage: 'url(/login-background.svg)',
         backgroundSize: 'cover',
         backgroundPosition: 'center',

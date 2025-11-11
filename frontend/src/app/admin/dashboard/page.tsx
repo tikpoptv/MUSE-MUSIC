@@ -1,5 +1,6 @@
 "use client"
 import * as React from "react";
+import { useEffect } from "react";
 import { Line, LineChart, CartesianGrid, XAxis, Bar, BarChart, Cell } from "recharts"
 
 import {
@@ -25,71 +26,11 @@ import {
 
 import AdminMenu from '@/components/AdminMenu';
 import BigStatCard from '@/components/BigStatCard';
+import ServerStatus from '@/components/ServerStatus';
 import { ChartArea, Music2, SearchCheck, Activity } from 'lucide-react';
+import { dashboardService } from '@/services/dashboardService';
+import { DashboardData } from '@/types/dashboard';
 
-const chartData = [
-    { date: "2024-05-01", desktop: 165, mobile: 220 },
-    { date: "2024-05-02", desktop: 293, mobile: 310 },
-    { date: "2024-05-03", desktop: 247, mobile: 190 },
-    { date: "2024-05-04", desktop: 385, mobile: 420 },
-    { date: "2024-05-05", desktop: 481, mobile: 390 },
-    { date: "2024-05-06", desktop: 498, mobile: 520 },
-    { date: "2024-05-07", desktop: 388, mobile: 300 },
-    { date: "2024-05-08", desktop: 149, mobile: 210 },
-    { date: "2024-05-09", desktop: 227, mobile: 180 },
-    { date: "2024-05-10", desktop: 293, mobile: 330 },
-    { date: "2024-05-11", desktop: 335, mobile: 270 },
-    { date: "2024-05-12", desktop: 197, mobile: 240 },
-    { date: "2024-05-13", desktop: 197, mobile: 160 },
-    { date: "2024-05-14", desktop: 448, mobile: 490 },
-    { date: "2024-05-15", desktop: 473, mobile: 380 },
-    { date: "2024-05-16", desktop: 338, mobile: 400 },
-    { date: "2024-05-17", desktop: 499, mobile: 420 },
-    { date: "2024-05-18", desktop: 315, mobile: 350 },
-    { date: "2024-05-19", desktop: 235, mobile: 180 },
-    { date: "2024-05-20", desktop: 177, mobile: 230 },
-    { date: "2024-05-21", desktop: 82, mobile: 140 },
-    { date: "2024-05-22", desktop: 81, mobile: 120 },
-    { date: "2024-05-23", desktop: 252, mobile: 290 },
-    { date: "2024-05-24", desktop: 294, mobile: 220 },
-    { date: "2024-05-25", desktop: 201, mobile: 250 },
-    { date: "2024-05-26", desktop: 213, mobile: 170 },
-    { date: "2024-05-27", desktop: 420, mobile: 460 },
-    { date: "2024-05-28", desktop: 233, mobile: 190 },
-    { date: "2024-05-29", desktop: 78, mobile: 130 },
-    { date: "2024-05-30", desktop: 340, mobile: 280 },
-    { date: "2024-05-31", desktop: 178, mobile: 230 },
-    { date: "2024-06-01", desktop: 178, mobile: 200 },
-    { date: "2024-06-02", desktop: 470, mobile: 410 },
-    { date: "2024-06-03", desktop: 103, mobile: 160 },
-    { date: "2024-06-04", desktop: 439, mobile: 380 },
-    { date: "2024-06-05", desktop: 88, mobile: 140 },
-    { date: "2024-06-06", desktop: 294, mobile: 250 },
-    { date: "2024-06-07", desktop: 323, mobile: 370 },
-    { date: "2024-06-08", desktop: 385, mobile: 320 },
-    { date: "2024-06-09", desktop: 438, mobile: 480 },
-    { date: "2024-06-10", desktop: 155, mobile: 200 },
-    { date: "2024-06-11", desktop: 92, mobile: 150 },
-    { date: "2024-06-12", desktop: 492, mobile: 420 },
-    { date: "2024-06-13", desktop: 81, mobile: 130 },
-    { date: "2024-06-14", desktop: 426, mobile: 380 },
-    { date: "2024-06-15", desktop: 307, mobile: 350 },
-    { date: "2024-06-16", desktop: 371, mobile: 310 },
-    { date: "2024-06-17", desktop: 475, mobile: 520 },
-    { date: "2024-06-18", desktop: 107, mobile: 170 },
-    { date: "2024-06-19", desktop: 341, mobile: 290 },
-    { date: "2024-06-20", desktop: 408, mobile: 450 },
-    { date: "2024-06-21", desktop: 169, mobile: 210 },
-    { date: "2024-06-22", desktop: 317, mobile: 270 },
-    { date: "2024-06-23", desktop: 480, mobile: 530 },
-    { date: "2024-06-24", desktop: 132, mobile: 180 },
-    { date: "2024-06-25", desktop: 141, mobile: 190 },
-    { date: "2024-06-26", desktop: 434, mobile: 380 },
-    { date: "2024-06-27", desktop: 448, mobile: 490 },
-    { date: "2024-06-28", desktop: 149, mobile: 200 },
-    { date: "2024-06-29", desktop: 103, mobile: 160 },
-    { date: "2024-06-30", desktop: 446, mobile: 400 },
-]
 const chartConfig_line = {
     traffic: {
         label: "Traffic",
@@ -97,80 +38,206 @@ const chartConfig_line = {
     },
 } satisfies ChartConfig
 
-const descriptionBar = "A bar chart"
-const chartData_bar = [
-    { mood: "Happy", songs: 186 },
-    { mood: "Sad", songs: 305 },
-    { mood: "Fear", songs: 237 },
-    { mood: "Anger", songs: 73 },
-    { mood: "Disgust", songs: 209 },
-    { mood: "Surprise", songs: 214 },
-]
-
-
-const chartConfig_bar = {
-    Happy: {
-        label: "Happy",
-        color: "#fbbf24", // Yellow/Amber
-    },
-    Sad: {
-        label: "Sad",
-        color: "#3b82f6", // Blue
-    },
-    Fear: {
-        label: "Fear",
-        color: "#8b5cf6", // Purple
-    },
-    Anger: {
-        label: "Anger",
-        color: "#ef4444", // Red
-    },
-    Disgust: {
-        label: "Disgust",
-        color: "#10b981", // Green
-    },
-    Surprise: {
-        label: "Surprise",
-        color: "#f59e0b", // Orange
-    },
-} satisfies ChartConfig
-
 export default function AdminDashboard() {
     const [timeRange, setTimeRange] = React.useState("30d")
+    const [dashboardData, setDashboardData] = React.useState<DashboardData | null>(null)
+    const [isLoading, setIsLoading] = React.useState(true)
     
-    // Dynamic description based on time range
+    useEffect(() => {
+        const scrollToTop = () => {
+            window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+        };
+        
+        scrollToTop();
+        
+        requestAnimationFrame(() => {
+            scrollToTop();
+            setTimeout(() => {
+                scrollToTop();
+            }, 0);
+        });
+        
+        const timeout1 = setTimeout(scrollToTop, 100);
+        const timeout2 = setTimeout(scrollToTop, 300);
+        
+        return () => {
+            clearTimeout(timeout1);
+            clearTimeout(timeout2);
+        };
+    }, []);
+
+    useEffect(() => {
+        const fetchDashboardData = async () => {
+            setIsLoading(true);
+            try {
+                const days = timeRange === "7d" ? 7 : 30;
+                const [data] = await Promise.all([
+                    dashboardService.getDashboardData(days),
+                    new Promise(resolve => setTimeout(resolve, 1000))
+                ]);
+                
+                if (data) {
+                    setDashboardData(data);
+                } else {
+                    setDashboardData(null);
+                }
+            } catch (error) {
+                // eslint-disable-next-line no-console
+                console.error('Failed to fetch dashboard data:', error);
+                setDashboardData(null);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchDashboardData();
+    }, [timeRange]);
+    
     const descriptionLine = `Showing total traffic for the last ${timeRange === "7d" ? "7" : "30"} days`
 
-    // Combine desktop and mobile into traffic and filter by time range
     const processedData = React.useMemo(() => {
-        const combinedData = chartData.map(item => ({
-            date: item.date,
-            traffic: item.desktop + item.mobile
-        }))
+        if (!dashboardData?.trafficData) {
+            return [];
+        }
+        return dashboardData.trafficData;
+    }, [dashboardData])
 
-        const referenceDate = new Date("2024-06-30")
-        const daysToSubtract = timeRange === "7d" ? 7 : 30
-        const startDate = new Date(referenceDate)
-        startDate.setDate(startDate.getDate() - daysToSubtract)
+    const chartDataBar = React.useMemo(() => {
+        if (!dashboardData?.songsByMood || !Array.isArray(dashboardData.songsByMood)) {
+            return [];
+        }
+        return dashboardData.songsByMood
+            .filter(item => item && item.songs > 0)
+            .map(item => {
+                let mood = 'Unknown';
+                if (typeof item.mood === 'string') {
+                    mood = item.mood;
+                } else if (typeof item.mood === 'object' && item.mood !== null && 'type' in item.mood) {
+                    mood = (item.mood as { type: string; percentage: number }).type;
+                }
+                return {
+                    mood: mood || 'Unknown',
+                    songs: item.songs || 0
+                };
+            });
+    }, [dashboardData])
 
-        return combinedData.filter(item => {
-            const date = new Date(item.date)
-            return date >= startDate
-        })
-    }, [timeRange])
+    const chartConfigBar = React.useMemo(() => {
+        const config: ChartConfig = {};
+        const moodColors: Record<string, string> = {
+            "happy": "#fbbf24",
+            "sad": "#3b82f6",
+            "fear": "#8b5cf6",
+            "anger": "#ef4444",
+            "disgust": "#10b981",
+            "surprise": "#f59e0b"
+        };
+        
+        chartDataBar.forEach(item => {
+            const mood = item.mood;
+            if (!mood || typeof mood !== 'string') {
+                return;
+            }
+            const moodLower = mood.toLowerCase();
+            const color = moodColors[moodLower] || "#6b7280";
+            config[mood] = { label: mood, color: color };
+        });
+        return config;
+    }, [chartDataBar])
+
+    if (isLoading) {
+        return (
+            <AdminMenu>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 my-4 gap-6">
+                    {[1, 2, 3, 4].map((i) => (
+                        <Card key={i} className="animate-pulse">
+                            <CardHeader className="space-y-0 pb-2">
+                                <div className="h-4 w-24 bg-gray-200 rounded mb-2"></div>
+                                <div className="h-8 w-16 bg-gray-200 rounded"></div>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="h-3 w-32 bg-gray-200 rounded"></div>
+                            </CardContent>
+                        </Card>
+                    ))}
+                </div>
+                <Card className="pt-0 animate-pulse">
+                    <CardHeader className="flex items-center gap-2 space-y-0 border-b py-5 sm:flex-row">
+                        <div className="grid flex-1 gap-1">
+                            <div className="h-6 w-48 bg-gray-200 rounded"></div>
+                            <div className="h-4 w-64 bg-gray-200 rounded"></div>
+                        </div>
+                        <div className="h-10 w-[160px] bg-gray-200 rounded-lg"></div>
+                    </CardHeader>
+                    <CardContent className="p-6">
+                        <div className="flex items-center justify-center h-[250px]">
+                            <div className="text-center">
+                                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-violet-600 mx-auto mb-4"></div>
+                                <p className="text-gray-500 font-medium">Loading dashboard data...</p>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+                <div className="my-4 grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <Card className="animate-pulse">
+                        <CardHeader>
+                            <div className="h-6 w-40 bg-gray-200 rounded"></div>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="flex items-center justify-center h-[250px]">
+                                <div className="h-8 w-8 border-2 border-gray-200 border-t-violet-600 rounded-full animate-spin"></div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                    <Card className="animate-pulse">
+                        <CardHeader>
+                            <div className="h-6 w-32 bg-gray-200 rounded"></div>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
+                                {[1, 2, 3].map((i) => (
+                                    <div key={i} className="bg-gray-100 rounded-lg p-3 sm:p-4 h-20"></div>
+                                ))}
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+            </AdminMenu>
+        );
+    }
 
     return (
         <AdminMenu>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 my-4 gap-6">
-                <BigStatCard stat_icon={<ChartArea className="w-6 h-6" />} stat_name="Total Users" stat_value={232} stat_description="Increase of 12 user" />
-                <BigStatCard stat_icon={<Music2 className="w-6 h-6" />} stat_name="Total Songs" stat_value={3675} stat_description="All moods" />
-                <BigStatCard stat_icon={<SearchCheck className="w-6 h-6" />} stat_name="Have to Approve" stat_value={12} stat_description="Songs" />
-                <BigStatCard stat_icon={<Activity className="w-6 h-6" />} stat_name="Total Traffic" stat_value={128} stat_description="Sessions" />
+                <BigStatCard 
+                    stat_icon={<ChartArea className="w-6 h-6" />} 
+                    stat_name="Total Users" 
+                    stat_value={dashboardData?.stats.totalUsers || 0} 
+                    stat_description="Total registered users" 
+                />
+                <BigStatCard 
+                    stat_icon={<Music2 className="w-6 h-6" />} 
+                    stat_name="Total Songs" 
+                    stat_value={dashboardData?.stats.totalSongs || 0} 
+                    stat_description="All moods" 
+                />
+                <BigStatCard 
+                    stat_icon={<SearchCheck className="w-6 h-6" />} 
+                    stat_name="Have to Approve" 
+                    stat_value={dashboardData?.stats.pendingApproval || 0} 
+                    stat_description="Processing" 
+                />
+                <BigStatCard 
+                    stat_icon={<Activity className="w-6 h-6" />} 
+                    stat_name="Total Traffic" 
+                    stat_value={dashboardData?.stats.totalSessions || 0} 
+                    stat_description="Sessions" 
+                />
             </div>
             <Card className="pt-0">
                 <CardHeader className="flex items-center gap-2 space-y-0 border-b py-5 sm:flex-row">
                     <div className="grid flex-1 gap-1">
-                        <CardTitle>Area Chart - Interactive</CardTitle>
+                        <CardTitle>User Traffic (Session & Users)</CardTitle>
                         <CardDescription>{descriptionLine}</CardDescription>
                     </div>
                     <Select value={timeRange} onValueChange={setTimeRange}>
@@ -191,6 +258,11 @@ export default function AdminDashboard() {
                     </Select>
                 </CardHeader>
                 <CardContent className="p-6">
+                    {processedData.length === 0 ? (
+                        <div className="flex items-center justify-center h-[250px]">
+                            <p className="text-gray-500">No traffic data available</p>
+                        </div>
+                    ) : (
                     <ChartContainer
                         config={chartConfig_line}
                         className="aspect-auto h-[250px] w-full"
@@ -211,11 +283,13 @@ export default function AdminDashboard() {
                                 tickMargin={8}
                                 minTickGap={32}
                                 tickFormatter={(value) => {
-                                    const date = new Date(value)
+                                        if (!value) return '';
+                                        const date = new Date(value);
+                                        if (isNaN(date.getTime())) return '';
                                     return date.toLocaleDateString("en-US", {
                                         month: "short",
                                         day: "numeric",
-                                    })
+                                        });
                                 }}
                             />
                             <ChartTooltip
@@ -223,11 +297,14 @@ export default function AdminDashboard() {
                                     <ChartTooltipContent
                                         className="w-[150px]"
                                         labelFormatter={(value) => {
-                                            return new Date(value).toLocaleDateString("en-US", {
+                                                if (!value) return '';
+                                                const date = new Date(value);
+                                                if (isNaN(date.getTime())) return '';
+                                                return date.toLocaleDateString("en-US", {
                                                 month: "short",
                                                 day: "numeric",
                                                 year: "numeric",
-                                            })
+                                                });
                                         }}
                                     />
                                 }
@@ -241,38 +318,49 @@ export default function AdminDashboard() {
                             />
                         </LineChart>
                     </ChartContainer>
+                    )}
                 </CardContent>
             </Card>
-            <div className="my-4">
+            <div className="my-4 grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <Card>
                     <CardHeader>
-                        <CardTitle>Bar Chart</CardTitle>
-                        <CardDescription>{descriptionBar}</CardDescription>
+                        <CardTitle>Total song per Mood</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <ChartContainer config={chartConfig_bar}>
-                            <BarChart accessibilityLayer data={chartData_bar}>
+                        {chartDataBar.length === 0 ? (
+                            <div className="flex items-center justify-center h-[250px]">
+                                <p className="text-gray-500">No data available</p>
+                            </div>
+                        ) : (
+                            <ChartContainer config={chartConfigBar}>
+                                <BarChart accessibilityLayer data={chartDataBar}>
                                 <CartesianGrid vertical={false} />
                                 <XAxis
                                     dataKey="mood"
                                     tickLine={false}
                                     tickMargin={10}
                                     axisLine={false}
-                                    tickFormatter={(value) => value.slice(0, 8)}
+                                        tickFormatter={(value) => value ? value.slice(0, 8) : ''}
                                 />
                                 <ChartTooltip
                                     cursor={false}
-                                    content={<ChartTooltipContent hideLabel />}
+                                        content={<ChartTooltipContent />}
                                 />
                                 <Bar dataKey="songs" radius={8}>
-                                    {chartData_bar.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={`var(--color-${entry.mood})`} />
-                                    ))}
+                                        {chartDataBar.map((entry, index) => {
+                                            const moodKey = entry.mood;
+                                            const color = chartConfigBar[moodKey]?.color || "#6b7280";
+                                            return (
+                                                <Cell key={`cell-${index}`} fill={color} />
+                                            );
+                                        })}
                                 </Bar>
                             </BarChart>
                         </ChartContainer>
+                        )}
                     </CardContent>
                 </Card>
+                <ServerStatus />
             </div>
         </AdminMenu>
     );

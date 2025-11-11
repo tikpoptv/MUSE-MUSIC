@@ -8,5 +8,9 @@ export interface ShareLinkResponse {
 export interface ProcessingByShareLink {
   processingID: string;
   songID: string;
+  coverImage?: string | null;
+  summary?: string | null;
+  songName?: string | null;
+  artistName?: string | null;
 }
 

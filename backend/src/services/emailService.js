@@ -275,6 +275,124 @@ class EmailService {
       };
     }
   }
+
+  static async sendAdminPromotionEmail(userData, role = 'admin') {
+    try {
+      const { email, fullName, username } = userData;
+      
+      if (!email) {
+        logger.warn('No email provided for admin promotion email');
+        return { success: false, message: 'No email provided' };
+      }
+
+      const name = fullName || username || 'User';
+      const roleLabel = role === 'super_admin' ? 'Super Admin' : 'Admin';
+      
+      const htmlTemplate = `<!doctype html>
+<html lang='en'>
+<head>
+  <meta charset='utf-8'>
+  <title>Admin Privileges Granted - MuseMusic</title>
+</head>
+<body style='font-family:Segoe UI,Arial,sans-serif;background:#f6f7fb;margin:0;padding:40px 0;'>
+  <table align='center' width='600' cellpadding='0' cellspacing='0' style='background:#ffffff;border-radius:16px;box-shadow:0 6px 25px rgba(0,0,0,0.05);overflow:hidden;'>
+    <tr>
+      <td align='center' style='padding:36px 24px;background:#111827;'>
+        <h2 style='color:#ffffff;margin:0;font-size:22px;letter-spacing:0.5px;'>MUSE MUSIC</h2>
+        <p style='color:#9ca3af;margin:6px 0 0;font-size:13px;font-style:italic;'>"Because music means more than sound."</p>
+      </td>
+    </tr>
+    <tr>
+      <td style='padding:40px 32px;text-align:center;color:#111827;'>
+        <div style='margin-bottom:32px;'>
+          <h2 style='margin:0 0 8px;font-size:28px;font-weight:700;color:#1f2937;'>🎉 Congratulations!</h2>
+          <p style='margin:0;font-size:16px;color:#6b7280;'>Hi ${name}, you've been granted admin privileges</p>
+        </div>
+        
+        <div style='background:linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);border-radius:12px;padding:32px;margin-bottom:32px;color:#ffffff;'>
+          <div style='font-size:48px;margin-bottom:16px;'>👑</div>
+          <h3 style='margin:0 0 12px;font-size:24px;color:#ffffff;font-weight:600;'>Admin Privileges Granted</h3>
+          <p style='margin:0;font-size:16px;color:#f3f4f6;line-height:1.6;'>You have been promoted to <strong>${roleLabel}</strong> role in MuseMusic. You now have access to administrative features and can help manage the platform.</p>
+        </div>
+        
+        <div style='margin-bottom:32px;'>
+          <p style='margin:0 0 24px;font-size:16px;color:#374151;font-weight:500;'>What you can do now:</p>
+          <div style='text-align:left;background:#f9fafb;border-radius:12px;padding:24px;'>
+            <div style='margin-bottom:16px;'>
+              <p style='margin:0 0 8px;font-size:15px;color:#1f2937;font-weight:600;'>✨ Manage Users</p>
+              <p style='margin:0;font-size:14px;color:#6b7280;line-height:1.5;'>Add or remove admin privileges, manage user accounts</p>
+            </div>
+            <div style='margin-bottom:16px;'>
+              <p style='margin:0 0 8px;font-size:15px;color:#1f2937;font-weight:600;'>📊 View Analytics</p>
+              <p style='margin:0;font-size:14px;color:#6b7280;line-height:1.5;'>Access dashboard with platform statistics and insights</p>
+            </div>
+            <div>
+              <p style='margin:0 0 8px;font-size:15px;color:#1f2937;font-weight:600;'>🎵 Moderate Content</p>
+              <p style='margin:0;font-size:14px;color:#6b7280;line-height:1.5;'>Approve or manage song submissions and content</p>
+            </div>
+          </div>
+        </div>
+        
+        <div style='margin-bottom:32px;'>
+          <a href='${process.env.FRONTEND_URL || 'http://localhost:3000'}/admin/dashboard' target='_blank' style='background:linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);color:#ffffff;text-decoration:none;padding:16px 32px;border-radius:12px;font-weight:600;display:inline-block;font-size:16px;box-shadow:0 4px 15px rgba(124, 58, 237, 0.3);transition:all 0.3s ease;'>🚀 Access Admin Dashboard</a>
+        </div>
+        
+        <div style='background:#f8fafc;border-radius:12px;padding:24px;margin-bottom:32px;'>
+          <h4 style='margin:0 0 16px;font-size:18px;color:#1f2937;font-weight:600;'>🔒 Security Reminder</h4>
+          <div style='text-align:left;color:#6b7280;font-size:14px;line-height:1.6;'>
+            <p style='margin:0 0 12px;'>• Keep your account credentials secure</p>
+            <p style='margin:0 0 12px;'>• Use admin privileges responsibly</p>
+            <p style='margin:0;'>• Contact support if you notice any suspicious activity</p>
+          </div>
+        </div>
+        
+        <hr style='border:none;border-top:1px solid #e5e7eb;margin:32px 0 24px;'>
+        <p style='margin:0;color:#9ca3af;font-size:13px;line-height:1.5;'>If you have any questions, please contact our support team.</p>
+      </td>
+    </tr>
+    <tr>
+      <td style='padding:20px 28px;text-align:center;color:#9ca3af;font-size:12px;border-top:1px solid #f3f4f6;'>
+        © 2025 MuseMusic · phitik.com<br>
+        <a href='#' style='color:#9ca3af;text-decoration:underline;'>Unsubscribe</a>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+
+      const emailData = {
+        subject: `👑 You've been promoted to ${roleLabel} - MuseMusic`,
+        to: email,
+        message: htmlTemplate.replace(/\s+/g, ' ').trim()
+      };
+
+      if (!process.env.EMAIL_N8N_WEBHOOK_URL) {
+        logger.warn('N8N webhook URL not configured, skipping admin promotion email');
+        return { 
+          success: true, 
+          message: 'Admin promotion email skipped (N8N not configured)',
+          data: { email, skipped: true }
+        };
+      }
+
+      const result = await N8NService.sendEmailWebhook(emailData);
+      
+      if (result.success) {
+        logger.info('Admin promotion email sent successfully:', { email, role, result });
+        return result;
+      } else {
+        throw new Error(result.error || 'Failed to send email');
+      }
+
+    } catch (error) {
+      logger.error('Failed to send admin promotion email:', error);
+      return { 
+        success: false, 
+        message: 'Failed to send admin promotion email',
+        error: error.message 
+      };
+    }
+  }
 }
 
 module.exports = EmailService;
