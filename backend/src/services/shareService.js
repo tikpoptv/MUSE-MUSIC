@@ -93,7 +93,7 @@ class ShareService {
       }
 
       const query = `
-        SELECT
+        SELECT 
           p.processingid,
           p.songid,
           p.coverimage,

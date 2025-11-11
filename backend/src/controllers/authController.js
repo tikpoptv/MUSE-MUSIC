@@ -532,6 +532,59 @@ const validateResetToken = async (req, res) => {
   }
 };
 
+const checkAdminStatus = async (req, res) => {
+  try {
+    let userId = null;
+    const authHeader = req.headers.authorization;
+    
+    if (authHeader) {
+      const token = JWTService.extractTokenFromHeader(authHeader);
+      if (token) {
+        const decoded = JWTService.verifyAccessToken(token);
+        if (decoded && decoded.userID) {
+          userId = decoded.userID;
+        }
+      }
+    }
+
+    if (!userId) {
+      return res.status(401).json(
+        errorResponse('Authentication required', 401)
+      );
+    }
+
+    const user = await UserService.findByID(userId);
+    
+    if (!user) {
+      return res.status(404).json(
+        errorResponse('User not found', 404)
+      );
+    }
+
+    const userRole = user.role?.toLowerCase();
+    const isAdmin = userRole === 'admin' || userRole === 'super_admin';
+
+    return res.json(
+      successResponse('Admin status checked', {
+        isAdmin,
+        role: user.role,
+        user: {
+          userID: user.userID,
+          username: user.username,
+          email: user.email,
+          fullName: user.fullName,
+          role: user.role
+        }
+      })
+    );
+  } catch (error) {
+    logger.error('Error in checkAdminStatus:', error);
+    return res.status(500).json(
+      errorResponse('Failed to check admin status', 500, error.message)
+    );
+  }
+};
+
 module.exports = {
   register,
   login,
@@ -540,5 +593,6 @@ module.exports = {
   refreshToken,
   forgotPassword,
   resetPassword,
-  validateResetToken
+  validateResetToken,
+  checkAdminStatus
 };
