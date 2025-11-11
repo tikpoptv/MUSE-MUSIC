@@ -4,6 +4,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useState, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
+import { ChartArea } from 'lucide-react';
 import { authService } from '@/services/authService';
 import { UserData } from '@/types/user';
 
@@ -12,6 +13,7 @@ export default function Navbar() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userData, setUserData] = useState<UserData | null>(null);
   const [isMobile, setIsMobile] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
   const shouldHideSearch = pathname === '/test'|| pathname === '/login' || pathname === '/register' || pathname === '/forgot-password' || pathname === '/account/settings' || pathname.startsWith('/setup');
@@ -51,6 +53,13 @@ export default function Navbar() {
     
     setIsAuthenticated(isAuth);
     setUserData(isAuth ? user : null);
+    
+    if (isAuth && user) {
+      const userRole = user.role?.toLowerCase();
+      setIsAdmin(userRole === 'admin' || userRole === 'super_admin');
+    } else {
+      setIsAdmin(false);
+    }
   }, []);
 
   const handleProfileClick = () => {
@@ -110,22 +119,47 @@ export default function Navbar() {
           <div className="items-center space-x-8" id="nav-container" style={{ display: 'flex' }}>
             <Link 
               href="/" 
-              className="text-gray-700 dark:text-gray-700 hover:text-black dark:hover:text-black transition-colors duration-200 font-medium text-xs md:text-xs xl:text-sm"
+              className={`transition-colors duration-200 font-medium text-xs md:text-xs xl:text-sm ${
+                pathname === '/' 
+                  ? 'text-violet-600 dark:text-violet-600 font-semibold' 
+                  : 'text-gray-700 dark:text-gray-700 hover:text-black dark:hover:text-black'
+              }`}
             >
               Home
             </Link>
             <Link 
               href="/for-you" 
-              className="text-gray-700 dark:text-gray-700 hover:text-black dark:hover:text-black transition-colors duration-200 font-medium text-xs md:text-xs xl:text-sm"
+              className={`transition-colors duration-200 font-medium text-xs md:text-xs xl:text-sm ${
+                pathname === '/for-you' 
+                  ? 'text-violet-600 dark:text-violet-600 font-semibold' 
+                  : 'text-gray-700 dark:text-gray-700 hover:text-black dark:hover:text-black'
+              }`}
             >
               For you
             </Link>
             <Link 
               href="/archive" 
-              className="text-gray-700 dark:text-gray-700 hover:text-black dark:hover:text-black transition-colors duration-200 font-medium text-xs md:text-xs xl:text-sm"
+              className={`transition-colors duration-200 font-medium text-xs md:text-xs xl:text-sm ${
+                pathname === '/archive' 
+                  ? 'text-violet-600 dark:text-violet-600 font-semibold' 
+                  : 'text-gray-700 dark:text-gray-700 hover:text-black dark:hover:text-black'
+              }`}
             >
               Archive
             </Link>
+            {isAdmin && (
+              <Link 
+                href="/admin/dashboard" 
+                className={`flex items-center gap-1.5 transition-colors duration-200 font-medium text-xs md:text-xs xl:text-sm ${
+                  pathname === '/admin' || pathname === '/admin/dashboard' || pathname.startsWith('/admin/dashboard')
+                    ? 'text-violet-600 dark:text-violet-600 font-semibold' 
+                    : 'text-violet-600 dark:text-violet-600 hover:text-violet-700 dark:hover:text-violet-700'
+                }`}
+              >
+                <ChartArea className="w-4 h-4" />
+                Dashboard
+              </Link>
+            )}
             
             {isAuthenticated ? (
               <button 
@@ -222,25 +256,51 @@ export default function Navbar() {
             
             <Link 
               href="/" 
-              className="block px-3 py-3 text-gray-700 hover:text-black hover:bg-gray-50 rounded-md font-medium transition-colors duration-200"
+              className={`block px-3 py-3 rounded-md font-medium transition-colors duration-200 ${
+                pathname === '/' 
+                  ? 'text-violet-600 bg-violet-50 font-semibold' 
+                  : 'text-gray-700 hover:text-black hover:bg-gray-50'
+              }`}
               onClick={() => setIsMenuOpen(false)}
             >
               Home
             </Link>
             <Link 
               href="/for-you" 
-              className="block px-3 py-3 text-gray-700 hover:text-black hover:bg-gray-50 rounded-md font-medium transition-colors duration-200"
+              className={`block px-3 py-3 rounded-md font-medium transition-colors duration-200 ${
+                pathname === '/for-you' 
+                  ? 'text-violet-600 bg-violet-50 font-semibold' 
+                  : 'text-gray-700 hover:text-black hover:bg-gray-50'
+              }`}
               onClick={() => setIsMenuOpen(false)}
             >
               For you
             </Link>
             <Link 
               href="/archive" 
-              className="block px-3 py-3 text-gray-700 hover:text-black hover:bg-gray-50 rounded-md font-medium transition-colors duration-200"
+              className={`block px-3 py-3 rounded-md font-medium transition-colors duration-200 ${
+                pathname === '/archive' 
+                  ? 'text-violet-600 bg-violet-50 font-semibold' 
+                  : 'text-gray-700 hover:text-black hover:bg-gray-50'
+              }`}
               onClick={() => setIsMenuOpen(false)}
             >
               Archive
             </Link>
+            {isAdmin && (
+              <Link 
+                href="/admin/dashboard" 
+                className={`flex items-center gap-2 px-3 py-3 rounded-md font-medium transition-colors duration-200 ${
+                  pathname === '/admin' || pathname === '/admin/dashboard' || pathname.startsWith('/admin/dashboard')
+                    ? 'text-violet-600 bg-violet-50 font-semibold' 
+                    : 'text-violet-600 hover:text-violet-700 hover:bg-violet-50'
+                }`}
+                onClick={() => setIsMenuOpen(false)}
+              >
+                <ChartArea className="w-4 h-4" />
+                Dashboard
+              </Link>
+            )}
             
             <div className="pt-2">
               {isAuthenticated ? (
