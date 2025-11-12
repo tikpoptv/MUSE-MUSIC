@@ -22,6 +22,9 @@ const adminManageRoutes = require('./adminManage');
 const adminSongsRoutes = require('./adminSongs');
 const adminAnalysisRoutes = require('./adminAnalysis');
 const adminLogsRoutes = require('./adminLogs');
+const n8nWorkflowRoutes = require('./n8nWorkflow');
+const promptTestRoutes = require('./promptTest');
+const promptRoutes = require('./prompts');
 
 router.get('/', (req, res) => {
   res.json({
@@ -56,5 +59,8 @@ router.use('/api/admin/manage', adminManageRoutes);
 router.use('/api/admin/songs', adminSongsRoutes);
 router.use('/api/admin/analysis', adminAnalysisRoutes);
 router.use('/api/admin/logs', adminLogsRoutes);
+router.use('/api/n8n/workflow', n8nWorkflowRoutes);
+router.use('/api/prompt-test', promptTestRoutes);
+router.use('/api/prompts', promptRoutes);
 
 module.exports = router;

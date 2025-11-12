@@ -759,12 +759,13 @@ CREATE TRIGGER update_lyrics_search_usage_stats_trigger
 -- =========================
 CREATE TABLE Prompts (
     promptID UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    promptType VARCHAR(50) NOT NULL, -- 'translation', 'mood'
+    promptType VARCHAR(50) NOT NULL, -- 'translation', 'mood', 'both'
     promptText TEXT NOT NULL,
+    temp TEXT, -- Temporary prompt text for testing
     isActive BOOLEAN DEFAULT TRUE,
     createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT check_prompt_type CHECK (promptType IN ('translation', 'mood'))
+    CONSTRAINT check_prompt_type CHECK (promptType IN ('translation', 'mood', 'both'))
 );
 
 -- Trigger for Prompts updatedAt
