@@ -6,12 +6,12 @@ Complete deployment guide for MUSE Music project including CI/CD pipeline, infra
 
 ## 📋 Table of Contents
 
-1. [CI/CD Pipeline Overview](#cicd-pipeline-overview)
-2. [Infrastructure Requirements](#infrastructure-requirements)
-3. [Deployment Flow](#deployment-flow)
-4. [N8N Workflow Architecture](#n8n-workflow-architecture)
-5. [Step-by-Step Deployment](#step-by-step-deployment)
-6. [Monitoring & Troubleshooting](#monitoring--troubleshooting)
+1. [CI/CD Pipeline Overview](#-cicd-pipeline-overview)
+2. [Infrastructure Requirements](#-infrastructure-requirements)
+3. [Deployment Flow](#-deployment-flow)
+4. [N8N Workflow Architecture](#-n8n-workflow-architecture)
+5. [Step-by-Step Deployment](#-step-by-step-deployment)
+6. [Monitoring & Troubleshooting](#-monitoring--troubleshooting)
 
 ---
 
@@ -627,14 +627,26 @@ const { translation, interpretation, moodAnalyze } = await response.json();
 
 #### N8N Workflow JSON (Ready to Import)
 
-**How to Import**:
-1. Open N8N → Workflows → Click "+" → "Import from JSON"
-2. Copy the JSON below
-3. Update credentials (Ollama API connection)
-4. Activate the workflow
-5. Copy the webhook URL and set it in your backend `.env`
+**📁 Workflow File**: [`n8n-translator-workflow.json`](./n8n-translator-workflow.json)
 
-**Workflow JSON**:
+**How to Import**:
+1. Download the workflow file: [`n8n-translator-workflow.json`](./n8n-translator-workflow.json)
+2. Open N8N → Workflows → Click "+" → "Import from JSON"
+3. Upload or paste the JSON content
+4. Update credentials (Ollama API connection)
+5. Activate the workflow
+6. Copy the webhook URL and set it in your backend `.env`
+
+**Quick Import via Command Line**:
+```bash
+# Download the workflow JSON
+curl -O https://raw.githubusercontent.com/your-org/MUSE-MUSIC/main/n8n-translator-workflow.json
+
+# Or if already cloned
+cp n8n-translator-workflow.json /path/to/import/
+```
+
+**Workflow JSON Preview** (See full file: `n8n-translator-workflow.json`):
 ```json
 {
   "name": "MUSE MUSIC - Translator Workflow",
@@ -733,6 +745,19 @@ const { translation, interpretation, moodAnalyze } = await response.json();
   }
 }
 ```
+<details>
+<summary>👆 Click to see full workflow structure (or use the separate JSON file)</summary>
+
+The complete workflow JSON is available in the file: [`n8n-translator-workflow.json`](./n8n-translator-workflow.json)
+
+**Workflow includes**:
+- Webhook node (POST /translator)
+- AI Agent with full prompt (lyrics translation + mood analysis)
+- Ollama Chat Model (gpt-oss:120b)
+- JavaScript parser (splits output into translation/interpretation/mood)
+- Response formatter
+
+</details>
 
 **After Import Checklist**:
 - [ ] Update Ollama credentials in "Ollama Chat Model" node
