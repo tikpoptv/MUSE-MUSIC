@@ -96,7 +96,7 @@
   - Service: `frontend/src/services/youtubeService.ts` ✅ มี
   - Component: `frontend/src/components/SyncedLyricsPlayer.tsx` ✅ มี
 - **Tests**: ✅ **มีแล้ว (Backend Unit Tests เท่านั้น)**
-  - **Backend Unit Tests**: `backend/src/__tests__/unit/services/youtubeService.test.js` (24 tests)
+  - **Backend Unit Tests**: `backend/src/__tests__/unit/services/youtubeService.test.js` (24 tests) 🔥 100% coverage
 
 #### 5. **Social Share** ✅ (บางส่วน)
 - **Backend**: 
@@ -106,7 +106,8 @@
   - Component: `frontend/src/components/SocialShareModal.tsx` ✅ มี
   - Page: `frontend/src/app/share/[shortLink]/page.tsx` ✅ มี
 - **Tests**: ✅ **มีแล้ว**
-  - **Frontend Unit Tests**: `frontend/src/components/__tests__/SocialShareModal.test.tsx` (10 tests)
+  - **Backend Unit Tests**: `backend/src/__tests__/unit/services/shareService.test.js` (15 tests) 🔥 100% coverage
+  - **Frontend Unit Tests**: `frontend/src/components/__tests__/SocialShareModal.test.tsx` (11 tests)
   - **E2E Tests**: `frontend/tests/share/social-share.spec.ts` (6 tests)
 
 #### 6. **Performance Tuning** ❌
@@ -212,12 +213,12 @@
 
 ### Test Coverage โดยรวม
 - **Total Features**: 20
-- **มี Test (บางส่วน)**: 6 (30%)
-- **ไม่มี Test**: 14 (70%)
+- **มี Test (บางส่วน)**: 7 (35%)
+- **ไม่มี Test**: 13 (65%)
 
 ### Test Types ที่มีอยู่
 - **Unit Tests**: 
-  - Backend: 5 files (copyright protection, rating, re-analysis, admin songs)
+  - Backend: 9 files (copyright protection, rating, re-analysis, admin songs, YouTube, Share, Session, Translate)
   - Frontend: 5 files (passwordValidation, MusicCard, Footer, FeedbackSection, SocialShareModal)
 - **Integration Tests**: 
   - Frontend: 3 files (api, services, components)
@@ -226,7 +227,7 @@
 
 ### Test Files ที่มีอยู่
 
-#### Backend Unit Tests (67 tests, 5 suites)
+#### Backend Unit Tests (133 tests, 9 suites)
 
 **Existing Tests (Original - มีอยู่แล้วก่อนหน้านี้):**
 1. `backend/src/__tests__/unit/services/analysisService.mapTranslationToPreview.test.js`
@@ -240,20 +241,44 @@
    - สถานะ: ✅ ผ่านหมด
 
 **New Tests (Added 2025-11 - เพิ่มเข้ามาใหม่):**
-3. ⭐ `backend/src/__tests__/unit/services/ratingService.test.js` **ใหม่**
+3. ⭐ `backend/src/__tests__/unit/services/youtubeService.test.js` **ใหม่**
+   - YouTube API integration (24 tests)
+   - ครอบคลุม: searchVideos, getVideoDetails, duration parsing, error handling
+   - สร้างเมื่อ: 2025-11-12
+   - สถานะ: ✅ ผ่านหมด (24/24) 🔥 100% coverage
+   
+4. ⭐ `backend/src/__tests__/unit/services/shareService.test.js` **ใหม่**
+   - Share link generation (15 tests)
+   - ครอบคลุม: generateShortLink, createShareLink, collision detection, getProcessingByShortLink
+   - สร้างเมื่อ: 2025-11-12
+   - สถานะ: ✅ ผ่านหมด (15/15) 🔥 100% coverage
+   
+5. ⭐ `backend/src/__tests__/unit/services/sessionService.test.js` **ใหม่**
+   - User session management (15 tests)
+   - ครอบคลุม: createSession, findActiveSession, deactivateSession, cleanupExpiredSessions
+   - สร้างเมื่อ: 2025-11-12
+   - สถานะ: ✅ ผ่านหมด (15/15) 🔥 100% coverage
+   
+6. ⭐ `backend/src/__tests__/unit/services/translateService.test.js` **ใหม่**
+   - Translation webhook (12 tests)
+   - ครอบคลุม: getTranslate, mood parameters, validation, error handling
+   - สร้างเมื่อ: 2025-11-12
+   - สถานะ: ✅ ผ่านหมด (12/12) 🔥 100% coverage
+   
+7. ⭐ `backend/src/__tests__/unit/services/ratingService.test.js` **ใหม่**
    - Rating functionality (12 tests)
    - ครอบคลุม: submitRating, getRatingStats, getUserRating
    - สร้างเมื่อ: 2025-11-12
-   - สถานะ: ✅ ผ่านหมด (12/12)
+   - สถานะ: ✅ ผ่านหมด (12/12) 🔥 100% coverage
    
-4. ⭐ `backend/src/__tests__/unit/services/analysisService.reAnalyze.test.js` **ใหม่**
+8. ⭐ `backend/src/__tests__/unit/services/analysisService.reAnalyze.test.js` **ใหม่**
    - Re-analysis feature (5 tests)
    - ครอบคลุม: validation, status updates, mood requirements
    - สร้างเมื่อ: 2025-11-12
    - สถานะ: ✅ ผ่านหมด (5/5)
    - การแก้ไข: แก้ mock DatabaseService.query ให้ถูกต้อง
    
-5. ⭐ `backend/src/__tests__/unit/services/adminSongsService.test.js` **ใหม่**
+9. ⭐ `backend/src/__tests__/unit/services/adminSongsService.test.js` **ใหม่**
    - Admin song approval (6 tests)
    - ครอบคลุม: approveSong, rejectSong, error handling
    - สร้างเมื่อ: 2025-11-12
@@ -422,7 +447,7 @@
 ---
 
 **อัปเดตล่าสุด**: 2025-11-12  
-**สถานะ**: 70% ของฟีเจอร์ยังไม่มี test coverage (เพิ่มขึ้นจาก 90% เป็น 70%)
+**สถานะ**: 65% ของฟีเจอร์ยังไม่มี test coverage (เพิ่มขึ้นจาก 90% เป็น 65%)
 
 ---
 
@@ -598,7 +623,7 @@
 - **Total Test Files**: 28 ไฟล์
 - **Existing Tests**: 16 ไฟล์
 - **New Tests**: 12 ไฟล์ (122 tests)
-- **Test Coverage**: 40% of features (improved from 10%)
+- **Test Coverage**: 35% of features (improved from 10%)
 - **Unit & Integration Tests**: 236/236 ผ่าน (100%) ✅
 - **E2E Tests**: 56/62 ผ่าน, 6 skipped (90%) ✅
 - **Services with 100% Coverage**: 🔥 **5 services** (YouTube, Share, Session, Translate, Rating)
