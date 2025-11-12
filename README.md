@@ -278,20 +278,29 @@ All release notes and documentation are available in the [`releases/`](./release
 
 ---
 
-## 🚢 CI/CD
+## 🚢 CI/CD & Deployment
 
-### GitHub Actions
-- Unit tests on push/PR
-- Integration tests with PostgreSQL service
-- E2E tests with Playwright
-- Linting and code quality checks
+### Pipeline Overview
 
-### Jenkins Pipeline
-- Build & lint (parallel)
-- Unit tests with coverage
-- Integration tests (main/develop/PR)
-- E2E tests (main/develop)
-- Deploy to Coolify (main → production, develop → development)
+**GitHub Actions** → **Jenkins** → **Coolify**
+
+- **GitHub Actions**: Fast CI checks (linting, tests)
+- **Jenkins**: Comprehensive build/test gate (prevents bad builds from reaching Coolify)
+- **Coolify**: Final deployment and hosting
+
+### Why This Architecture?
+✅ Coolify doesn't waste resources on failed builds  
+✅ Jenkins acts as quality gate  
+✅ Webhook-based deployment is fast
+
+### Infrastructure Requirements
+- **PostgreSQL** - Main database
+- **MinIO** - Object storage for images
+- **N8N** - AI translation & email workflows
+- **Ollama** - Local AI models (optional)
+- **Jenkins** - CI/CD automation
+
+👉 **[See complete deployment guide](./DEPLOYMENT.md)**
 
 ## 📝 Scripts
 
