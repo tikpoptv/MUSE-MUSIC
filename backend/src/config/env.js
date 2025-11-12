@@ -47,7 +47,11 @@ const config = {
     webhookUrl: process.env.EMAIL_N8N_WEBHOOK_URL
   },
   n8n: {
-    translateWebHook: process.env.TRANSLATE_WEBHOOK
+    translateWebHook: process.env.TRANSLATE_WEBHOOK,
+    translateTestWebHook: process.env.TRANSLATE_TEST_WEBHOOK,
+    apiKey: process.env.N8N_API_KEY || 'your-n8n-api-key-here',
+    workflowUrl: process.env.N8N_WORKFLOW_URL || 'https://n8n.example.com/api/v1/workflows/your-workflow-id-here',
+    workflowTestUrl: process.env.N8N_WORKFLOW_TEST_URL || process.env.N8N_WORKFLOW_URL || 'https://n8n.example.com/api/v1/workflows/your-workflow-id-here'
   },
   
   minio: {
