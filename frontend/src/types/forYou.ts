@@ -3,7 +3,7 @@ export interface ForYouTrackItem {
   title: string;
   artist: string;
   image: string;
-  href: string;
+  processingID?: string | null;
 }
 
 export interface MoodStats {

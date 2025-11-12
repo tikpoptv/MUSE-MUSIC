@@ -67,19 +67,55 @@ export default function ForYouPage() {
                   ? Array.from({ length: 4 }).map((_, idx) => (
                       <SkeletonCard key={`skeleton-recent-${idx}`} />
                     ))
-                  : data?.recentlySearched.map((item, idx) => (
+                  : data?.recentlySearched && data.recentlySearched.length > 0
+                  ? data.recentlySearched.map((item, idx) => (
                       <MusicCard
                         key={`recent-${idx}`}
                         image={item.image}
                         title={item.title}
                         artist={item.artist}
-                        href={item.href}
+                        href={`/song/${item.id}${item.processingID ? `?processingID=${item.processingID}` : ''}`}
                       />
-                    ))}
+                    ))
+                  : (
+                      <p className="text-sm text-gray-500 col-span-full">No recently searched songs</p>
+                    )}
               </div>
             </div>
           </div>
         </div>
+
+        {/* Top-Hits Section - Show recommendations instead */}
+        {data?.recommendations && data.recommendations.subsections && data.recommendations.subsections.length > 0 && (
+          <div className="mb-12">
+            <h2 className="text-[24px] font-bold text-black mb-6">Top-Hits.</h2>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-5">
+              {loading
+                ? Array.from({ length: 5 }).map((_, idx) => (
+                    <SkeletonCard key={`skeleton-top-${idx}`} />
+                  ))
+                : (() => {
+                    const allItems = data.recommendations.subsections
+                      .flatMap(subsection => subsection.items || [])
+                      .slice(0, 5);
+                    
+                    return allItems.length > 0
+                      ? allItems.map((item, idx) => (
+                          <MusicCard
+                            key={`top-${idx}`}
+                            image={item.image}
+                            title={item.title}
+                            artist={item.artist}
+                            href={`/song/${item.id}${item.processingID ? `?processingID=${item.processingID}` : ''}`}
+                          />
+                        ))
+                      : (
+                          <p className="text-sm text-gray-500 col-span-full">No recommendations available</p>
+                        );
+                  })()}
+            </div>
+          </div>
+        )}
 
         {/* Our Recommend For You Section */}
         {data?.recommendations && (
@@ -91,53 +127,38 @@ export default function ForYouPage() {
               {data.recommendations.description}
             </p>
 
-            {data.recommendations.subsections.map((subsection, subIdx) => (
-              <div key={`subsection-${subIdx}`} className={subIdx > 0 ? 'mt-10' : ''}>
-                <h3 className="text-[20px] font-bold text-black mb-4">
-                  {subsection.title}.
-                </h3>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-5">
-                  {loading
-                    ? Array.from({ length: 5 }).map((_, idx) => (
-                        <SkeletonCard key={`skeleton-${subsection.title}-${idx}`} />
-                      ))
-                    : subsection.items.map((item, idx) => (
-                        <MusicCard
-                          key={`${subsection.title}-${idx}`}
-                          image={item.image}
-                          title={item.title}
-                          artist={item.artist}
-                          href={item.href}
-                        />
-                      ))}
-                </div>
-              </div>
-            ))}
+            {data.recommendations.subsections && data.recommendations.subsections.length > 0
+              ? data.recommendations.subsections.map((subsection, subIdx) => (
+                  <div key={`subsection-${subIdx}`} className={subIdx > 0 ? 'mt-10' : ''}>
+                    <h3 className="text-[20px] font-bold text-black mb-4">
+                      {subsection.title}.
+                    </h3>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-5">
+                      {loading
+                        ? Array.from({ length: 5 }).map((_, idx) => (
+                            <SkeletonCard key={`skeleton-${subsection.title}-${idx}`} />
+                          ))
+                        : subsection.items && subsection.items.length > 0
+                        ? subsection.items.map((item, idx) => (
+                            <MusicCard
+                              key={`${subsection.title}-${idx}`}
+                              image={item.image}
+                              title={item.title}
+                              artist={item.artist}
+                              href={`/song/${item.id}${item.processingID ? `?processingID=${item.processingID}` : ''}`}
+                            />
+                          ))
+                        : (
+                            <p className="text-sm text-gray-500 col-span-full">No items in this section</p>
+                          )}
+                    </div>
+                  </div>
+                ))
+              : (
+                  <p className="text-sm text-gray-500">No recommendations available</p>
+                )}
           </div>
         )}
-
-        {/* Top-Hits Section */}
-        <div className="mb-12">
-          <h2 className="text-[24px] font-bold text-black mb-2">Top-Hits.</h2>
-          <p className="text-sm text-gray-600 mb-6 max-w-2xl">
-            Check out the hottest tracks everyone&apos;s vibing to right now! 🔥 Your next favorite song might be right here.
-          </p>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-5">
-            {loading
-              ? Array.from({ length: 5 }).map((_, idx) => (
-                  <SkeletonCard key={`skeleton-top-${idx}`} />
-                ))
-              : data?.topHits.map((item, idx) => (
-                  <MusicCard
-                    key={`top-${idx}`}
-                    image={item.image}
-                    title={item.title}
-                    artist={item.artist}
-                    href={item.href}
-                  />
-                ))}
-          </div>
-        </div>
       </section>
     </main>
   );
