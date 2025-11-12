@@ -770,3 +770,46 @@ CREATE TABLE Prompts (
 -- Trigger for Prompts updatedAt
 CREATE TRIGGER update_prompts_updated_at BEFORE UPDATE ON Prompts
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- =========================
+-- Table: SystemLogs (Application Logging)
+-- =========================
+CREATE TABLE SystemLogs (
+    logID UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    level VARCHAR(20) NOT NULL, -- 'info', 'error', 'warn', 'debug'
+    category VARCHAR(50), -- 'api', 'database', 'auth', 'admin', etc.
+    message TEXT NOT NULL,
+    details JSONB,
+    
+    -- Request Context
+    method VARCHAR(10),
+    path VARCHAR(500),
+    statusCode INT,
+    
+    -- User Context
+    userID UUID,
+    userRole VARCHAR(20),
+    
+    -- System Context
+    ipAddress INET,
+    userAgent TEXT,
+    requestID VARCHAR(100),
+    
+    -- Error Context
+    errorStack TEXT,
+    errorCode VARCHAR(50),
+    
+    -- Performance
+    duration INT,
+    
+    createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (userID) REFERENCES Users(userID) ON DELETE SET NULL,
+    CONSTRAINT check_level CHECK (level IN ('info', 'error', 'warn', 'debug'))
+);
+
+-- SystemLogs table indexes
+CREATE INDEX idx_logs_level ON SystemLogs(level);
+CREATE INDEX idx_logs_category ON SystemLogs(category);
+CREATE INDEX idx_logs_created ON SystemLogs(createdAt DESC);
+CREATE INDEX idx_logs_user ON SystemLogs(userID) WHERE userID IS NOT NULL;

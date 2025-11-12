@@ -1,5 +1,6 @@
 "use client"
 
+import { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -23,6 +24,9 @@ import {
   Bar,
   ResponsiveContainer,
 } from "recharts";
+import { adminAnalysisService } from "@/services/adminAnalysisService";
+import type { AdminAnalysisData, SubMoodDatum } from "@/types/adminAnalysis";
+import toast from "react-hot-toast";
 
 
 /* -------------------------
@@ -56,90 +60,6 @@ function ProgressWithKnob({
   );
 }
 
-/* -------------------------
-   Static mock data
-   ------------------------- */
-const moodStats = [
-  { label: "Happy", value: 1120 },
-  { label: "Sad", value: 870 },
-  { label: "Fear", value: 720 },
-  { label: "Anger", value: 520 },
-  { label: "Disgust", value: 260 },
-  { label: "Surprise", value: 185 },
-];
-
-const suggestions = [
-  {
-    date: "2025-09-12",
-    title: "Keep the slang concise",
-    description:
-      "Some phrases feel a bit off in tone and a little more accuracy in slang.",
-    rating: "4.5 / 5",
-  },
-  {
-    date: "2025-09-12",
-    title: "Refine the verse transitions",
-    description:
-      "Give a touch more detail on the bridge and make it flow into the last chorus.",
-    rating: "4.3 / 5",
-  },
-  {
-    date: "2025-09-12",
-    title: "Balance emotional cues",
-    description:
-      "Highlight the emotional arc a little clearer so listeners grasp the mood changes.",
-    rating: "4.5 / 5",
-  },
-];
-
-const FEEDBACK_COUNT = 24;
-const AVERAGE_RATING = 4.5;
-
-/* -------------------------
-   NEW: Sub‑mood bar chart data (matches screenshot)
-   ------------------------- */
-
-type Datum = { name: string; value: number };
-
-const subMoodData: Record<string, Datum[]> = {
-  Happy: [
-    { name: "Joyful", value: 95 },
-    { name: "Interested", value: 82 },
-    { name: "Proud", value: 60 },
-    { name: "Accepted", value: 48 },
-    { name: "Powerful", value: 40 },
-    { name: "Peaceful", value: 32 },
-    { name: "Intimate", value: 24 },
-    { name: "Optimistic", value: 12 },
-  ],
-  Anger: [
-    { name: "Hurt", value: 88 },
-    { name: "Threatened", value: 80 },
-    { name: "Hateful", value: 50 },
-    { name: "Mad", value: 36 },
-  ],
-  Sad: [
-    { name: "Bored", value: 92 },
-    { name: "Lonely", value: 68 },
-    { name: "Depressed", value: 40 },
-    { name: "Despair", value: 22 },
-  ],
-  Fear: [
-    { name: "Scared", value: 96 },
-    { name: "Anxious", value: 72 },
-  ],
-  Disgust: [
-    { name: "Disapproval", value: 92 },
-    { name: "Disappointed", value: 64 },
-    { name: "Awful", value: 52 },
-  ],
-  Surprise: [
-    { name: "Amazed", value: 92 },
-    { name: "Confused", value: 76 },
-    { name: "Startled", value: 56 },
-    { name: "Excited", value: 20 },
-  ],
-};
 
 const moodPalette: Record<string, string> = {
   Happy: "#facc15",
@@ -150,13 +70,31 @@ const moodPalette: Record<string, string> = {
   Surprise: "#fb923c",
 };
 
-function SubMoodCard({ title }: { title: keyof typeof subMoodData }) {
-  const data = subMoodData[title];
-  const color = moodPalette[title as string];
+function SubMoodCard({ 
+  title, 
+  data 
+}: { 
+  title: string;
+  data: SubMoodDatum[];
+}) {
+  const color = moodPalette[title as string] || "#7B61FF";
 
-  // make bars visually thicker and give more breathing room
-  // Responsive height: smaller on mobile, larger on desktop
-  const chartHeight = Math.max(200, data.length * 40); // scales height with rows, smaller base for mobile
+  if (!data || data.length === 0) {
+    return (
+      <Card className="rounded-lg border border-slate-200 bg-white p-0 shadow-sm">
+        <CardHeader className="px-3 sm:px-4 md:px-5 pb-0 pt-3 sm:pt-4 md:pt-5">
+          <CardTitle className="text-sm sm:text-base font-medium text-slate-800">
+            {title} sub-mood song
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="px-3 sm:px-4 md:px-5 pb-3 sm:pb-4 md:pb-5">
+          <p className="text-sm text-slate-500">No data available</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const chartHeight = Math.max(200, data.length * 40);
 
   return (
     <Card className="rounded-lg border border-slate-200 bg-white p-0 shadow-sm">
@@ -198,6 +136,151 @@ function SubMoodCard({ title }: { title: keyof typeof subMoodData }) {
 }
 
 export default function AdminAnalysis() {
+  const [analysisData, setAnalysisData] = useState<AdminAnalysisData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchAnalysisData = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        const [data] = await Promise.all([
+          adminAnalysisService.getAnalysisData(),
+          new Promise(resolve => setTimeout(resolve, 1000))
+        ]);
+        if (data) {
+          setAnalysisData(data);
+        } else {
+          setError("Failed to load analysis data");
+          toast.error("Failed to load analysis data");
+        }
+      } catch (err) {
+        setError("An error occurred while loading analysis data");
+        toast.error("An error occurred while loading analysis data");
+        // eslint-disable-next-line no-console
+        console.error("Error fetching analysis data:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchAnalysisData();
+  }, []);
+
+  const formatNumber = (num: number) => {
+    return new Intl.NumberFormat().format(num);
+  };
+
+  if (isLoading) {
+    return (
+      <AdminMenu>
+        <div className="space-y-4 sm:space-y-6">
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 bg-gray-200 rounded animate-pulse"></div>
+            <div className="h-6 w-32 bg-gray-200 rounded animate-pulse"></div>
+          </div>
+
+          <Card className="rounded-lg border border-slate-200 bg-gradient-to-r from-[#f1e8ff] via-[#f7f2ff] to-white p-0 shadow-md animate-pulse">
+            <CardHeader className="p-4 sm:p-6 pb-3 sm:pb-4">
+              <div className="flex items-start justify-between gap-4 sm:gap-6">
+                <div className="flex flex-col gap-1 sm:gap-2">
+                  <div className="h-4 w-24 bg-gray-200 rounded"></div>
+                  <div className="h-12 w-32 bg-gray-200 rounded"></div>
+                  <div className="h-4 w-20 bg-gray-200 rounded"></div>
+                </div>
+                <div className="h-10 w-10 sm:h-12 sm:w-12 md:h-14 md:w-14 bg-gray-200 rounded-md"></div>
+              </div>
+            </CardHeader>
+          </Card>
+
+          <div className="grid gap-3 sm:gap-4 md:gap-6 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <Card key={i} className="rounded-lg border border-slate-200 bg-white p-3 sm:p-4 md:p-6 shadow-sm animate-pulse">
+                <CardContent className="flex items-center gap-2 sm:gap-3 md:gap-4 p-0">
+                  <div className="h-8 w-8 sm:h-10 sm:w-10 md:h-12 md:w-12 bg-gray-200 rounded-md"></div>
+                  <div className="flex flex-col min-w-0 flex-1">
+                    <div className="h-4 w-16 bg-gray-200 rounded mb-2"></div>
+                    <div className="h-6 w-12 bg-gray-200 rounded"></div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          <Card className="rounded-lg border border-slate-200 bg-white p-0 shadow-md animate-pulse">
+            <CardHeader className="flex items-center gap-2 space-y-0 border-b py-3 sm:py-4 md:py-5 px-4 sm:px-6">
+              <div className="h-6 w-24 bg-gray-200 rounded"></div>
+            </CardHeader>
+            <CardContent className="px-4 sm:px-6 py-4 sm:py-6">
+              <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2">
+                <div className="rounded-md border border-slate-200 bg-white p-3 sm:p-4 shadow-sm">
+                  <div className="h-4 w-32 bg-gray-200 rounded mb-3"></div>
+                  <div className="h-2.5 w-full bg-gray-200 rounded mb-3"></div>
+                  <div className="h-8 w-24 bg-gray-200 rounded"></div>
+                </div>
+                <div className="rounded-md border border-slate-200 bg-white p-3 sm:p-4 shadow-sm">
+                  <div className="h-4 w-32 bg-gray-200 rounded mb-3"></div>
+                  <div className="h-2.5 w-full bg-gray-200 rounded mb-3"></div>
+                  <div className="h-8 w-24 bg-gray-200 rounded"></div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="rounded-lg border border-slate-200 bg-white p-0 shadow-md animate-pulse">
+            <CardHeader className="flex items-center justify-between gap-2 space-y-0 border-b py-3 sm:py-4 md:py-5 px-4 sm:px-6">
+              <div className="h-6 w-32 bg-gray-200 rounded"></div>
+              <div className="h-10 w-24 bg-gray-200 rounded-lg"></div>
+            </CardHeader>
+            <CardContent className="px-4 sm:px-6 py-4 sm:py-6">
+              <div className="flex items-center justify-center h-[200px]">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-violet-600 mx-auto mb-4"></div>
+                  <p className="text-gray-500 font-medium">Loading analysis data...</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <div className="grid gap-4 sm:gap-6 md:gap-8 grid-cols-1 md:grid-cols-2">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <Card key={i} className="rounded-lg border border-slate-200 bg-white p-0 shadow-sm animate-pulse">
+                <CardHeader className="px-3 sm:px-4 md:px-5 pb-0 pt-3 sm:pt-4 md:pt-5">
+                  <div className="h-5 w-40 bg-gray-200 rounded"></div>
+                </CardHeader>
+                <CardContent className="px-3 sm:px-4 md:px-5 pb-3 sm:pb-4 md:pb-5">
+                  <div className="h-[200px] bg-gray-200 rounded"></div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </AdminMenu>
+    );
+  }
+
+  if (error || !analysisData) {
+    return (
+      <AdminMenu>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="flex flex-col items-center gap-4">
+            <p className="text-sm text-red-600">{error || "Failed to load analysis data"}</p>
+            <Button
+              onClick={() => window.location.reload()}
+              variant="outline"
+              className="text-sm"
+            >
+              Retry
+            </Button>
+          </div>
+        </div>
+      </AdminMenu>
+    );
+  }
+
+  const mainMoods = ['Happy', 'Sad', 'Fear', 'Anger', 'Disgust', 'Surprise'];
+
   return (
     <AdminMenu>
       <div className="space-y-4 sm:space-y-6">
@@ -226,7 +309,7 @@ export default function AdminAnalysis() {
                   Total songs
                 </CardDescription>
                 <CardTitle className="text-3xl sm:text-4xl md:text-5xl font-semibold text-slate-900">
-                  3,675
+                  {formatNumber(analysisData.totalSongs)}
                 </CardTitle>
                 <p className="text-xs sm:text-sm font-medium text-slate-500">All moods</p>
               </div>
@@ -238,7 +321,7 @@ export default function AdminAnalysis() {
         </Card>
 
         <div className="grid gap-3 sm:gap-4 md:gap-6 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-          {moodStats.map((stat) => (
+          {analysisData.moodStats.map((stat) => (
             <Card
               key={stat.label}
               className="rounded-lg border border-slate-200 bg-white p-3 sm:p-4 md:p-6 shadow-sm"
@@ -252,7 +335,7 @@ export default function AdminAnalysis() {
                     {stat.label}
                   </span>
                   <span className="text-lg sm:text-xl md:text-2xl font-semibold text-slate-900">
-                    {stat.value}
+                    {formatNumber(stat.value)}
                   </span>
                 </div>
               </CardContent>
@@ -268,16 +351,16 @@ export default function AdminAnalysis() {
             <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2">
               <div className="rounded-md border border-slate-200 bg-white p-3 sm:p-4 shadow-sm">
                 <p className="text-xs sm:text-sm font-medium text-slate-800">Feedback User</p>
-                <ProgressWithKnob value={FEEDBACK_COUNT} max={100} className="mt-2 sm:mt-3" />
+                <ProgressWithKnob value={analysisData.feedbackCount} max={100} className="mt-2 sm:mt-3" />
                 <div className="mt-2 sm:mt-3 text-2xl sm:text-3xl font-semibold text-pink-600">
-                  {FEEDBACK_COUNT}
+                  {formatNumber(analysisData.feedbackCount)}
                 </div>
               </div>
               <div className="rounded-md border border-slate-200 bg-white p-3 sm:p-4 shadow-sm">
                 <p className="text-xs sm:text-sm font-medium text-slate-800">Rating (average)</p>
-                <ProgressWithKnob value={AVERAGE_RATING} max={5} className="mt-2 sm:mt-3" />
+                <ProgressWithKnob value={analysisData.averageRating} max={5} className="mt-2 sm:mt-3" />
                 <div className="mt-2 sm:mt-3 text-2xl sm:text-3xl font-semibold text-pink-600">
-                  {AVERAGE_RATING} / 5
+                  {analysisData.averageRating.toFixed(1)} / 5
                 </div>
               </div>
             </div>
@@ -296,52 +379,45 @@ export default function AdminAnalysis() {
           </CardHeader>
 
           <CardContent className="px-4 sm:px-6 py-4 sm:py-6">
-            <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-[repeat(auto-fit,minmax(260px,1fr))]">
-              {suggestions.map((item) => {
-                const ratingNumber =
-                  typeof item.rating === "string"
-                    ? parseFloat(item.rating)
-                    : (item.rating as unknown as number);
-
-                return (
+            {analysisData.suggestions.length === 0 ? (
+              <p className="text-sm text-slate-500 text-center py-8">No suggestions available</p>
+            ) : (
+              <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-[repeat(auto-fit,minmax(260px,1fr))]">
+                {analysisData.suggestions.map((item) => (
                   <div
-                    key={`${item.date}-${item.title}`}
+                    key={item.id}
                     className="rounded-md border border-slate-200 bg-white p-4 sm:p-5 shadow-sm"
                   >
                     <div className="flex items-center gap-2 text-xs sm:text-sm text-slate-500">
                       <CalendarDays className="h-3 w-3 sm:h-4 sm:w-4 text-violet-500 flex-shrink-0" />
-                      <span className="font-medium">{item.date}</span>
+                      <span className="font-medium">{item.date || "N/A"}</span>
                     </div>
                     <h3 className="mt-2 sm:mt-3 text-sm sm:text-base font-semibold text-slate-900">
-                      {item.title}
+                      {item.songName}
                     </h3>
                     <p className="mt-2 text-xs sm:text-sm leading-5 sm:leading-6 text-slate-600">
-                      {item.description}
+                      {item.comment}
                     </p>
-                    <ProgressWithKnob value={ratingNumber} max={5} className="mt-2 sm:mt-3" />
+                    <ProgressWithKnob value={item.rating} max={5} className="mt-2 sm:mt-3" />
                     <div className="mt-2 sm:mt-3 flex items-center gap-1 text-lg sm:text-xl font-semibold text-pink-600">
                       <Star className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
-                      <span>
-                        {typeof item.rating === "string"
-                          ? item.rating
-                          : `${ratingNumber} / 5`}
-                      </span>
+                      <span>{item.rating.toFixed(1)} / 5</span>
                     </div>
                   </div>
-                );
-              })}
-            </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
 
-        {/* SECTION: Sub‑mood charts (2 per line) */}
         <div className="grid gap-4 sm:gap-6 md:gap-8 grid-cols-1 md:grid-cols-2">
-          <SubMoodCard title="Happy" />
-          <SubMoodCard title="Anger" />
-          <SubMoodCard title="Sad" />
-          <SubMoodCard title="Fear" />
-          <SubMoodCard title="Disgust" />
-          <SubMoodCard title="Surprise" />
+          {mainMoods.map((mood) => (
+            <SubMoodCard
+              key={mood}
+              title={mood}
+              data={analysisData.subMoodData[mood] || []}
+            />
+          ))}
         </div>
       </div>
     </AdminMenu>

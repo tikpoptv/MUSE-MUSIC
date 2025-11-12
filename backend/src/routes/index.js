@@ -20,6 +20,8 @@ const shareRoutes = require('./share');
 const dashboardRoutes = require('./dashboard');
 const adminManageRoutes = require('./adminManage');
 const adminSongsRoutes = require('./adminSongs');
+const adminAnalysisRoutes = require('./adminAnalysis');
+const adminLogsRoutes = require('./adminLogs');
 
 router.get('/', (req, res) => {
   res.json({
@@ -52,5 +54,7 @@ router.use('/api/share', shareRoutes);
 router.use('/api/dashboard', dashboardRoutes);
 router.use('/api/admin/manage', adminManageRoutes);
 router.use('/api/admin/songs', adminSongsRoutes);
+router.use('/api/admin/analysis', adminAnalysisRoutes);
+router.use('/api/admin/logs', adminLogsRoutes);
 
 module.exports = router;

@@ -1,4 +1,3 @@
-const { logger } = require('../middleware/logger');
 
 const config = {
   server: {
@@ -67,6 +66,8 @@ const config = {
 };
 
 const validateConfig = () => {
+  const { logger } = require('../middleware/logger');
+  
   const required = [
     'DB_HOST',
     'DB_NAME', 
