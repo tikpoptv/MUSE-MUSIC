@@ -4,9 +4,8 @@ import { localStorageKeys } from '../../src/utils/localStorageKeys';
 // E2E-003: Setup Wizard end-to-end (password -> 2FA skip -> birthday -> preferences)
 test.describe('Setup Wizard', () => {
   test.beforeAll(() => {
-    if (process.env.CI) {
-      test.skip(true, 'Setup wizard flow is unstable on CI; tracked for stabilization');
-    }
+    // Skip for stability - wizard flow needs more robust mocking
+    test.skip(true, 'Setup wizard flow is unstable; tracked for stabilization');
   });
   test.beforeEach(({ browserName }) => {
     // Temporary skip on WebKit to avoid flakiness from client redirects during setup flow

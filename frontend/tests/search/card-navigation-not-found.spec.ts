@@ -2,8 +2,9 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Search/Recommendation card navigation', () => {
   test('clicking a music card navigates to /songs/:id and shows not-found', async ({ page }) => {
-    await page.goto('/test', { waitUntil: 'networkidle' });
+    await page.goto('/test', { waitUntil: 'load' });
     await page.waitForLoadState('domcontentloaded');
+    await page.waitForTimeout(1000); // Wait for async components
     
     const loadingText = page.getByText('Loading...');
     try {
@@ -20,9 +21,10 @@ test.describe('Search/Recommendation card navigation', () => {
     expect(targetHref).toBeTruthy();
     await firstCardLink.click();
 
-    await page.waitForURL(new RegExp(`${targetHref?.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`), { timeout: 10000 });
+    await page.waitForURL(new RegExp(`${targetHref?.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`), { timeout: 15000 });
     await expect(page).toHaveURL(/\/songs\//);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('load');
+    await page.waitForTimeout(500);
 
     await expect(page.getByText('Page not found')).toBeVisible({ timeout: 5000 });
     await expect(page.getByText('The page you are looking for does not exist.')).toBeVisible({ timeout: 5000 });

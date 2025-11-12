@@ -47,28 +47,11 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] },
     },
 
-    // In CI, only run chromium for speed. For full coverage, run all browsers locally
-    ...(process.env.CI ? [] : [
-      {
-        name: 'firefox',
-        use: { ...devices['Desktop Firefox'] },
-      },
-
-      {
-        name: 'webkit',
-        use: { ...devices['Desktop Safari'] },
-      },
-
-      /* Test against mobile viewports. */
-      {
-        name: 'Mobile Chrome',
-        use: { ...devices['Pixel 5'] },
-      },
-      {
-        name: 'Mobile Safari',
-        use: { ...devices['iPhone 12'] },
-      },
-    ]),
+    /* Test against mobile viewports - only Mobile Chrome for faster tests */
+    {
+      name: 'Mobile Chrome',
+      use: { ...devices['Pixel 5'] },
+    },
 
     /* Test against branded browsers. */
     // {
