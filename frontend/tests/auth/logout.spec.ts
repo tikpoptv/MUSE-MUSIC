@@ -45,8 +45,8 @@ test.describe('Logout flow', () => {
       localStorage.setItem(data.keys.TOKENS_DATA, JSON.stringify(data.tokens));
     }, { user, tokens, keys: localStorageKeys });
 
-    await page.goto('/account', { waitUntil: 'domcontentloaded' });
-    await expect(page).toHaveURL(/\/account$/);
+    await page.goto('/archive', { waitUntil: 'domcontentloaded' });
+    await expect(page).toHaveURL(/\/archive$/);
 
     const logoutBtn = page.getByRole('button', { name: /logout/i });
     await expect(logoutBtn).toBeVisible({ timeout: 15000 });

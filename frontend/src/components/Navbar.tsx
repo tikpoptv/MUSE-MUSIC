@@ -63,7 +63,7 @@ export default function Navbar() {
   }, []);
 
   const handleProfileClick = () => {
-    router.push('/account');
+    router.push('/account/settings');
   };
 
 

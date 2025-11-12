@@ -41,9 +41,9 @@ test.describe('Login (mocked) and account access', () => {
       localStorage.setItem(data.keys.TOKENS_DATA, JSON.stringify(data.tokens));
     }, { user, tokens, keys: localStorageKeys });
 
-    await page.goto('/account', { waitUntil: 'domcontentloaded' });
+    await page.goto('/archive', { waitUntil: 'domcontentloaded' });
 
-    await expect(page).toHaveURL(/\/account$/);
+    await expect(page).toHaveURL(/\/archive$/);
     await expect(page.getByText(/Profile/i)).toBeVisible({ timeout: 15000 });
     await expect(page.getByRole('heading', { name: /favourite/i })).toBeVisible();
   });
