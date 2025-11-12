@@ -108,18 +108,10 @@ export default function AdminDashboard() {
         }
         return dashboardData.songsByMood
             .filter(item => item && item.songs > 0)
-            .map(item => {
-                let mood = 'Unknown';
-                if (typeof item.mood === 'string') {
-                    mood = item.mood;
-                } else if (typeof item.mood === 'object' && item.mood !== null && 'type' in item.mood) {
-                    mood = (item.mood as { type: string; percentage: number }).type;
-                }
-                return {
-                    mood: mood || 'Unknown',
-                    songs: item.songs || 0
-                };
-            });
+            .map(item => ({
+                mood: item.mood || 'Unknown',
+                songs: item.songs || 0
+            }));
     }, [dashboardData])
 
     const chartConfigBar = React.useMemo(() => {
@@ -223,9 +215,9 @@ export default function AdminDashboard() {
                 />
                 <BigStatCard 
                     stat_icon={<SearchCheck className="w-6 h-6" />} 
-                    stat_name="Have to Approve" 
+                    stat_name="Pending Approval" 
                     stat_value={dashboardData?.stats.pendingApproval || 0} 
-                    stat_description="Processing" 
+                    stat_description="Processing records" 
                 />
                 <BigStatCard 
                     stat_icon={<Activity className="w-6 h-6" />} 

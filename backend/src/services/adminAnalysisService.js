@@ -62,25 +62,20 @@ class AdminAnalysisService {
         INNER JOIN songaiprocessing p ON s.songid = p.songid
         WHERE s.isactive = TRUE
           AND p.status = 'completed'
-          AND p.sharestatus = 'public_approved'
-          AND p.approvalstatus = 'approved'
           AND p.moodtype IS NOT NULL
           AND p.moodtype != ''
       `;
 
       const moodStatsQuery = `
-        SELECT 
-          p.moodtype,
-          COUNT(*) as count
+        SELECT DISTINCT
+          p.processingid,
+          p.moodtype
         FROM songaiprocessing p
         INNER JOIN songs s ON p.songid = s.songid
         WHERE p.moodtype IS NOT NULL 
           AND p.moodtype != ''
           AND p.status = 'completed'
           AND s.isactive = TRUE
-          AND p.sharestatus = 'public_approved'
-          AND p.approvalstatus = 'approved'
-        GROUP BY p.moodtype
       `;
 
       const ratingStatsQuery = `
@@ -92,8 +87,6 @@ class AdminAnalysisService {
         INNER JOIN songs s ON p.songid = s.songid
         WHERE s.isactive = TRUE
           AND p.status = 'completed'
-          AND p.sharestatus = 'public_approved'
-          AND p.approvalstatus = 'approved'
       `;
 
       const suggestionsQuery = `
@@ -110,8 +103,6 @@ class AdminAnalysisService {
         INNER JOIN songs s ON p.songid = s.songid
         WHERE s.isactive = TRUE
           AND p.status = 'completed'
-          AND p.sharestatus = 'public_approved'
-          AND p.approvalstatus = 'approved'
           AND (r.comment IS NOT NULL AND r.comment != '' OR r.feedback IS NOT NULL AND r.feedback != '')
         ORDER BY r.createdat DESC
         LIMIT 10
@@ -155,59 +146,56 @@ class AdminAnalysisService {
         
         try {
           const moods = JSON.parse(row.moodtype);
+          
           if (Array.isArray(moods) && moods.length > 0) {
-            const firstMood = moods[0];
-            let primaryMood = 'Unknown';
-            
-            if (typeof firstMood === 'object' && firstMood !== null && firstMood.type) {
-              primaryMood = firstMood.type;
-            } else if (typeof firstMood === 'string') {
-              primaryMood = firstMood;
-            }
-            
-            const normalized = normalizeMainMood(primaryMood);
-            if (normalized) {
-              let targetCategory = normalized;
-              if (!mainMoodCategories.includes(normalized)) {
-                targetCategory = moodCategoryMapping[normalized.toLowerCase()] || 'Happy';
+            moods.forEach(moodItem => {
+              let moodRaw = null;
+              
+              if (typeof moodItem === 'object' && moodItem !== null && moodItem.type) {
+                moodRaw = moodItem.type;
+              } else if (typeof moodItem === 'string') {
+                moodRaw = moodItem;
               }
-              const count = parseInt(row.count);
-              moodMap.set(targetCategory, moodMap.get(targetCategory) + count);
-            }
+              
+              if (moodRaw) {
+                const normalized = normalizeMainMood(moodRaw);
+                if (normalized) {
+                  let targetCategory = normalized;
+                  if (!mainMoodCategories.includes(normalized)) {
+                    targetCategory = moodCategoryMapping[normalized.toLowerCase()] || 'Happy';
+                  }
+                  moodMap.set(targetCategory, moodMap.get(targetCategory) + 1);
+                }
+              }
+            });
           } else if (typeof moods === 'object' && moods !== null && moods.type) {
-            const primaryMood = moods.type;
-            const normalized = normalizeMainMood(primaryMood);
+            const normalized = normalizeMainMood(moods.type);
             if (normalized) {
               let targetCategory = normalized;
               if (!mainMoodCategories.includes(normalized)) {
                 targetCategory = moodCategoryMapping[normalized.toLowerCase()] || 'Happy';
               }
-              const count = parseInt(row.count);
-              moodMap.set(targetCategory, moodMap.get(targetCategory) + count);
+              moodMap.set(targetCategory, moodMap.get(targetCategory) + 1);
             }
           } else if (typeof moods === 'string') {
-            const primaryMood = moods;
-            const normalized = normalizeMainMood(primaryMood);
+            const normalized = normalizeMainMood(moods);
             if (normalized) {
               let targetCategory = normalized;
               if (!mainMoodCategories.includes(normalized)) {
                 targetCategory = moodCategoryMapping[normalized.toLowerCase()] || 'Happy';
               }
-              const count = parseInt(row.count);
-              moodMap.set(targetCategory, moodMap.get(targetCategory) + count);
+              moodMap.set(targetCategory, moodMap.get(targetCategory) + 1);
             }
           }
         } catch {
           if (typeof row.moodtype === 'string') {
-            const primaryMood = row.moodtype;
-            const normalized = normalizeMainMood(primaryMood);
+            const normalized = normalizeMainMood(row.moodtype);
             if (normalized) {
               let targetCategory = normalized;
               if (!mainMoodCategories.includes(normalized)) {
                 targetCategory = moodCategoryMapping[normalized.toLowerCase()] || 'Happy';
               }
-              const count = parseInt(row.count);
-              moodMap.set(targetCategory, moodMap.get(targetCategory) + count);
+              moodMap.set(targetCategory, moodMap.get(targetCategory) + 1);
             }
           }
         }
@@ -253,7 +241,8 @@ class AdminAnalysisService {
   static async getSubMoodData(client) {
     try {
       const query = `
-        SELECT 
+        SELECT DISTINCT
+          p.processingid,
           p.moodtype
         FROM songaiprocessing p
         INNER JOIN songs s ON p.songid = s.songid
@@ -261,8 +250,6 @@ class AdminAnalysisService {
           AND p.moodtype != ''
           AND p.status = 'completed'
           AND s.isactive = TRUE
-          AND p.sharestatus = 'public_approved'
-          AND p.approvalstatus = 'approved'
       `;
 
       const result = await client.query(query);

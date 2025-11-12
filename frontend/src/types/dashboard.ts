@@ -11,7 +11,7 @@ export interface TrafficData {
 }
 
 export interface SongsByMood {
-  mood: string | { type: string; percentage: number };
+  mood: string;
   songs: number;
 }
 

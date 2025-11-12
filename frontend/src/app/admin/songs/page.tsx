@@ -609,12 +609,12 @@ export default function Page() {
                         <div className="flex items-start justify-between gap-4 sm:gap-6">
                             <div className="flex flex-col gap-1 sm:gap-2">
                                 <CardDescription className="text-xs sm:text-sm font-semibold uppercase tracking-widest text-violet-500">
-                                    Have to approve
+                                    Pending Approval
                                 </CardDescription>
                                 <CardTitle className="text-3xl sm:text-4xl md:text-5xl font-semibold text-slate-900">
                                     {pendingCount}
                                 </CardTitle>
-                                <p className="text-xs sm:text-sm font-medium text-slate-500">songs</p>
+                                <p className="text-xs sm:text-sm font-medium text-slate-500">processing records</p>
                     </div>
                             <div className="h-10 w-10 sm:h-12 sm:w-12 md:h-14 md:w-14 flex items-center justify-center rounded-md bg-white shadow-inner flex-shrink-0">
                                 <Music className="h-5 w-5 sm:h-6 sm:w-6 md:h-8 md:w-8 text-violet-500" />
@@ -833,7 +833,7 @@ export default function Page() {
                     {totalPages > 1 && (
                         <div className="mt-4 pt-4 border-t border-slate-200 flex items-center justify-between">
                             <div className="text-sm text-slate-600">
-                                Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, totalSongs)} of {totalSongs} songs
+                                Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, totalSongs)} of {totalSongs} processing records
                             </div>
                             <div className="flex items-center gap-2">
                                 <button
