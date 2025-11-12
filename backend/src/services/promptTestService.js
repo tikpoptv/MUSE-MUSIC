@@ -146,6 +146,29 @@ class PromptTestService {
   }
 
   /**
+   * Helper function to create fetch with timeout
+   */
+  static async fetchWithTimeout(url, options, timeoutMs = 300000) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    
+    try {
+      const response = await fetch(url, {
+        ...options,
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+      return response;
+    } catch (error) {
+      clearTimeout(timeoutId);
+      if (error.name === 'AbortError') {
+        throw new Error(`Request timeout after ${timeoutMs}ms`);
+      }
+      throw error;
+    }
+  }
+
+  /**
    * Get prompt from n8n workflow
    */
   static async getWorkflowPrompt() {
@@ -153,13 +176,13 @@ class PromptTestService {
       const workflowUrl = config.n8n.workflowUrl;
       const apiKey = config.n8n.apiKey;
 
-      const response = await fetch(workflowUrl, {
+      const response = await this.fetchWithTimeout(workflowUrl, {
         method: 'GET',
         headers: {
           'X-N8N-API-KEY': apiKey,
           'Content-Type': 'application/json'
         }
-      });
+      }, 300000); // 5 minutes timeout
 
       if (!response.ok) {
         throw new Error(`Failed to get workflow: ${response.status} ${response.statusText}`);
@@ -202,13 +225,13 @@ class PromptTestService {
       }
 
       // Get current workflow
-      const getResponse = await fetch(workflowUrl, {
+      const getResponse = await this.fetchWithTimeout(workflowUrl, {
         method: 'GET',
         headers: {
           'X-N8N-API-KEY': apiKey,
           'Content-Type': 'application/json'
         }
-      });
+      }, 300000); // 5 minutes timeout
 
       if (!getResponse.ok) {
         throw new Error(`Failed to get workflow: ${getResponse.status}`);
@@ -243,14 +266,14 @@ class PromptTestService {
       };
 
       // Update workflow
-      const putResponse = await fetch(workflowUrl, {
+      const putResponse = await this.fetchWithTimeout(workflowUrl, {
         method: 'PUT',
         headers: {
           'X-N8N-API-KEY': apiKey,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify(updateData)
-      });
+      }, 300000); // 5 minutes timeout
 
       if (!putResponse.ok) {
         const errorText = await putResponse.text();
@@ -318,13 +341,13 @@ class PromptTestService {
         throw new Error('TRANSLATE_TEST_WEBHOOK not configured');
       }
 
-      const response = await fetch(testWebhook, {
+      const response = await this.fetchWithTimeout(testWebhook, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify(testInput)
-      });
+      }, 300000); // 5 minutes timeout
 
       if (!response.ok) {
         throw new Error(`Test analysis failed: ${response.status} ${response.statusText}`);

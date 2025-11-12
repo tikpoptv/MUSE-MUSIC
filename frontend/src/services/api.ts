@@ -31,7 +31,8 @@ class ApiService {
 
   private async request<T>(
     endpoint: string,
-    options: RequestInit = {}
+    options: RequestInit = {},
+    timeout?: number
   ): Promise<ApiResponse<T>> {
     const url = `${this.baseURL}${endpoint}`;
     
@@ -48,7 +49,19 @@ class ApiService {
     };
 
     try {
+      // Create abort controller for timeout
+      const controller = timeout ? new AbortController() : null;
+      const timeoutId = timeout ? setTimeout(() => controller?.abort(), timeout) : null;
+      
+      if (controller) {
+        config.signal = controller.signal;
+      }
+
       const response = await fetch(url, config);
+      
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
       const data = await response.json();
 
       if (response.status === 401 && this.hasAuthToken() && endpoint !== '/api/auth/refresh') {
@@ -68,8 +81,20 @@ class ApiService {
             },
           };
           
+          // Create abort controller for timeout on retry
+          const retryController = timeout ? new AbortController() : null;
+          const retryTimeoutId = timeout ? setTimeout(() => retryController?.abort(), timeout) : null;
+          
+          if (retryController) {
+            retryConfig.signal = retryController.signal;
+          }
+          
           const retryResponse = await fetch(url, retryConfig);
           const retryData = await retryResponse.json();
+          
+          if (retryTimeoutId) {
+            clearTimeout(retryTimeoutId);
+          }
           
           if (!retryResponse.ok) {
             return {
@@ -113,6 +138,13 @@ class ApiService {
         data,
       };
     } catch (error) {
+      // Handle timeout errors
+      if (error instanceof Error && error.name === 'AbortError') {
+        return {
+          success: false,
+          error: 'Request timeout - the request took too long to complete',
+        };
+      }
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Network error',
@@ -130,7 +162,8 @@ class ApiService {
   async post<T>(
     endpoint: string,
     data?: unknown,
-    headers?: HeadersInit
+    headers?: HeadersInit,
+    timeout?: number
   ): Promise<ApiResponse<T>> {
     // Check if data is FormData - if so, don't stringify and let browser set Content-Type
     const isFormData = data instanceof FormData;
@@ -167,7 +200,7 @@ class ApiService {
       method: 'POST',
       body: data ? (isFormData ? data : JSON.stringify(data)) : undefined,
       headers: requestHeaders,
-    });
+    }, timeout);
   }
 
   async put<T>(
