@@ -20,17 +20,11 @@ Complete deployment guide for MUSE Music project including CI/CD pipeline, infra
 ### Pipeline Architecture
 
 ```mermaid
-graph TD
-    A[👨‍💻 Developer<br/>Push Code] --> B[📦 GitHub Repository<br/>main, develop, feature branches]
-    B --> C[⚡ GitHub Actions<br/>CI Check]
-    B --> D[🔧 Jenkins Pipeline<br/>Main CI/CD]
-    D --> E[🚀 Coolify<br/>Deployment]
-    
-    style A fill:#e1f5ff
-    style B fill:#fff4e1
-    style C fill:#e8f5e9
-    style D fill:#f3e5f5
-    style E fill:#fce4ec
+graph LR
+    A[Developer Push] --> B[GitHub Repository]
+    B --> C[GitHub Actions<br/>Quick CI]
+    B --> D[Jenkins<br/>Full CI/CD]
+    D --> E[Coolify<br/>Deploy]
 ```
 
 ### Why This Architecture?
@@ -53,35 +47,26 @@ graph TD
 
 ```mermaid
 graph TB
-    subgraph "External Services"
-        PG[(🗄️ PostgreSQL<br/>Database)]
-        MINIO[📦 MinIO<br/>Object Storage]
-        N8N[🔄 N8N<br/>Workflows]
-        OLLAMA[🧠 Ollama<br/>AI Models]
+    subgraph External["External Services"]
+        PG[(PostgreSQL)]
+        MINIO[MinIO Storage]
+        N8N[N8N Workflows]
+        OLLAMA[Ollama AI]
     end
     
-    subgraph "CI/CD Layer"
-        GITHUB[📦 GitHub]
-        ACTIONS[⚡ GitHub Actions]
-        JENKINS[🔧 Jenkins]
+    subgraph CICD["CI/CD"]
+        GITHUB[GitHub]
+        JENKINS[Jenkins]
     end
     
-    subgraph "Deployment Platform"
-        COOLIFY[🚀 Coolify]
+    subgraph App["Application"]
+        FRONTEND[Frontend<br/>Next.js]
+        BACKEND[Backend<br/>Node.js]
     end
     
-    subgraph "Application Layer"
-        FRONTEND[🎨 Frontend<br/>Next.js 15]
-        BACKEND[⚙️ Backend<br/>Node.js + Express]
-    end
-    
-    subgraph "End Users"
-        USERS[👥 Users]
-    end
-    
-    GITHUB --> ACTIONS
+    USERS[Users] --> FRONTEND
     GITHUB --> JENKINS
-    JENKINS -->|Webhook| COOLIFY
+    JENKINS --> COOLIFY[Coolify]
     COOLIFY --> FRONTEND
     COOLIFY --> BACKEND
     
@@ -90,17 +75,6 @@ graph TB
     BACKEND --> MINIO
     BACKEND --> N8N
     N8N --> OLLAMA
-    
-    USERS --> FRONTEND
-    
-    style PG fill:#4db6ac
-    style MINIO fill:#ffb74d
-    style N8N fill:#9575cd
-    style OLLAMA fill:#f06292
-    style COOLIFY fill:#4fc3f7
-    style FRONTEND fill:#81c784
-    style BACKEND fill:#64b5f6
-    style USERS fill:#fff176
 ```
 
 ### Required Services (External to Docker Compose)
@@ -233,27 +207,16 @@ Configuration:
 
 ```mermaid
 graph LR
-    A[👥 User Request] --> B[🎨 Frontend<br/>Next.js]
-    B --> C[⚙️ Backend API<br/>Express]
-    
-    C --> D[🗄️ PostgreSQL<br/>User data, songs<br/>playlists, history]
-    C --> E[📦 MinIO<br/>Images, audio<br/>cover art]
-    C --> F[🔄 N8N Webhook<br/>Translation<br/>Email]
-    
-    F --> G[🧠 Ollama<br/>gpt-oss:120b<br/>AI Translation]
-    G --> F
-    F --> C
-    
-    C --> B
-    B --> A
-    
-    style A fill:#fff176
-    style B fill:#81c784
-    style C fill:#64b5f6
-    style D fill:#4db6ac
-    style E fill:#ffb74d
-    style F fill:#9575cd
-    style G fill:#f06292
+    User --> Frontend
+    Frontend --> Backend
+    Backend --> PostgreSQL
+    Backend --> MinIO
+    Backend --> N8N
+    N8N --> Ollama
+    Ollama --> N8N
+    N8N --> Backend
+    Backend --> Frontend
+    Frontend --> User
 ```
 
 ---
@@ -264,67 +227,33 @@ graph LR
 
 ```mermaid
 flowchart TD
-    A[1️⃣ Developer pushes to GitHub<br/>main/develop branch] --> B[2️⃣ GitHub Actions<br/>Fast CI Check]
+    A[1. Developer Push] --> B[2. GitHub Actions]
+    B --> B1[Lint + Tests]
+    B1 --> C[3. Jenkins Pipeline]
     
-    B --> B1[ESLint Linting]
-    B --> B2[Jest Unit Tests]
-    B --> B3[TypeScript Check]
-    B1 --> B4[⏱️ Duration: 3-5 min]
-    B2 --> B4
-    B3 --> B4
+    C --> C1[Checkout]
+    C1 --> C2[Build & Lint]
+    C2 --> C3[Unit Tests<br/>60+133 tests]
+    C3 --> C4[Integration Tests<br/>43 tests]
+    C4 --> C5[E2E Tests<br/>56 tests]
     
-    B4 --> C[3️⃣ Jenkins Pipeline<br/>Comprehensive CI/CD]
-    
-    C --> C1[Stage 1: Checkout]
-    C1 --> C2[Stage 2: Build & Lint Parallel]
-    C2 --> C2F[Frontend: npm install, lint]
-    C2 --> C2B[Backend: npm install, lint]
-    
-    C2F --> C3[Stage 3: Unit Tests Parallel]
-    C2B --> C3
-    C3 --> C3F[Frontend: 60 tests ~3.4s]
-    C3 --> C3B[Backend: 133 tests ~2.0s]
-    
-    C3F --> C4[Stage 4: Integration Tests]
-    C3B --> C4
-    C4 --> C4F[Frontend: 43 tests ~2.7s]
-    C4 --> C4B[Backend: with PostgreSQL]
-    
-    C4F --> C5[Stage 5: E2E Tests]
-    C4B --> C5
-    C5 --> C5P[Playwright: 56/62 tests<br/>~1.8 min]
-    
-    C5P --> C6[⏱️ Total: 10-15 min]
-    
-    C6 --> D{4️⃣ Quality Gate Check}
-    D -->|❌ Fail| D1[STOP<br/>Notify Team]
-    D -->|✅ Pass| E[5️⃣ Jenkins → Coolify Webhook]
+    C5 --> D{Quality Gate}
+    D -->|Fail| D1[STOP]
+    D -->|Pass| E[4. Trigger Coolify]
     
     E --> E1{Branch?}
-    E1 -->|main| E2[Production Instance]
-    E1 -->|develop| E3[Development Instance]
+    E1 -->|main| E2[Production]
+    E1 -->|develop| E3[Development]
     
-    E2 --> F[6️⃣ Coolify Deployment]
+    E2 --> F[5. Coolify Deploy]
     E3 --> F
     
-    F --> F1[Pull latest code]
-    F1 --> F2[Build Docker images]
-    F2 --> F3[Run migrations]
-    F3 --> F4[Deploy containers<br/>zero-downtime]
-    F4 --> F5[Update env vars]
-    F5 --> F6[Health check]
-    F6 --> F7[⏱️ Duration: 5-10 min]
-    
-    F7 --> G[7️⃣ Post-Deployment]
-    G --> G1[Health checks pass ✅]
-    G --> G2[Services running ✅]
-    G --> G3[Logs monitored ✅]
-    G --> G4[Notify team ✅]
-    
-    style A fill:#e3f2fd
-    style D fill:#fff9c4
-    style D1 fill:#ffcdd2
-    style G fill:#c8e6c9
+    F --> F1[Pull Code]
+    F1 --> F2[Build Images]
+    F2 --> F3[Migrate DB]
+    F3 --> F4[Deploy]
+    F4 --> F5[Health Check]
+    F5 --> G[6. Done]
 ```
 
 ### Jenkinsfile Configuration
@@ -548,46 +477,21 @@ npm run migrate:prod         # Run migrations in production
 #### Workflow Diagram
 
 ```mermaid
-flowchart TD
-    A[🎣 Webhook Trigger<br/>POST /webhook/translator] --> A1[📥 Input JSON]
+flowchart LR
+    A[Webhook Input] --> B[AI Agent]
+    C[Ollama gpt-oss:120b] -.-> B
+    D[OpenRouter API] -.-> B
     
-    A1 --> A2[language1: Thai<br/>language2: English<br/>lyrics: ...<br/>moodEnabled: true<br/>moodTopK: 4]
+    B --> E[Processing]
+    E --> F[Translation]
+    E --> G[Interpretation]
+    E --> H[Mood Analysis]
     
-    A2 --> B[🤖 AI Agent<br/>Translation Engine]
+    F --> I[Parser]
+    G --> I
+    H --> I
     
-    C[🧠 Ollama Chat Model<br/>gpt-oss:120b] -.->|Language Model| B
-    D[🌐 OpenRouter API<br/>Alternative] -.->|Or| B
-    
-    B --> B1[📝 Processing]
-    B1 --> B2[Line-by-line translation]
-    B1 --> B3[Emotional interpretation]
-    B1 --> B4[Mood analysis if enabled]
-    
-    B2 --> E[📤 AI Output]
-    B3 --> E
-    B4 --> E
-    
-    E --> E1[Original line<br/>Translated line<br/>...<br/>**Interpretation:** ...<br/>MoodAnalyze:<br/>1 45%<br/>15 30%<br/>10 25%]
-    
-    E1 --> F[⚙️ Code in JavaScript<br/>Output Parser]
-    
-    F --> F1[Split into sections]
-    F1 --> F2[1. Translation text]
-    F1 --> F3[2. Interpretation]
-    F1 --> F4[3. Mood scores]
-    
-    F2 --> G[✅ Response JSON]
-    F3 --> G
-    F4 --> G
-    
-    G --> G1[translation: ...<br/>interpretation: ...<br/>moodAnalyze: ...]
-    
-    style A fill:#e1f5ff
-    style B fill:#f3e5f5
-    style C fill:#fff9c4
-    style D fill:#fff9c4
-    style F fill:#e8f5e9
-    style G fill:#c8e6c9
+    I --> J[JSON Response]
 ```
 
 #### Workflow Components
