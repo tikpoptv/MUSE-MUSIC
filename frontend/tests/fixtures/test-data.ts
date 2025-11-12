@@ -98,7 +98,7 @@ export const urls = {
   home: '/',
   login: '/login',
   register: '/register',
-  account: '/account',
+  account: '/archive',
   settings: '/account/settings',
   setup: {
     step1: '/setup/step1',

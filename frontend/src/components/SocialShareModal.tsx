@@ -89,11 +89,11 @@ export default function SocialShareModal({
     toast.success('Link copied to clipboard!');
   };
 
-  // Debug ขณะพัฒนา
-  if (typeof window !== 'undefined' && process.env.NODE_ENV !== 'production') {
-    // eslint-disable-next-line no-console
-    console.log({ shareUrl, absoluteShareUrl, twitterShareUrl });
-  }
+  // Debug ขณะพัฒนา - disabled for tests
+  // if (typeof window !== 'undefined' && process.env.NODE_ENV !== 'production') {
+  //   // eslint-disable-next-line no-console
+  //   console.log({ shareUrl, absoluteShareUrl, twitterShareUrl });
+  // }
 
   return (
     <div 

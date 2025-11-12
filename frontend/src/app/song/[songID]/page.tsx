@@ -778,6 +778,7 @@ export default function SongDetailPage() {
                 onClick={handleShare}
                 disabled={isCreatingShareLink || !(processingID || processingData?.processingID)}
                 className="p-3 rounded-full hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                aria-label="Share"
               >
                 <Share2 className="h-6 w-6" style={{ color: '#7B61FF' }} />
               </button>

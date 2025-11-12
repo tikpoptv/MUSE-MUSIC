@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Navigation Tests', () => {
   test('should load home page with correct content', async ({ page }) => {
-    await page.goto('/', { waitUntil: 'networkidle' });
+    await page.goto('/', { waitUntil: 'load' });
     await expect(page).toHaveTitle(/MUSE MUSIC/);
     await expect(page.locator('h1')).toContainText('Discover the soul of music!');
     
@@ -112,20 +112,20 @@ test.describe('Navigation Tests', () => {
       await expect(page).toHaveURL(/\/login/);
     } else {
       await page.click('a[href="/login"]');
-      await page.waitForLoadState('networkidle');
+      await page.waitForURL(/\/login/, { timeout: 5000 });
       await expect(page).toHaveURL('/login');
       await page.click('a[href="/register"]');
-      await page.waitForLoadState('networkidle');
+      await page.waitForURL(/\/register/, { timeout: 5000 });
       await expect(page).toHaveURL(/\/register/);
       await page.click('a[href="/login"]');
-      await page.waitForLoadState('networkidle');
+      await page.waitForURL(/\/login/, { timeout: 5000 });
       await expect(page).toHaveURL(/\/login/);
     }
   });
 
   test('should show responsive mobile menu', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 667 });
-    await page.goto('/', { waitUntil: 'networkidle' });
+    await page.goto('/', { waitUntil: 'load' });
     await page.waitForLoadState('domcontentloaded');
     await page.waitForTimeout(1000);
     

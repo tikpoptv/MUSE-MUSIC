@@ -7,7 +7,7 @@ test.describe('Protected route access control', () => {
       window.sessionStorage?.clear();
     });
 
-    await page.goto('/account', { waitUntil: 'networkidle' });
+    await page.goto('/archive', { waitUntil: 'networkidle' });
     await page.waitForURL('**/login', { timeout: 10000 });
     await expect(page).toHaveURL(/\/login/);
     await page.waitForLoadState('networkidle');

@@ -9,7 +9,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     return [];
   }
 
-  const paths = ['', '/login', '/register', '/account'] as const;
+  const paths = ['', '/login', '/register', '/archive'] as const;
   const routes: MetadataRoute.Sitemap = paths.map((route) => ({
     url: `${siteUrl}${route || '/'}`,
     lastModified: new Date(),
