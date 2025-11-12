@@ -66,7 +66,9 @@ export const normalizeTestResult = (result: TestResult[] | TestResult): TestResu
 export const promptTestService = {
   async testPrompt(request: PromptTestRequest): Promise<PromptTestResponse> {
     const url = '/api/prompt-test/test';
-    const res = await apiService.post<{ success: boolean; message?: string; data: PromptTestResponseRaw }>(url, request);
+    // Set timeout to 5 minutes (300,000 ms) for prompt testing
+    const TIMEOUT_5_MINUTES = 5 * 60 * 1000;
+    const res = await apiService.post<{ success: boolean; message?: string; data: PromptTestResponseRaw }>(url, request, undefined, TIMEOUT_5_MINUTES);
     
     if (!res.success || !res.data) {
       throw new Error(res.message || res.error || 'Failed to test prompt');
