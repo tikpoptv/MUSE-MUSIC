@@ -4,6 +4,19 @@ Modern music web application with AI-powered lyrics analysis, translation, and p
 
 **Repository**: [https://github.com/tikpoptv/MUSE-MUSIC](https://github.com/tikpoptv/MUSE-MUSIC)
 
+## 📦 Latest Release
+
+**Version 1.2.0** (2025-11-12) - [View Release Notes](./releases/)
+
+- ✨ 22 new features including For You, System Logging, Admin Management
+- 🐛 22+ bug fixes including Next.js 15 compatibility
+- 🧪 122 new tests added (98% pass rate)
+- 📊 198 commits since v1.1.0
+
+👉 **[See all releases and documentation](./releases/)**
+
+---
+
 ## 🚀 Features
 
 - **Music Discovery**: Search and explore songs with YouTube integration
@@ -242,7 +255,28 @@ npm run test:integration
 npm run test:coverage
 ```
 
-See `TESTING.md` for detailed testing guide.
+See `TESTING.md` and `TEST_COVERAGE_STATUS.md` for detailed testing guide.
+
+---
+
+## 📦 Release Documentation
+
+All release notes and documentation are available in the [`releases/`](./releases/) folder:
+
+| Version | Date | Documentation |
+|---------|------|---------------|
+| **v1.2.0** | 2025-11-12 | [📋 Full Report](./releases/RELEASE_READINESS_v1.2.0.md) · [📝 Quick Notes](./releases/RELEASE_NOTES_v1.2.0.md) |
+| v1.1.0 | Previous | On `main` branch |
+
+### What's in v1.2.0?
+- 🆕 **For You** personalized recommendations
+- 📊 **System Logging** with admin UI
+- 👨‍💼 **Admin Management** system with email notifications
+- 🔍 **SEO enhancements** with Open Graph support
+- 🔐 **Security**: 2FA, Google OAuth, Password reset
+- 🧪 **Testing**: 292/298 tests passing (98%)
+
+---
 
 ## 🚢 CI/CD
 
