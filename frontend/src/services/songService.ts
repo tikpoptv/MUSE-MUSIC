@@ -225,6 +225,35 @@ export const songService = {
     }
     
     return backendResponse.data;
+  },
+
+  async searchSongs(query: string, limit: number = 10): Promise<SearchSongResult[]> {
+    const url = `/api/songs/search?q=${encodeURIComponent(query)}&limit=${limit}`;
+    
+    const res = await apiService.get<{ success: boolean; message?: string; data: { songs: SearchSongResult[] } }>(url);
+    
+    if (!res.success || !res.data) {
+      throw new Error(res.message || 'Failed to search songs');
+    }
+    
+    const backendResponse = res.data as { data?: { songs: SearchSongResult[] } };
+    
+    if (!backendResponse.data) {
+      throw new Error('Missing data in response');
+    }
+    
+    return backendResponse.data.songs;
   }
 };
+
+export interface SearchSongResult {
+  songID: string;
+  songName: string;
+  artistName: string;
+  genre?: string;
+  duration?: number;
+  processingID?: string | null;
+  coverImage?: string | null;
+  hasProcessing: boolean;
+}
 

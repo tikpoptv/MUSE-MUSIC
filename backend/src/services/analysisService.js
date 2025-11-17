@@ -462,8 +462,56 @@ class AnalysisService {
   }
   
   static async ensureLyricsSearchResult(lyricsRecord) {
-    if (!lyricsRecord || !lyricsRecord.id) {
-      throw new Error('Lyrics record must have an id');
+    if (!lyricsRecord) {
+      throw new Error('Lyrics record is required');
+    }
+    
+    const normalizeResult = (row) => ({
+      lyricsSearchResultID: row.lyricssearchresultid,
+      externalID: row.externalid,
+      trackName: row.trackname,
+      artistName: row.artistname,
+      albumName: row.albumname,
+      duration: row.duration,
+      instrumental: row.instrumental,
+      lyricsPreview: row.lyricspreview,
+      sourceAPI: row.sourceapi,
+      usageCount: row.usagecount,
+      lastUsedAt: row.lastusedat,
+      fetchedAt: row.fetchedat,
+      createdAt: row.createdat,
+      updatedAt: row.updatedat
+    });
+    
+    if (!lyricsRecord.id) {
+      if (!lyricsRecord.songID) {
+        throw new Error('Lyrics record must have an id or songID');
+      }
+      const songQuery = `
+        SELECT lyricssearchresultid 
+        FROM songs 
+        WHERE songid = $1
+        LIMIT 1
+      `;
+      const songResult = await DatabaseService.query(songQuery, [lyricsRecord.songID]);
+      if (!songResult.rows || songResult.rows.length === 0) {
+        throw new Error(`Song not found for songID: ${lyricsRecord.songID}`);
+      }
+      const songRow = songResult.rows[0];
+      if (!songRow.lyricssearchresultid) {
+        throw new Error(`Song ${lyricsRecord.songID} is missing lyricsSearchResultID`);
+      }
+      const lyricsResultQuery = `
+        SELECT *
+        FROM lyricssearchresults
+        WHERE lyricssearchresultid = $1
+        LIMIT 1
+      `;
+      const lyricsResult = await DatabaseService.query(lyricsResultQuery, [songRow.lyricssearchresultid]);
+      if (!lyricsResult.rows || lyricsResult.rows.length === 0) {
+        throw new Error(`Lyrics search result not found for songID: ${lyricsRecord.songID}`);
+      }
+      return normalizeResult(lyricsResult.rows[0]);
     }
     
     const externalID = parseInt(String(lyricsRecord.id), 10);
@@ -475,23 +523,8 @@ class AnalysisService {
     const findResult = await DatabaseService.query(findQuery, [externalID]);
     const existing = findResult.rows[0] || null;
     
-      if (existing) {
-        return {
-        lyricsSearchResultID: existing.lyricssearchresultid,
-        externalID: existing.externalid,
-        trackName: existing.trackname,
-        artistName: existing.artistname,
-        albumName: existing.albumname,
-        duration: existing.duration,
-        instrumental: existing.instrumental,
-        lyricsPreview: existing.lyricspreview,
-        sourceAPI: existing.sourceapi,
-        usageCount: existing.usagecount,
-        lastUsedAt: existing.lastusedat,
-        fetchedAt: existing.fetchedat,
-        createdAt: existing.createdat,
-        updatedAt: existing.updatedat
-      };
+    if (existing) {
+      return normalizeResult(existing);
     }
     
     let duration = null;
