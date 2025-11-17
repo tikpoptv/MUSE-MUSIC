@@ -3,9 +3,18 @@
  * /api/songs/{songID}:
  *   get:
  *     summary: Get song details
- *     description: Fetch song details including lyrics and optional AI processing results
+ *     description: |
+ *       Fetch song details including lyrics and optional AI processing results.
+ *       
+ *       **Authentication:** Optional. If Authorization header is provided with valid token, 
+ *       and processingID is included in query, the view history will be automatically recorded.
  *     tags: [Songs]
  *     parameters:
+ *       - in: header
+ *         name: Authorization
+ *         schema:
+ *           type: string
+ *         description: Optional Bearer token for authentication. If provided with processingID, view history will be recorded.
  *       - in: path
  *         name: songID
  *         required: true
@@ -18,7 +27,7 @@
  *         schema:
  *           type: string
  *           format: uuid
- *         description: Optional processing ID to include AI analysis results
+ *         description: Optional processing ID to include AI analysis results. If provided with authenticated user, view history will be recorded.
  *     responses:
  *       200:
  *         description: Song details retrieved successfully

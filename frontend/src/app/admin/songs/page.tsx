@@ -193,28 +193,16 @@ export default function Page() {
         }
     };
 
-    const handleRowClick = async (song: Song) => {
+    const fetchSongDetail = async (song: Song, showLoading: boolean = true) => {
         if (!song.songID) {
             toast.error("Song ID not available");
             return;
         }
 
-        // Clear previous detail data first to show loading state
-        setSongDetail(null);
-        setProcessingDetail(null);
-        setOriginalLyricsBaseline(null);
-        setSelectedSong(song);
-
-        // Scroll to detail panel immediately when loading starts
-        setTimeout(() => {
-            detailPanelRef.current?.scrollIntoView({ 
-                behavior: 'smooth', 
-                block: 'start' 
-            });
-        }, 50);
-
         try {
-            setIsLoading(true);
+            if (showLoading) {
+                setIsLoading(true);
+            }
             
             // Fetch full song detail using existing songService (reuse from detail page)
             const songDetailResponse = await songService.getSongDetail(song.songID, song.processingID);
@@ -292,8 +280,28 @@ export default function Page() {
             console.error("Failed to fetch song detail:", error);
             toast.error("Failed to load song details");
         } finally {
-            setIsLoading(false);
+            if (showLoading) {
+                setIsLoading(false);
+            }
         }
+    };
+
+    const handleRowClick = async (song: Song) => {
+        // Clear previous detail data first to show loading state
+        setSongDetail(null);
+        setProcessingDetail(null);
+        setOriginalLyricsBaseline(null);
+        setSelectedSong(song);
+
+        // Scroll to detail panel immediately when loading starts
+        setTimeout(() => {
+            detailPanelRef.current?.scrollIntoView({ 
+                behavior: 'smooth', 
+                block: 'start' 
+            });
+        }, 50);
+
+        await fetchSongDetail(song, true);
     };
 
 
@@ -325,13 +333,9 @@ export default function Page() {
 
             if (result) {
                 toast.success("Lyrics saved successfully");
-                // Update processing detail with new translation
-                if (processingDetail) {
-                    setProcessingDetail(prev => prev ? {
-                        ...prev,
-                        translation: result.translation,
-                        updatedAt: result.updatedAt
-                    } : null);
+                // Fetch detail again to get the latest data (response is preview format)
+                if (selectedSong) {
+                    await fetchSongDetail(selectedSong, false);
                 }
             } else {
                 toast.error("Failed to save lyrics");
@@ -739,7 +743,15 @@ export default function Page() {
                         </div>
                     </CardHeader>
                     <CardContent className="p-0">
-                        <div className="overflow-hidden rounded-lg border border-slate-200">
+                        <div className="overflow-hidden rounded-lg border border-slate-200 relative">
+                            {isLoading && songs.length > 0 && (
+                                <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-10 flex items-center justify-center">
+                                    <div className="flex flex-col items-center gap-3">
+                                        <Loader2 className="h-8 w-8 text-[#7B61FF] animate-spin" />
+                                        <p className="text-sm font-medium text-slate-700">Loading data...</p>
+                                    </div>
+                                </div>
+                            )}
                             <div className="overflow-x-auto">
                         <table className="min-w-full border-collapse text-left">
                                     <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-600">
@@ -887,7 +899,7 @@ export default function Page() {
 
                 {selectedSong && (
                     <div ref={detailPanelRef}>
-                        <Card className="rounded-lg border border-slate-200 bg-white p-4 sm:p-6 md:p-8 shadow-sm">
+                        <Card className="rounded-lg border border-slate-200 bg-white p-4 sm:p-6 md:p-8 shadow-sm relative">
                         {isLoading && !songDetail ? (
                             <div className="flex flex-col items-center justify-center py-20">
                                 <Loader2 className="h-10 w-10 text-[#7B61FF] animate-spin mb-4" />
@@ -896,6 +908,14 @@ export default function Page() {
                             </div>
                         ) : (
                             <>
+                            {isLoading && songDetail && (
+                                <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-10 flex items-center justify-center rounded-lg">
+                                    <div className="flex flex-col items-center gap-3">
+                                        <Loader2 className="h-8 w-8 text-[#7B61FF] animate-spin" />
+                                        <p className="text-sm font-medium text-slate-700">Loading data...</p>
+                                    </div>
+                                </div>
+                            )}
                         <CardHeader className="p-0 pb-4 sm:pb-6">
                             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
                                 <div className="flex items-center gap-3">
@@ -939,7 +959,7 @@ export default function Page() {
                                             </a>
                                         )}
                                         <button
-                                            onClick={() => selectedSong && handleRowClick(selectedSong)}
+                                            onClick={() => selectedSong && fetchSongDetail(selectedSong, true)}
                                             disabled={isLoading || !selectedSong}
                                             className="inline-flex items-center gap-2 px-3 py-1.5 text-xs text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                                             title="Refetch song details"

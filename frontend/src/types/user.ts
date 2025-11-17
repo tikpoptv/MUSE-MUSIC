@@ -38,7 +38,11 @@ export interface FavouriteSong {
 
 export interface SavedTranslation {
   id: string;
+  songID: string;
+  processingID: string;
   songTitle: string;
+  artistName: string;
+  coverImage: string | null;
   originalLanguage: string;
   translatedLanguage: string;
   translation: string;
