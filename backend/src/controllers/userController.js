@@ -157,9 +157,26 @@ const resetPassword = async (req, res) => {
   }
 };
 
+const getUserStats = async (req, res) => {
+  try {
+    const userId = req.user.userID;
+
+    const stats = await UserService.getUserStats(userId);
+
+    res.json(successResponse('User stats retrieved successfully', { stats }));
+
+  } catch (error) {
+    logger.error('Error fetching user stats:', error);
+    res.status(500).json(
+      errorResponse('Internal server error', 500)
+    );
+  }
+};
+
 module.exports = {
   getUserData,
   getUserSettings,
   updateUserSettings,
-  resetPassword
+  resetPassword,
+  getUserStats
 };

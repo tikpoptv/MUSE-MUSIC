@@ -390,6 +390,74 @@ class UserService {
     }
   }
 
+  static async getUserStats(userID) {
+    const ForYouService = require('./foryouService');
+    const { pool } = require('../config/database');
+    const client = await pool.connect();
+    
+    try {
+      // Get favorites count
+      const favoritesCountQuery = `
+        SELECT COUNT(*) as count
+        FROM UserFavorites
+        WHERE userid = $1 AND favoritetype = 'song'
+      `;
+      const favoritesResult = await client.query(favoritesCountQuery, [userID]);
+      const favourites = parseInt(favoritesResult.rows[0].count) || 0;
+
+      // Get analyzing count (processing records with status != 'completed')
+      const analyzingCountQuery = `
+        SELECT COUNT(DISTINCT processingid) as count
+        FROM SongAIProcessing
+        WHERE createdby = $1 AND status != 'completed'
+      `;
+      const analyzingResult = await client.query(analyzingCountQuery, [userID]);
+      const analyzing = parseInt(analyzingResult.rows[0].count) || 0;
+
+      // Get mood stats from ForYouService
+      const moodStats = await ForYouService.getMoodStats(userID);
+
+      // Initialize mood counts
+      const moodCounts = {
+        happy: 0,
+        sad: 0,
+        fear: 0,
+        anger: 0,
+        disgust: 0,
+        surprise: 0
+      };
+
+      // Map mood stats to counts
+      moodStats.forEach(stat => {
+        const moodType = stat.moodType.toLowerCase();
+        if (Object.prototype.hasOwnProperty.call(moodCounts, moodType)) {
+          moodCounts[moodType] = stat.count;
+        }
+      });
+
+      return {
+        favourites,
+        analyzing,
+        ...moodCounts
+      };
+    } catch (error) {
+      logger.error('Error in UserService.getUserStats:', error);
+      // Return default values on error
+      return {
+        favourites: 0,
+        analyzing: 0,
+        happy: 0,
+        sad: 0,
+        fear: 0,
+        anger: 0,
+        disgust: 0,
+        surprise: 0
+      };
+    } finally {
+      client.release();
+    }
+  }
+
 }
 
 module.exports = UserService;
