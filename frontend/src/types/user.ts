@@ -29,16 +29,24 @@ export interface UserStats {
 
 export interface FavouriteSong {
   id: string;
+  favoriteID: string;
+  processingID: string;
   title: string;
   artist: string;
   album: string;
   coverImage: string;
+  originalLanguage: string;
+  targetLanguage: string;
   addedAt: string;
 }
 
 export interface SavedTranslation {
   id: string;
+  songID: string;
+  processingID: string;
   songTitle: string;
+  artistName: string;
+  coverImage: string | null;
   originalLanguage: string;
   translatedLanguage: string;
   translation: string;
@@ -47,10 +55,11 @@ export interface SavedTranslation {
 
 export interface RecommendedAlbum {
   id: string;
+  processingID: string;
   title: string;
   artist: string;
-  coverImage: string;
-  mood: string;
+  coverImage: string | null;
+  mood: { type: string; percentage: number } | null;
   genre: string;
 }
 

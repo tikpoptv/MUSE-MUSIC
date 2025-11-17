@@ -271,11 +271,13 @@ CREATE TABLE History (
     playDuration INT, -- how long the song was played in seconds
     playbackPosition INT, -- position in seconds where user stopped
     deviceInfo VARCHAR(100), -- mobile, desktop, etc.
+    actionType VARCHAR(20) DEFAULT 'view', -- 'view' (when user views song detail) or 'save' (when user saves translation)
     createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (songID) REFERENCES Songs(songID) ON DELETE CASCADE,
     FOREIGN KEY (userID) REFERENCES Users(userID) ON DELETE CASCADE,
-    FOREIGN KEY (processingID) REFERENCES SongAIProcessing(processingID) ON DELETE SET NULL
+    FOREIGN KEY (processingID) REFERENCES SongAIProcessing(processingID) ON DELETE SET NULL,
+    CONSTRAINT check_action_type CHECK (actionType IN ('view', 'save'))
 );
 
 
@@ -488,6 +490,7 @@ CREATE INDEX idx_history_song ON History(songID);
 CREATE INDEX idx_history_processing ON History(processingID);
 CREATE INDEX idx_history_device ON History(deviceInfo);
 CREATE INDEX idx_history_duration ON History(playDuration);
+CREATE INDEX idx_history_action_type ON History(actionType);
 
 -- SongAIProcessing table indexes
 CREATE INDEX idx_ai_processing_song ON SongAIProcessing(songID);

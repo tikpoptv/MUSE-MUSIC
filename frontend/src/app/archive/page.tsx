@@ -4,13 +4,19 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { authService } from '@/services/authService';
+import { historyService } from '@/services/historyService';
+import { favoriteService } from '@/services/favoriteService';
+import { recommendSongsService } from '@/services/recommendSongsService';
+import { userService } from '@/services/userService';
 import toast from 'react-hot-toast';
-import { UserData, UserStats, RecommendedAlbum } from '@/types/user';
+import { UserData, UserStats, RecommendedAlbum, SavedTranslation, FavouriteSong } from '@/types/user';
 import NavMenuItem from '@/components/NavMenuItem';
+import MusicCard from '@/components/MusicCard';
 import Image from 'next/image';
+import { X } from 'lucide-react';
 
 // Dev-only logger helper
-const devLog = (...args: any[]) => {
+const devLog = (...args: unknown[]) => {
   if (process.env.NODE_ENV === 'development') {
     // eslint-disable-next-line no-console
     console.error(...args);
@@ -21,9 +27,14 @@ export default function AccountSettingsPage() {
   const [userData, setUserData] = useState<UserData | null>(null);
   const [userStats, setUserStats] = useState<UserStats | null>(null);
   const [recommendedAlbums, setRecommendedAlbums] = useState<RecommendedAlbum[]>([]);
+  const [savedTranslations, setSavedTranslations] = useState<SavedTranslation[]>([]);
+  const [favoriteSongs, setFavoriteSongs] = useState<FavouriteSong[]>([]);
   const [isLoadingFavourites, setIsLoadingFavourites] = useState(true);
   const [isLoadingSaveTranslation, setIsLoadingSaveTranslation] = useState(true);
   const [isLoadingRecommend, setIsLoadingRecommend] = useState(true);
+  const [selectedFavorite, setSelectedFavorite] = useState<FavouriteSong | null>(null);
+  const [selectedTranslation, setSelectedTranslation] = useState<SavedTranslation | null>(null);
+  const [profilePicture, setProfilePicture] = useState<string | null>(null);
   const router = useRouter();
 
   // Mock data functions
@@ -45,73 +56,84 @@ export default function AccountSettingsPage() {
     });
   };
 
-  const fetchFavouriteSongs = async () => {
-    // TODO: Replace with actual API call
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve([]);
-      }, 800);
-    });
+  const fetchFavouriteSongs = async (): Promise<FavouriteSong[]> => {
+    try {
+      const result = await favoriteService.getUserFavorites(1, 50);
+      
+      if (!result || !result.favorites) {
+        return [];
+      }
+
+      return result.favorites
+        .filter(item => item.processingID)
+        .map(item => ({
+          id: item.songID,
+          favoriteID: item.favoriteID,
+          processingID: item.processingID!,
+          title: item.songName,
+          artist: item.artistName,
+          album: '',
+          coverImage: item.coverImage || '',
+          originalLanguage: item.originalLanguage || 'Unknown',
+          targetLanguage: item.targetLanguage || 'Unknown',
+          addedAt: item.createdAt
+        }));
+    } catch (error) {
+      devLog('Error fetching favorite songs:', error);
+      return [];
+    }
   };
 
-  const fetchSavedTranslations = async () => {
-    // TODO: Replace with actual API call
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve([]);
-      }, 600);
-    });
+  const fetchSavedTranslations = async (): Promise<SavedTranslation[]> => {
+    try {
+      const result = await historyService.getUserHistory(1, 50, 'save');
+      
+      if (!result || !result.history) {
+        return [];
+      }
+
+      return result.history
+        .filter(item => item.processingID && item.processing) // Only include items with processing data
+        .map(item => ({
+          id: item.historyID,
+          songID: item.songID,
+          processingID: item.processingID || '',
+          songTitle: item.song.songName,
+          artistName: item.song.artistName,
+          coverImage: item.song.coverImage,
+          originalLanguage: item.processing?.originalLanguage || 'Unknown',
+          translatedLanguage: item.processing?.targetLanguage || 'Unknown',
+          translation: item.processing?.translation || '',
+          savedAt: item.timeStamp
+        }));
+    } catch (error) {
+      devLog('Error fetching saved translations:', error);
+      return [];
+    }
   };
 
 
   const fetchRecommendedAlbums = async (): Promise<RecommendedAlbum[]> => {
-    // TODO: Replace with actual API call
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve([
-          {
-            id: '1',
-            title: 'AM I THE DRAMA',
-            artist: 'CARDI B',
-            coverImage: '/api/placeholder/200/200',
-            mood: 'happy',
-            genre: 'hip-hop'
-          },
-          {
-            id: '2',
-            title: 'BUTTERFLY EFFECT',
-            artist: 'Travis Scott',
-            coverImage: '/api/placeholder/200/200',
-            mood: 'happy',
-            genre: 'hip-hop'
-          },
-          {
-            id: '3',
-            title: 'Safe (feat. Kehlani)',
-            artist: 'CARDI B, Kehlani',
-            coverImage: '/api/placeholder/200/200',
-            mood: 'happy',
-            genre: 'hip-hop'
-          },
-          {
-            id: '4',
-            title: 'XOXO',
-            artist: 'David',
-            coverImage: '/api/placeholder/200/200',
-            mood: 'happy',
-            genre: 'pop'
-          },
-          {
-            id: '5',
-            title: 'Pick It Up (feat. Selena Gomez)',
-            artist: 'CARDI B, Selena Gomez',
-            coverImage: '/api/placeholder/200/200',
-            mood: 'happy',
-            genre: 'pop'
-          }
-        ]);
-      }, 400);
-    });
+    try {
+      const songs = await recommendSongsService.getRecommendedSongsByLanguageAndMood(
+        undefined,
+        undefined,
+        20
+      );
+
+      return songs.map(song => ({
+        id: song.id,
+        processingID: song.processingID,
+        title: song.title,
+        artist: song.artist,
+        coverImage: song.image || null,
+        mood: song.mood || null,
+        genre: song.genre || 'Unknown'
+      }));
+    } catch (error) {
+      devLog('Error fetching recommended albums:', error);
+      return [];
+    }
   };
 
   useEffect(() => {
@@ -127,6 +149,14 @@ export default function AccountSettingsPage() {
       try {
         const user = authService.getUserData();
         setUserData(user);
+
+        // Load user settings to get profile picture
+        try {
+          const settings = await userService.getUserSettings();
+          setProfilePicture(settings.profilePicture);
+        } catch (error) {
+          devLog('Error loading user settings:', error);
+        }
 
         // Load user stats first
         const stats = await fetchUserStats();
@@ -144,7 +174,8 @@ export default function AccountSettingsPage() {
 
     const loadFavourites = async () => {
       try {
-        await fetchFavouriteSongs();
+        const favorites = await fetchFavouriteSongs();
+        setFavoriteSongs(favorites);
         setIsLoadingFavourites(false);
       } catch (error) {
         devLog('Error loading favourites:', error);
@@ -154,7 +185,8 @@ export default function AccountSettingsPage() {
 
     const loadSaveTranslation = async () => {
       try {
-        await fetchSavedTranslations();
+        const translations = await fetchSavedTranslations();
+        setSavedTranslations(translations);
         setIsLoadingSaveTranslation(false);
       } catch (error) {
         devLog('Error loading save translation:', error);
@@ -179,7 +211,7 @@ export default function AccountSettingsPage() {
 
   if (!userData) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-white">
         <p className="text-gray-500">User data not found</p>
       </div>
     );
@@ -196,11 +228,23 @@ export default function AccountSettingsPage() {
               
               {/* Profile Picture */}
               <div className="flex flex-col items-center mb-6">
-                <div className="w-48 h-48 bg-gradient-to-br from-[#7B61FF] to-[#6B51EF] rounded-full flex items-center justify-center mb-4">
-                  <div className="text-center">
-                    <div className="text-white text-[44px] font-bold mb-2">+</div>
-                    <div className="text-white text-xs">Add your picture!</div>
-                  </div>
+                <div className={`w-48 h-48 rounded-full flex items-center justify-center mb-4 overflow-hidden ${
+                  profilePicture ? 'bg-transparent' : 'bg-gradient-to-br from-[#7B61FF] to-[#6B51EF]'
+                }`}>
+                  {profilePicture ? (
+                    <Image
+                      src={profilePicture}
+                      alt="Profile Picture"
+                      width={192}
+                      height={192}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="text-center">
+                      <div className="text-white text-[44px] font-bold mb-2">+</div>
+                      <div className="text-white text-xs">Add your picture!</div>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -299,7 +343,7 @@ export default function AccountSettingsPage() {
                 <Image src="/icons/favourites-icon.svg" alt="Favourites" width={28} height={28} />
                 <h2 className="text-2xl font-bold text-gray-900">Favourite</h2>
               </div>
-              <div className="bg-[#F5F5F5] rounded-2xl shadow-sm p-6 h-[275px] overflow-y-auto">
+              <div className="bg-white rounded-2xl shadow-sm p-6 h-[275px] overflow-y-auto border border-gray-200">
                 {isLoadingFavourites ? (
                   <div className="flex items-center justify-center h-full">
                     <div className="text-center">
@@ -313,14 +357,73 @@ export default function AccountSettingsPage() {
                       <p className="text-[#737373]">Loading...</p>
                     </div>
                   </div>
-                ) : (
+                ) : favoriteSongs.length === 0 ? (
                   <div className="text-center py-12">
                     <p className="text-[#737373] text-lg mb-2">You don&apos;t have a favorite song yet.</p>
                     <p className="text-[#737373] mb-6">Start exploring and add your first fave here!</p>
-                    <button className="bg-[#7B61FF] hover:bg-[#6B51EF] text-white px-6 py-3 rounded-xl font-medium transition-colors duration-200 flex items-center space-x-2 mx-auto">
+                    <button 
+                      onClick={() => router.push('/')}
+                      className="bg-[#7B61FF] hover:bg-[#6B51EF] text-white px-6 py-3 rounded-xl font-medium transition-colors duration-200 flex items-center space-x-2 mx-auto"
+                    >
                       <span>Let&apos;s explore</span>
                       <Image src="/icons/star-icon.svg" alt="Star" width={20} height={20} />
                     </button>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {favoriteSongs.map((song) => (
+                      <button
+                        key={song.id}
+                        onClick={() => setSelectedFavorite(song)}
+                        className="w-full text-left block p-5 bg-white rounded-xl hover:bg-gray-50 hover:shadow-md transition-all duration-200 border border-gray-200 hover:border-[#7B61FF]/30 group cursor-pointer"
+                      >
+                        <div className="flex items-start gap-5">
+                          <div className="flex-shrink-0">
+                            {song.coverImage ? (
+                              <div className="relative overflow-hidden rounded-xl shadow-sm group-hover:shadow-md transition-shadow duration-200">
+                                <Image
+                                  src={song.coverImage}
+                                  alt={song.title}
+                                  width={96}
+                                  height={96}
+                                  className="rounded-xl object-cover w-24 h-24"
+                                />
+                              </div>
+                            ) : (
+                              <div className="w-24 h-24 bg-gradient-to-br from-[#7B61FF] to-[#6B51EF] rounded-xl flex items-center justify-center shadow-sm group-hover:shadow-md transition-shadow duration-200">
+                                <Image src="/icons/favourites-icon.svg" alt="Favorite" width={36} height={36} className="opacity-90" />
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0 pt-1">
+                            <h3 className="font-semibold text-gray-900 truncate mb-1.5 text-base group-hover:text-[#7B61FF] transition-colors duration-200">
+                              {song.title}
+                            </h3>
+                            {song.artist && (
+                              <p className="text-sm text-gray-600 truncate mb-3 font-medium">
+                                {song.artist}
+                              </p>
+                            )}
+                            <div className="flex items-center gap-2.5 mb-3 flex-wrap">
+                              <span className="px-2.5 py-1 bg-blue-50 text-blue-700 rounded-md text-xs font-medium border border-blue-200/50">
+                                {song.originalLanguage}
+                              </span>
+                              <span className="text-gray-400 text-sm">→</span>
+                              <span className="px-2.5 py-1 bg-purple-50 text-purple-700 rounded-md text-xs font-medium border border-purple-200/50">
+                                {song.targetLanguage}
+                              </span>
+                            </div>
+                            <p className="text-xs text-gray-500 font-medium">
+                              Added {new Date(song.addedAt).toLocaleDateString('en-US', {
+                                year: 'numeric',
+                                month: 'short',
+                                day: 'numeric'
+                              })}
+                            </p>
+                          </div>
+                        </div>
+                      </button>
+                    ))}
                   </div>
                 )}
               </div>
@@ -332,7 +435,7 @@ export default function AccountSettingsPage() {
                 <Image src="/icons/save-icon.svg" alt="Save" width={28} height={28} />
                 <h2 className="text-2xl font-bold text-gray-900">Save Translation</h2>
               </div>
-              <div className="bg-[#F5F5F5] rounded-2xl shadow-sm p-6 h-[275px] overflow-y-auto">
+              <div className="bg-white rounded-2xl shadow-sm p-6 h-[275px] overflow-y-auto border border-gray-200">
                 {isLoadingSaveTranslation ? (
                   <div className="flex items-center justify-center h-full">
                     <div className="text-center">
@@ -346,14 +449,73 @@ export default function AccountSettingsPage() {
                       <p className="text-[#737373]">Loading...</p>
                     </div>
                   </div>
-                ) : (
+                ) : savedTranslations.length === 0 ? (
                   <div className="text-center py-12">
                     <p className="text-[#737373] text-lg mb-2">Oops, looks empty here! 🎶</p>
                     <p className="text-[#737373] mb-6">Save your first translation to start your collection.</p>
-                    <button className="bg-[#7B61FF] hover:bg-[#6B51EF] text-white px-6 py-3 rounded-xl font-medium transition-colors duration-200 flex items-center space-x-2 mx-auto">
+                    <button 
+                      onClick={() => router.push('/')}
+                      className="bg-[#7B61FF] hover:bg-[#6B51EF] text-white px-6 py-3 rounded-xl font-medium transition-colors duration-200 flex items-center space-x-2 mx-auto"
+                    >
                       <span>Find yours</span>
                       <Image src="/icons/search-icon.svg" alt="Search" width={20} height={20} />
                     </button>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {savedTranslations.map((translation) => (
+                      <button
+                        key={translation.id}
+                        onClick={() => setSelectedTranslation(translation)}
+                        className="w-full text-left block p-5 bg-white rounded-xl hover:bg-gray-50 hover:shadow-md transition-all duration-200 border border-gray-200 hover:border-[#7B61FF]/30 group cursor-pointer"
+                      >
+                        <div className="flex items-start gap-5">
+                          <div className="flex-shrink-0">
+                            {translation.coverImage ? (
+                              <div className="relative overflow-hidden rounded-xl shadow-sm group-hover:shadow-md transition-shadow duration-200">
+                                <Image
+                                  src={translation.coverImage}
+                                  alt={translation.songTitle}
+                                  width={96}
+                                  height={96}
+                                  className="rounded-xl object-cover w-24 h-24"
+                                />
+                              </div>
+                            ) : (
+                              <div className="w-24 h-24 bg-gradient-to-br from-[#7B61FF] to-[#6B51EF] rounded-xl flex items-center justify-center shadow-sm group-hover:shadow-md transition-shadow duration-200">
+                                <Image src="/icons/save-icon.svg" alt="Saved" width={36} height={36} className="opacity-90" />
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0 pt-1">
+                            <h3 className="font-semibold text-gray-900 truncate mb-1.5 text-base group-hover:text-[#7B61FF] transition-colors duration-200">
+                              {translation.songTitle}
+                            </h3>
+                            {translation.artistName && (
+                              <p className="text-sm text-gray-600 truncate mb-3 font-medium">
+                                {translation.artistName}
+                              </p>
+                            )}
+                            <div className="flex items-center gap-2.5 mb-3 flex-wrap">
+                              <span className="px-2.5 py-1 bg-blue-50 text-blue-700 rounded-md text-xs font-medium border border-blue-200/50">
+                                {translation.originalLanguage}
+                              </span>
+                              <span className="text-gray-400 text-sm">→</span>
+                              <span className="px-2.5 py-1 bg-purple-50 text-purple-700 rounded-md text-xs font-medium border border-purple-200/50">
+                                {translation.translatedLanguage}
+                              </span>
+                            </div>
+                            <p className="text-xs text-gray-500 font-medium">
+                              Saved {new Date(translation.savedAt).toLocaleDateString('en-US', {
+                                year: 'numeric',
+                                month: 'short',
+                                day: 'numeric'
+                              })}
+                            </p>
+                          </div>
+                        </div>
+                      </button>
+                    ))}
                   </div>
                 )}
               </div>
@@ -378,29 +540,193 @@ export default function AccountSettingsPage() {
                   <p className="text-[#737373]">Loading...</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                  {recommendedAlbums.map((album) => (
-                    <div key={album.id} className="relative group cursor-pointer">
-                      <div className="w-full aspect-square bg-gradient-to-br from-purple-400 to-pink-500 rounded-xl mb-3 relative overflow-hidden">
-                        <div className="absolute inset-0 bg-black bg-opacity-20"></div>
-                        <div className="absolute bottom-0 right-0">
-                          <div className="w-[49.42px] h-[49.42px] bg-white bg-opacity-80 rounded-lg flex items-center justify-center">
-                            <svg className="w-[28.93px] h-[28.93px] text-[#7B61FF]" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM7 9a1 1 0 100-2 1 1 0 000 2zm7-1a1 1 0 11-2 0 1 1 0 012 0zm-1.5 5.5a1 1 0 11-2 0 1 1 0 012 0z" clipRule="evenodd" />
-                            </svg>
-                          </div>
+                recommendedAlbums.length === 0 ? (
+                  <div className="text-center py-12">
+                    <p className="text-[#737373] text-lg mb-2">No recommendations available</p>
+                    <p className="text-[#737373]">Check back later for new recommendations!</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto pb-4 -mx-4 px-4 scrollbar-hide">
+                    <div className="flex gap-4 min-w-max">
+                      {recommendedAlbums.map((album) => (
+                        <div key={album.id} className="flex-shrink-0 w-[180px] sm:w-[200px]">
+                          <MusicCard
+                            image={album.coverImage || undefined}
+                            title={album.title}
+                            artist={album.artist}
+                            href={`/song/${album.id}?processingID=${album.processingID}`}
+                            mood={album.mood}
+                          />
                         </div>
-                      </div>
-                      <h3 className="font-bold text-gray-900 text-sm">{album.title}</h3>
-                      <p className="text-[#7B61FF] text-xs">{album.artist}</p>
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  </div>
+                )
               )}
             </div>
           </div>
         </div>
       </div>
+
+      {/* Favorite Detail Modal */}
+      {selectedFavorite && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{
+            backdropFilter: 'blur(8px)',
+            backgroundColor: 'rgba(0, 0, 0, 0.5)'
+          }}
+          onClick={() => setSelectedFavorite(null)}
+        >
+          <div 
+            className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between z-10">
+              <h2 className="text-2xl font-bold text-gray-900">Favorite Song Details</h2>
+              <button
+                onClick={() => setSelectedFavorite(null)}
+                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+              >
+                <X className="w-6 h-6 text-gray-600" />
+              </button>
+            </div>
+            <div className="p-6">
+              <div className="flex flex-col md:flex-row gap-6 mb-6">
+                <div className="flex-shrink-0">
+                  {selectedFavorite.coverImage ? (
+                    <div className="relative overflow-hidden rounded-xl shadow-lg">
+                      <Image
+                        src={selectedFavorite.coverImage}
+                        alt={selectedFavorite.title}
+                        width={300}
+                        height={300}
+                        className="rounded-xl object-cover w-full max-w-[300px]"
+                      />
+                    </div>
+                  ) : (
+                    <div className="w-[300px] h-[300px] bg-gradient-to-br from-[#7B61FF] to-[#6B51EF] rounded-xl flex items-center justify-center shadow-lg">
+                      <Image src="/icons/favourites-icon.svg" alt="Favorite" width={120} height={120} className="opacity-90" />
+                    </div>
+                  )}
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-3xl font-bold text-gray-900 mb-3">{selectedFavorite.title}</h3>
+                  {selectedFavorite.artist && (
+                    <p className="text-xl text-gray-600 mb-4">{selectedFavorite.artist}</p>
+                  )}
+                  <div className="flex items-center gap-3 mb-4 flex-wrap">
+                    <span className="px-4 py-2 bg-blue-50 text-blue-700 rounded-lg text-sm font-medium border border-blue-200/50">
+                      {selectedFavorite.originalLanguage}
+                    </span>
+                    <span className="text-gray-400 text-lg">→</span>
+                    <span className="px-4 py-2 bg-purple-50 text-purple-700 rounded-lg text-sm font-medium border border-purple-200/50">
+                      {selectedFavorite.targetLanguage}
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-500 mb-6">
+                    Added {new Date(selectedFavorite.addedAt).toLocaleDateString('en-US', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric'
+                    })}
+                  </p>
+                  <Link
+                    href={`/song/${selectedFavorite.id}?processingID=${selectedFavorite.processingID}`}
+                    className="inline-block bg-[#7B61FF] hover:bg-[#6B51EF] text-white px-6 py-3 rounded-xl font-medium transition-colors duration-200"
+                  >
+                    View Full Details
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Saved Translation Detail Modal */}
+      {selectedTranslation && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{
+            backdropFilter: 'blur(8px)',
+            backgroundColor: 'rgba(0, 0, 0, 0.5)'
+          }}
+          onClick={() => setSelectedTranslation(null)}
+        >
+          <div 
+            className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between z-10">
+              <h2 className="text-2xl font-bold text-gray-900">Saved Translation Details</h2>
+              <button
+                onClick={() => setSelectedTranslation(null)}
+                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+              >
+                <X className="w-6 h-6 text-gray-600" />
+              </button>
+            </div>
+            <div className="p-6">
+              <div className="flex flex-col md:flex-row gap-6 mb-6">
+                <div className="flex-shrink-0">
+                  {selectedTranslation.coverImage ? (
+                    <div className="relative overflow-hidden rounded-xl shadow-lg">
+                      <Image
+                        src={selectedTranslation.coverImage}
+                        alt={selectedTranslation.songTitle}
+                        width={300}
+                        height={300}
+                        className="rounded-xl object-cover w-full max-w-[300px]"
+                      />
+                    </div>
+                  ) : (
+                    <div className="w-[300px] h-[300px] bg-gradient-to-br from-[#7B61FF] to-[#6B51EF] rounded-xl flex items-center justify-center shadow-lg">
+                      <Image src="/icons/save-icon.svg" alt="Saved" width={120} height={120} className="opacity-90" />
+                    </div>
+                  )}
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-3xl font-bold text-gray-900 mb-3">{selectedTranslation.songTitle}</h3>
+                  {selectedTranslation.artistName && (
+                    <p className="text-xl text-gray-600 mb-4">{selectedTranslation.artistName}</p>
+                  )}
+                  <div className="flex items-center gap-3 mb-4 flex-wrap">
+                    <span className="px-4 py-2 bg-blue-50 text-blue-700 rounded-lg text-sm font-medium border border-blue-200/50">
+                      {selectedTranslation.originalLanguage}
+                    </span>
+                    <span className="text-gray-400 text-lg">→</span>
+                    <span className="px-4 py-2 bg-purple-50 text-purple-700 rounded-lg text-sm font-medium border border-purple-200/50">
+                      {selectedTranslation.translatedLanguage}
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-500 mb-6">
+                    Saved {new Date(selectedTranslation.savedAt).toLocaleDateString('en-US', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric'
+                    })}
+                  </p>
+                  {selectedTranslation.translation && (
+                    <div className="mb-6 p-4 bg-gray-50 rounded-xl border border-gray-200">
+                      <h4 className="text-sm font-semibold text-gray-700 mb-2">Translation Preview:</h4>
+                      <p className="text-sm text-gray-600 line-clamp-4 whitespace-pre-wrap">
+                        {selectedTranslation.translation}
+                      </p>
+                    </div>
+                  )}
+                  <Link
+                    href={`/song/${selectedTranslation.songID}?processingID=${selectedTranslation.processingID}`}
+                    className="inline-block bg-[#7B61FF] hover:bg-[#6B51EF] text-white px-6 py-3 rounded-xl font-medium transition-colors duration-200"
+                  >
+                    View Full Details
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

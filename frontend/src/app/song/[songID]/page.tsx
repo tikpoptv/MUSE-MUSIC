@@ -19,6 +19,8 @@ import { analysisService } from '@/services/analysisService';
 import { recommendSongsService, type RecommendedSong } from '@/services/recommendSongsService';
 import shareService from '@/services/shareService';
 import { authService } from '@/services/authService';
+import { historyService } from '@/services/historyService';
+import { favoriteService } from '@/services/favoriteService';
 import ReAnalyzeConfirmModal from '@/components/modals/ReAnalyzeConfirmModal';
 import NavigateAwayConfirmModal from '@/components/modals/NavigateAwayConfirmModal';
 import SocialShareModal from '@/components/SocialShareModal';
@@ -91,6 +93,26 @@ export default function SongDetailPage() {
   const [isCreatingShareLink, setIsCreatingShareLink] = useState(false);
   const [isSocialShareModalOpen, setIsSocialShareModalOpen] = useState(false);
   const [shareUrl, setShareUrl] = useState<string>('');
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [isCheckingFavorite, setIsCheckingFavorite] = useState(false);
+  const [isTogglingFavorite, setIsTogglingFavorite] = useState(false);
+
+  const checkFavoriteStatus = useCallback(async () => {
+    if (!songID || songID === 'undefined' || !authService.isAuthenticated()) {
+      return;
+    }
+
+    try {
+      setIsCheckingFavorite(true);
+      const favorite = await favoriteService.checkFavorite(songID);
+      setIsFavorite(favorite);
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('Failed to check favorite status:', error);
+    } finally {
+      setIsCheckingFavorite(false);
+    }
+  }, [songID]);
 
   useEffect(() => {
     const checkAdminStatus = async () => {
@@ -160,6 +182,12 @@ export default function SongDetailPage() {
 
     fetchSongData();
   }, [songID, processingID, router, isAnalysisRoute, isAdmin]);
+
+  useEffect(() => {
+    if (songID && songID !== 'undefined' && authService.isAuthenticated()) {
+      checkFavoriteStatus();
+    }
+  }, [songID, checkFavoriteStatus]);
 
   useEffect(() => {
     const fetchRecommendationsByLanguage = async () => {
@@ -382,6 +410,70 @@ export default function SongDetailPage() {
       setIsReAnalyzing(false);
       setIsReAnalyzeModalOpen(false);
       setPendingLanguageChange(null);
+    }
+  };
+
+  const handleSaveTranslation = async () => {
+    if (!songID || !processingID || songID === 'undefined' || processingID === 'undefined') {
+      return;
+    }
+
+    if (!authService.isAuthenticated()) {
+      toast.error('Please login to save translation');
+      return;
+    }
+
+    try {
+      const result = await historyService.saveTranslation({
+        songID,
+        processingID
+      });
+
+      if (result) {
+        toast.success('Translation saved to your archive!');
+      }
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('Failed to save translation:', error);
+    }
+  };
+
+  const handleToggleFavorite = async () => {
+    if (!songID || songID === 'undefined') {
+      return;
+    }
+
+    if (!authService.isAuthenticated()) {
+      toast.error('Please login to add favorites');
+      return;
+    }
+
+    try {
+      setIsTogglingFavorite(true);
+      
+      if (isFavorite) {
+        const removed = await favoriteService.removeFavorite({ songID });
+        if (removed) {
+          setIsFavorite(false);
+          toast.success('Removed from favorites');
+        } else {
+          toast.error('Failed to remove favorite');
+        }
+      } else {
+        const result = await favoriteService.addFavorite({ songID });
+        if (result) {
+          setIsFavorite(true);
+          toast.success('Added to favorites');
+        } else {
+          toast.error('Failed to add favorite');
+        }
+      }
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('Failed to toggle favorite:', error);
+      toast.error('Failed to update favorite');
+    } finally {
+      setIsTogglingFavorite(false);
     }
   };
 
@@ -680,8 +772,17 @@ export default function SongDetailPage() {
 
               {/* Action Icons */}
               <div className="flex items-center gap-4 justify-center mt-6">
-                <button className="p-3 rounded-full hover:bg-gray-100 transition-colors">
-                  <Heart className="h-6 w-6" style={{ color: '#7B61FF' }} />
+                <button 
+                  onClick={handleToggleFavorite}
+                  disabled={isTogglingFavorite || isCheckingFavorite}
+                  className="p-3 rounded-full hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  aria-label={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+                >
+                  <Heart 
+                    className="h-6 w-6" 
+                    style={{ color: '#7B61FF' }} 
+                    fill={isFavorite ? '#7B61FF' : 'none'}
+                  />
                 </button>
                 <button 
                   onClick={handleShare}
@@ -771,8 +872,17 @@ export default function SongDetailPage() {
               readonly={!isAnalysisRoute}
             />
             <div className="flex items-center gap-4 justify-center mt-6">
-              <button className="p-3 rounded-full hover:bg-gray-100 transition-colors">
-                <Heart className="h-6 w-6" style={{ color: '#7B61FF' }} />
+              <button 
+                onClick={handleToggleFavorite}
+                disabled={isTogglingFavorite || isCheckingFavorite}
+                className="p-3 rounded-full hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                aria-label={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+              >
+                <Heart 
+                  className="h-6 w-6" 
+                  style={{ color: '#7B61FF' }} 
+                  fill={isFavorite ? '#7B61FF' : 'none'}
+                />
               </button>
               <button 
                 onClick={handleShare}
@@ -836,6 +946,7 @@ export default function SongDetailPage() {
                 isPlaying={isPlaying}
                 syncConfirmed={processingData?.syncConfirmed || false}
                 songStartTime={processingData?.songStartTime || null}
+                onSave={handleSaveTranslation}
               />
             </div>
 

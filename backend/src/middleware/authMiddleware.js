@@ -61,10 +61,39 @@ const requireRole = (roles) => {
   };
 };
 
-const requireAccessToken = authenticateToken; // alias for clarity in routes
+const requireAccessToken = authenticateToken;
+
+const optionalAuthenticate = async (req, res, next) => {
+  try {
+    const authHeader = req.headers.authorization;
+    const token = JWTService.extractTokenFromHeader(authHeader);
+
+    if (!token) {
+      return next();
+    }
+
+    const decoded = JWTService.verifyAccessToken(token);
+
+    if (!decoded) {
+      return next();
+    }
+
+    const user = await UserService.findByID(decoded.userID);
+
+    if (user) {
+      req.user = user;
+      req.token = decoded;
+    }
+
+    next();
+  } catch (error) {
+    next();
+  }
+};
 
 module.exports = {
   authenticateToken,
   requireRole,
-  requireAccessToken
+  requireAccessToken,
+  optionalAuthenticate
 };

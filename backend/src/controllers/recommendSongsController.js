@@ -6,12 +6,6 @@ const getRecommendedSongsByLanguageAndMood = async (req, res) => {
   try {
     const { language, mood, limit, excludeSongID } = req.query;
 
-    if (!language && !mood) {
-      return res.status(400).json(
-        errorResponse('Either language or mood parameter is required', 400)
-      );
-    }
-
     const maxLimit = parseInt(limit) || 10;
     if (maxLimit < 1 || maxLimit > 100) {
       return res.status(400).json(

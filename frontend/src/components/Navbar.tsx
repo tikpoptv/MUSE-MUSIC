@@ -6,12 +6,14 @@ import { useState, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { ChartArea } from 'lucide-react';
 import { authService } from '@/services/authService';
+import { userService } from '@/services/userService';
 import { UserData } from '@/types/user';
 
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userData, setUserData] = useState<UserData | null>(null);
+  const [profilePicture, setProfilePicture] = useState<string | null>(null);
   const [isMobile, setIsMobile] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const pathname = usePathname();
@@ -57,8 +59,18 @@ export default function Navbar() {
     if (isAuth && user) {
       const userRole = user.role?.toLowerCase();
       setIsAdmin(userRole === 'admin' || userRole === 'super_admin');
+      
+      // Load profile picture
+      userService.getUserSettings()
+        .then(settings => {
+          setProfilePicture(settings.profilePicture);
+        })
+        .catch(() => {
+          // Silently fail if settings can't be loaded
+        });
     } else {
       setIsAdmin(false);
+      setProfilePicture(null);
     }
   }, []);
 
@@ -164,11 +176,23 @@ export default function Navbar() {
             {isAuthenticated ? (
               <button 
                 onClick={handleProfileClick}
-                className="w-10 h-10 bg-[#7B61FF] rounded-full flex items-center justify-center cursor-pointer hover:bg-[#6B51EF] transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[#7B61FF] focus:ring-offset-2"
+                className={`w-10 h-10 rounded-full flex items-center justify-center cursor-pointer overflow-hidden transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[#7B61FF] focus:ring-offset-2 ${
+                  profilePicture ? 'bg-transparent' : 'bg-[#7B61FF] hover:bg-[#6B51EF]'
+                }`}
               >
-                <span className="text-white text-sm font-medium">
-                  {userData?.fullName?.charAt(0) || userData?.username?.charAt(0) || 'U'}
-                </span>
+                {profilePicture ? (
+                  <Image
+                    src={profilePicture}
+                    alt="Profile Picture"
+                    width={40}
+                    height={40}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <span className="text-white text-sm font-medium">
+                    {userData?.fullName?.charAt(0) || userData?.username?.charAt(0) || 'U'}
+                  </span>
+                )}
               </button>
             ) : (
               <Link 
@@ -310,11 +334,23 @@ export default function Navbar() {
                       handleProfileClick();
                       setIsMenuOpen(false);
                     }}
-                    className="w-10 h-10 bg-[#7B61FF] rounded-full flex items-center justify-center hover:bg-[#6B51EF] transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[#7B61FF] focus:ring-offset-2"
+                    className={`w-10 h-10 rounded-full flex items-center justify-center overflow-hidden transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[#7B61FF] focus:ring-offset-2 ${
+                      profilePicture ? 'bg-transparent' : 'bg-[#7B61FF] hover:bg-[#6B51EF]'
+                    }`}
                   >
-                    <span className="text-white text-sm font-medium">
-                      {userData?.fullName?.charAt(0) || userData?.username?.charAt(0) || 'U'}
-                    </span>
+                    {profilePicture ? (
+                      <Image
+                        src={profilePicture}
+                        alt="Profile Picture"
+                        width={40}
+                        height={40}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <span className="text-white text-sm font-medium">
+                        {userData?.fullName?.charAt(0) || userData?.username?.charAt(0) || 'U'}
+                      </span>
+                    )}
                   </button>
                 </div>
               ) : (

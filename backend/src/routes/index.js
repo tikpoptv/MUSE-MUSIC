@@ -26,6 +26,8 @@ const adminLogsRoutes = require('./adminLogs');
 const n8nWorkflowRoutes = require('./n8nWorkflow');
 const promptTestRoutes = require('./promptTest');
 const promptRoutes = require('./prompts');
+const historyRoutes = require('./history');
+const favoritesRoutes = require('./favorites');
 
 router.get('/', (req, res) => {
   res.json({
@@ -64,5 +66,7 @@ router.use('/api/admin/logs', adminLogsRoutes);
 router.use('/api/n8n/workflow', n8nWorkflowRoutes);
 router.use('/api/prompt-test', promptTestRoutes);
 router.use('/api/prompts', promptRoutes);
+router.use('/api/history', historyRoutes);
+router.use('/api/favorites', favoritesRoutes);
 
 module.exports = router;

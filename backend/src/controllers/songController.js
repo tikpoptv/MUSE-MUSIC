@@ -1,4 +1,5 @@
 const SongService = require('../services/songService');
+const HistoryService = require('../services/historyService');
 const { successResponse, errorResponse } = require('../utils/response');
 const { logger } = require('../middleware/logger');
 
@@ -16,6 +17,18 @@ const getSongDetail = async (req, res) => {
     logger.info('Fetching song detail', { songID, processingID });
 
     const result = await SongService.getSongDetail(songID, processingID || null);
+
+    if (req.user && req.user.userID && processingID && processingID !== 'undefined') {
+      const deviceInfo = req.headers['user-agent']?.includes('Mobile') ? 'mobile' : 'desktop';
+      HistoryService.recordViewHistory(
+        req.user.userID,
+        songID,
+        processingID,
+        deviceInfo
+      ).catch(err => {
+        logger.warn('Failed to record view history:', err);
+      });
+    }
 
     return res.json(
       successResponse('Song detail fetched successfully', result)
