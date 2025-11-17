@@ -1,6 +1,47 @@
 const DatabaseService = require('./databaseService');
+const { pool } = require('../config/database');
 const { logger } = require('../middleware/logger');
 const RecommendHomeService = require('./recommendHomeService');
+
+function normalizeMainMood(name) {
+  if (!name) return null;
+  const n = String(name).trim().toLowerCase();
+  switch (n) {
+    case 'happy':
+      return 'Happy';
+    case 'sad':
+      return 'Sad';
+    case 'fear':
+      return 'Fear';
+    case 'anger':
+      return 'Anger';
+    case 'disgust':
+      return 'Disgust';
+    case 'surprise':
+      return 'Surprise';
+    case 'love':
+    case 'playful':
+    case 'calm':
+    case 'hearts':
+    case 'angel':
+    case 'wink':
+    case 'cool':
+      return 'Happy';
+    case 'sleepy':
+    case 'broken heart':
+    case 'neutral':
+      return 'Sad';
+    case 'sick':
+    case 'embarrassed':
+    case 'dizzy':
+    case 'awkward':
+      return 'Disgust';
+    case 'mixed':
+      return 'Surprise';
+    default:
+      return null;
+  }
+}
 
 class ForYouService {
   static async getForYouContent(userID) {
@@ -23,57 +64,103 @@ class ForYouService {
   }
 
   static async getMoodStats(userID) {
+    const client = await pool.connect();
     try {
+      // Get all processing records with moodtype for this user
       const query = `
-        WITH user_moods AS (
-          SELECT 
-            p.moodtype,
-            COUNT(*) as count
-          FROM songaiprocessing p
-          WHERE p.createdby = $1
-            AND p.status = 'completed'
-            AND p.moodtype IS NOT NULL
-            AND p.moodtype != ''
-          GROUP BY p.moodtype
-        ),
-        parsed_moods AS (
-          SELECT 
-            moodtype,
-            count,
-            CASE 
-              WHEN moodtype LIKE '[%' THEN 
-                jsonb_array_elements(moodtype::jsonb)->>'type'
-              ELSE 
-                moodtype
-            END as mood_type
-          FROM user_moods
-        )
-        SELECT 
-          mood_type as moodtype,
-          SUM(count) as count
-        FROM parsed_moods
-        GROUP BY mood_type
-        ORDER BY count DESC
-        LIMIT 10
+        SELECT DISTINCT
+          p.processingid,
+          p.moodtype
+        FROM songaiprocessing p
+        WHERE p.createdby = $1
+          AND p.status = 'completed'
+          AND p.moodtype IS NOT NULL
+          AND p.moodtype != ''
       `;
 
-      const result = await DatabaseService.query(query, [userID]);
+      const result = await client.query(query, [userID]);
 
       if (!result.rows || result.rows.length === 0) {
         return [];
       }
 
-      const total = result.rows.reduce((sum, row) => sum + parseInt(row.count), 0);
+      const mainMoodCategories = ['Happy', 'Sad', 'Fear', 'Anger', 'Disgust', 'Surprise'];
+      const moodMap = new Map();
+      mainMoodCategories.forEach(mood => {
+        moodMap.set(mood, 0);
+      });
+
+      result.rows.forEach(row => {
+        if (!row.moodtype) return;
+
+        try {
+          const moods = JSON.parse(row.moodtype);
+
+          if (Array.isArray(moods) && moods.length > 0) {
+            // Get the top mood (first item, usually sorted by percentage)
+            moods.forEach(moodItem => {
+              let moodRaw = null;
+
+              if (typeof moodItem === 'object' && moodItem !== null && moodItem.type) {
+                moodRaw = moodItem.type;
+              } else if (typeof moodItem === 'string') {
+                moodRaw = moodItem;
+              }
+
+              if (moodRaw) {
+                const normalized = normalizeMainMood(moodRaw);
+                if (normalized && moodMap.has(normalized)) {
+                  moodMap.set(normalized, moodMap.get(normalized) + 1);
+                }
+              }
+            });
+          } else if (typeof moods === 'object' && moods !== null && moods.type) {
+            const normalized = normalizeMainMood(moods.type);
+            if (normalized && moodMap.has(normalized)) {
+              moodMap.set(normalized, moodMap.get(normalized) + 1);
+            }
+          } else if (typeof moods === 'string') {
+            const normalized = normalizeMainMood(moods);
+            if (normalized && moodMap.has(normalized)) {
+              moodMap.set(normalized, moodMap.get(normalized) + 1);
+            }
+          }
+        } catch (e) {
+          // If not JSON, treat as string
+          if (typeof row.moodtype === 'string') {
+            const normalized = normalizeMainMood(row.moodtype);
+            if (normalized && moodMap.has(normalized)) {
+              moodMap.set(normalized, moodMap.get(normalized) + 1);
+            }
+          }
+        }
+      });
+
+      const moodStats = Array.from(moodMap.entries())
+        .filter(([, count]) => count > 0)
+        .map(([mood, count]) => ({
+          moodType: mood,
+          count: count
+        }))
+        .sort((a, b) => b.count - a.count);
+
+      if (moodStats.length === 0) {
+        return [];
+      }
+
+      const total = moodStats.reduce((sum, stat) => sum + stat.count, 0);
       if (total === 0) return [];
 
-      return result.rows.map(row => ({
-        moodType: row.moodtype || 'unknown',
-        count: parseInt(row.count) || 0,
-        percentage: Math.round((parseInt(row.count) / total) * 100)
+      return moodStats.map(stat => ({
+        moodType: stat.moodType,
+        count: stat.count,
+        percentage: Math.round((stat.count / total) * 100)
       }));
     } catch (error) {
       logger.error('Error in ForYouService.getMoodStats:', error);
       return [];
+    } finally {
+      client.release();
     }
   }
 
@@ -85,7 +172,8 @@ class ForYouService {
           s.songname as title,
           s.artistname as artist,
           COALESCE(p.coverimage, '') as image,
-          p.processingid as processingid
+          p.processingid as processingid,
+          p.moodtype as moodtype
         FROM history h
         INNER JOIN songs s ON h.songid = s.songid
         LEFT JOIN songaiprocessing p ON h.processingid = p.processingid
@@ -101,13 +189,30 @@ class ForYouService {
         return [];
       }
 
-      return result.rows.map(row => ({
-        id: row.id,
-        title: row.title || 'Unknown',
-        artist: row.artist || 'Unknown Artist',
-        image: row.image || '/images/cover.jpg',
-        processingID: row.processingid || null
-      }));
+      return result.rows.map(row => {
+        let topMood = null;
+        if (row.moodtype) {
+          try {
+            const parsed = JSON.parse(row.moodtype);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              topMood = parsed[0];
+            }
+          } catch (e) {
+            if (row.moodtype) {
+              topMood = { type: row.moodtype, percentage: 0 };
+            }
+          }
+        }
+
+        return {
+          id: row.id,
+          title: row.title || 'Unknown',
+          artist: row.artist || 'Unknown Artist',
+          image: row.image || '/images/cover.jpg',
+          processingID: row.processingid || null,
+          mood: topMood
+        };
+      });
     } catch (error) {
       logger.error('Error in ForYouService.getRecentlySearched:', error);
       return [];
@@ -125,7 +230,8 @@ class ForYouService {
           title: item.title,
           artist: item.artist,
           image: item.image || '/images/cover.jpg',
-          processingID: item.processingID || null
+          processingID: item.processingID || null,
+          mood: item.mood || null
         }))
       }));
 
@@ -152,7 +258,8 @@ class ForYouService {
           s.songname as title,
           s.artistname as artist,
           COALESCE(p.coverimage, '') as image,
-          p.processingid as processingid
+          p.processingid as processingid,
+          p.moodtype as moodtype
         FROM songs s
         INNER JOIN songaiprocessing p ON s.songid = p.songid
         WHERE s.isactive = TRUE
@@ -169,13 +276,30 @@ class ForYouService {
         return [];
       }
 
-      return result.rows.map(row => ({
-        id: row.id,
-        title: row.title || 'Unknown',
-        artist: row.artist || 'Unknown Artist',
-        image: row.image || '/images/cover.jpg',
-        processingID: row.processingid || null
-      }));
+      return result.rows.map(row => {
+        let topMood = null;
+        if (row.moodtype) {
+          try {
+            const parsed = JSON.parse(row.moodtype);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              topMood = parsed[0];
+            }
+          } catch (e) {
+            if (row.moodtype) {
+              topMood = { type: row.moodtype, percentage: 0 };
+            }
+          }
+        }
+
+        return {
+          id: row.id,
+          title: row.title || 'Unknown',
+          artist: row.artist || 'Unknown Artist',
+          image: row.image || '/images/cover.jpg',
+          processingID: row.processingid || null,
+          mood: topMood
+        };
+      });
     } catch (error) {
       logger.error('Error in ForYouService.getTopHits:', error);
       return [];
