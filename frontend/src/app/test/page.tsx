@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Languages, SmilePlus } from 'lucide-react';
-import { fetchRecommendedAlbums } from "@/songs/fetchRecommendedAlbums"; // Import the function
+import { recommendSongsService } from '@/services/recommendSongsService';
 import { RecommendedAlbum } from "@/types/user";
 import MusicCard from '@/components/MusicCard';
 
@@ -14,8 +14,23 @@ export default function LandingPage() {
     // Fetch recommended albums on component mount
     const fetchAlbums = async () => {
       try {
-        const data = await fetchRecommendedAlbums();
-        setAlbums(data);
+        const songs = await recommendSongsService.getRecommendedSongsByLanguageAndMood(
+          undefined,
+          undefined,
+          20
+        );
+
+        const albumsData: RecommendedAlbum[] = songs.map(song => ({
+          id: song.id,
+          processingID: song.processingID,
+          title: song.title,
+          artist: song.artist,
+          coverImage: song.image || null,
+          mood: song.mood || null,
+          genre: song.genre || 'Unknown'
+        }));
+
+        setAlbums(albumsData);
       } catch (error) {
         console.error("Error fetching albums:", error);
       } finally {
@@ -90,10 +105,11 @@ export default function LandingPage() {
             {albums.map((album) => (
               <MusicCard
                 key={album.id}
-                image={album.coverImage}
+                image={album.coverImage || undefined}
                 title={album.title}
                 artist={album.artist}
                 href={`/songs/${album.id}`}
+                mood={album.mood}
               />
             ))}
           </div>
