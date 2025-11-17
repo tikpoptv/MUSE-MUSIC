@@ -6,7 +6,16 @@ import {
   UpdateUserSettingsResponse,
   ResetPasswordRequest,
   ResetPasswordResponse,
+  UserStats,
 } from '../types/user';
+
+interface UserStatsResponse {
+  success: boolean;
+  message: string;
+  data: {
+    stats: UserStats;
+  };
+}
 
 export const userService = {
   async getUserSettings(): Promise<UserSettings> {
@@ -43,5 +52,19 @@ export const userService = {
     if (!response.success) {
       throw new Error(response.error || 'Failed to reset password');
     }
+  },
+
+  async getUserStats(): Promise<UserStats> {
+    const response = await apiService.get<UserStatsResponse>('/api/user/stats');
+    
+    if (!response.success) {
+      throw new Error(response.error || 'Failed to fetch user stats');
+    }
+    
+    if (!response.data?.data?.stats) {
+      throw new Error('No stats data received from API');
+    }
+    
+    return response.data.data.stats;
   }
 };

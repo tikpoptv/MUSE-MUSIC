@@ -37,23 +37,23 @@ export default function AccountSettingsPage() {
   const [profilePicture, setProfilePicture] = useState<string | null>(null);
   const router = useRouter();
 
-  // Mock data functions
   const fetchUserStats = async (): Promise<UserStats> => {
-    // TODO: Replace with actual API call
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve({
-          favourites: 0,
-          analyzing: 0,
-          happy: 0,
-          sad: 0,
-          fear: 0,
-          anger: 0,
-          disgust: 0,
-          surprise: 0
-        });
-      }, 500);
-    });
+    try {
+      return await userService.getUserStats();
+    } catch (error) {
+      devLog('Error fetching user stats:', error);
+      // Return default values on error
+      return {
+        favourites: 0,
+        analyzing: 0,
+        happy: 0,
+        sad: 0,
+        fear: 0,
+        anger: 0,
+        disgust: 0,
+        surprise: 0
+      };
+    }
   };
 
   const fetchFavouriteSongs = async (): Promise<FavouriteSong[]> => {
