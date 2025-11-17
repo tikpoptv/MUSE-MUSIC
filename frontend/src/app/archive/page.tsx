@@ -4,13 +4,14 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { authService } from '@/services/authService';
+import { historyService } from '@/services/historyService';
 import toast from 'react-hot-toast';
-import { UserData, UserStats, RecommendedAlbum } from '@/types/user';
+import { UserData, UserStats, RecommendedAlbum, SavedTranslation } from '@/types/user';
 import NavMenuItem from '@/components/NavMenuItem';
 import Image from 'next/image';
 
 // Dev-only logger helper
-const devLog = (...args: any[]) => {
+const devLog = (...args: unknown[]) => {
   if (process.env.NODE_ENV === 'development') {
     // eslint-disable-next-line no-console
     console.error(...args);
@@ -21,6 +22,7 @@ export default function AccountSettingsPage() {
   const [userData, setUserData] = useState<UserData | null>(null);
   const [userStats, setUserStats] = useState<UserStats | null>(null);
   const [recommendedAlbums, setRecommendedAlbums] = useState<RecommendedAlbum[]>([]);
+  const [savedTranslations, setSavedTranslations] = useState<SavedTranslation[]>([]);
   const [isLoadingFavourites, setIsLoadingFavourites] = useState(true);
   const [isLoadingSaveTranslation, setIsLoadingSaveTranslation] = useState(true);
   const [isLoadingRecommend, setIsLoadingRecommend] = useState(true);
@@ -54,13 +56,32 @@ export default function AccountSettingsPage() {
     });
   };
 
-  const fetchSavedTranslations = async () => {
-    // TODO: Replace with actual API call
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve([]);
-      }, 600);
-    });
+  const fetchSavedTranslations = async (): Promise<SavedTranslation[]> => {
+    try {
+      const result = await historyService.getUserHistory(1, 50, 'save');
+      
+      if (!result || !result.history) {
+        return [];
+      }
+
+      return result.history
+        .filter(item => item.processingID && item.processing) // Only include items with processing data
+        .map(item => ({
+          id: item.historyID,
+          songID: item.songID,
+          processingID: item.processingID || '',
+          songTitle: item.song.songName,
+          artistName: item.song.artistName,
+          coverImage: item.song.coverImage,
+          originalLanguage: item.processing?.originalLanguage || 'Unknown',
+          translatedLanguage: item.processing?.targetLanguage || 'Unknown',
+          translation: item.processing?.translation || '',
+          savedAt: item.timeStamp
+        }));
+    } catch (error) {
+      devLog('Error fetching saved translations:', error);
+      return [];
+    }
   };
 
 
@@ -154,7 +175,8 @@ export default function AccountSettingsPage() {
 
     const loadSaveTranslation = async () => {
       try {
-        await fetchSavedTranslations();
+        const translations = await fetchSavedTranslations();
+        setSavedTranslations(translations);
         setIsLoadingSaveTranslation(false);
       } catch (error) {
         devLog('Error loading save translation:', error);
@@ -346,14 +368,73 @@ export default function AccountSettingsPage() {
                       <p className="text-[#737373]">Loading...</p>
                     </div>
                   </div>
-                ) : (
+                ) : savedTranslations.length === 0 ? (
                   <div className="text-center py-12">
                     <p className="text-[#737373] text-lg mb-2">Oops, looks empty here! 🎶</p>
                     <p className="text-[#737373] mb-6">Save your first translation to start your collection.</p>
-                    <button className="bg-[#7B61FF] hover:bg-[#6B51EF] text-white px-6 py-3 rounded-xl font-medium transition-colors duration-200 flex items-center space-x-2 mx-auto">
+                    <button 
+                      onClick={() => router.push('/')}
+                      className="bg-[#7B61FF] hover:bg-[#6B51EF] text-white px-6 py-3 rounded-xl font-medium transition-colors duration-200 flex items-center space-x-2 mx-auto"
+                    >
                       <span>Find yours</span>
                       <Image src="/icons/search-icon.svg" alt="Search" width={20} height={20} />
                     </button>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {savedTranslations.map((translation) => (
+                      <Link
+                        key={translation.id}
+                        href={`/song/${translation.songID}?processingID=${translation.processingID}`}
+                        className="block p-5 bg-white rounded-xl hover:bg-gray-50 hover:shadow-md transition-all duration-200 border border-gray-200 hover:border-[#7B61FF]/30 group"
+                      >
+                        <div className="flex items-start gap-5">
+                          <div className="flex-shrink-0">
+                            {translation.coverImage ? (
+                              <div className="relative overflow-hidden rounded-xl shadow-sm group-hover:shadow-md transition-shadow duration-200">
+                                <Image
+                                  src={translation.coverImage}
+                                  alt={translation.songTitle}
+                                  width={96}
+                                  height={96}
+                                  className="rounded-xl object-cover w-24 h-24"
+                                />
+                              </div>
+                            ) : (
+                              <div className="w-24 h-24 bg-gradient-to-br from-[#7B61FF] to-[#6B51EF] rounded-xl flex items-center justify-center shadow-sm group-hover:shadow-md transition-shadow duration-200">
+                                <Image src="/icons/save-icon.svg" alt="Saved" width={36} height={36} className="opacity-90" />
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0 pt-1">
+                            <h3 className="font-semibold text-gray-900 truncate mb-1.5 text-base group-hover:text-[#7B61FF] transition-colors duration-200">
+                              {translation.songTitle}
+                            </h3>
+                            {translation.artistName && (
+                              <p className="text-sm text-gray-600 truncate mb-3 font-medium">
+                                {translation.artistName}
+                              </p>
+                            )}
+                            <div className="flex items-center gap-2.5 mb-3 flex-wrap">
+                              <span className="px-2.5 py-1 bg-blue-50 text-blue-700 rounded-md text-xs font-medium border border-blue-200/50">
+                                {translation.originalLanguage}
+                              </span>
+                              <span className="text-gray-400 text-sm">→</span>
+                              <span className="px-2.5 py-1 bg-purple-50 text-purple-700 rounded-md text-xs font-medium border border-purple-200/50">
+                                {translation.translatedLanguage}
+                              </span>
+                            </div>
+                            <p className="text-xs text-gray-500 font-medium">
+                              Saved {new Date(translation.savedAt).toLocaleDateString('en-US', {
+                                year: 'numeric',
+                                month: 'short',
+                                day: 'numeric'
+                              })}
+                            </p>
+                          </div>
+                        </div>
+                      </Link>
+                    ))}
                   </div>
                 )}
               </div>

@@ -19,6 +19,7 @@ import { analysisService } from '@/services/analysisService';
 import { recommendSongsService, type RecommendedSong } from '@/services/recommendSongsService';
 import shareService from '@/services/shareService';
 import { authService } from '@/services/authService';
+import { historyService } from '@/services/historyService';
 import ReAnalyzeConfirmModal from '@/components/modals/ReAnalyzeConfirmModal';
 import NavigateAwayConfirmModal from '@/components/modals/NavigateAwayConfirmModal';
 import SocialShareModal from '@/components/SocialShareModal';
@@ -382,6 +383,32 @@ export default function SongDetailPage() {
       setIsReAnalyzing(false);
       setIsReAnalyzeModalOpen(false);
       setPendingLanguageChange(null);
+    }
+  };
+
+  const handleSaveTranslation = async () => {
+    if (!songID || !processingID || songID === 'undefined' || processingID === 'undefined') {
+      return;
+    }
+
+    if (!authService.isAuthenticated()) {
+      toast.error('Please login to save translation');
+      return;
+    }
+
+    try {
+      const result = await historyService.saveTranslation({
+        songID,
+        processingID
+      });
+
+      if (result) {
+        toast.success('Translation saved to your archive!');
+      }
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('Failed to save translation:', error);
+      // Don't show error toast as download already succeeded
     }
   };
 
@@ -836,6 +863,7 @@ export default function SongDetailPage() {
                 isPlaying={isPlaying}
                 syncConfirmed={processingData?.syncConfirmed || false}
                 songStartTime={processingData?.songStartTime || null}
+                onSave={handleSaveTranslation}
               />
             </div>
 
