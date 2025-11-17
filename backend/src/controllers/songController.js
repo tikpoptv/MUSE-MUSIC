@@ -87,8 +87,41 @@ const checkProcessingByLanguage = async (req, res) => {
   }
 };
 
+const searchSongs = async (req, res) => {
+  try {
+    const { q, limit } = req.query;
+
+    if (!q || q.trim() === '') {
+      return res.status(400).json(
+        errorResponse('Search query (q) is required', 400)
+      );
+    }
+
+    const limitNum = limit ? parseInt(limit) : 10;
+    if (isNaN(limitNum) || limitNum < 1 || limitNum > 50) {
+      return res.status(400).json(
+        errorResponse('limit must be between 1 and 50', 400)
+      );
+    }
+
+    logger.info('Searching songs', { query: q, limit: limitNum });
+
+    const results = await SongService.searchSongs(q, limitNum);
+
+    return res.json(
+      successResponse('Songs search completed', { songs: results })
+    );
+  } catch (error) {
+    logger.error('Error in searchSongs:', error);
+    return res.status(500).json(
+      errorResponse('Failed to search songs', 500, error.message)
+    );
+  }
+};
+
 module.exports = {
   getSongDetail,
-  checkProcessingByLanguage
+  checkProcessingByLanguage,
+  searchSongs
 };
 

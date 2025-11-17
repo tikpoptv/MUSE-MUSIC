@@ -44,14 +44,14 @@ export default function AccountSettingsPage() {
       devLog('Error fetching user stats:', error);
       // Return default values on error
       return {
-        favourites: 0,
-        analyzing: 0,
-        happy: 0,
-        sad: 0,
-        fear: 0,
-        anger: 0,
-        disgust: 0,
-        surprise: 0
+          favourites: 0,
+          analyzing: 0,
+          happy: 0,
+          sad: 0,
+          fear: 0,
+          anger: 0,
+          disgust: 0,
+          surprise: 0
       };
     }
   };
@@ -240,10 +240,10 @@ export default function AccountSettingsPage() {
                       className="w-full h-full object-cover"
                     />
                   ) : (
-                    <div className="text-center">
-                      <div className="text-white text-[44px] font-bold mb-2">+</div>
-                      <div className="text-white text-xs">Add your picture!</div>
-                    </div>
+                  <div className="text-center">
+                    <div className="text-white text-[44px] font-bold mb-2">+</div>
+                    <div className="text-white text-xs">Add your picture!</div>
+                  </div>
                   )}
                 </div>
               </div>
@@ -548,7 +548,7 @@ export default function AccountSettingsPage() {
                 ) : (
                   <div className="overflow-x-auto pb-4 -mx-4 px-4 scrollbar-hide">
                     <div className="flex gap-4 min-w-max">
-                      {recommendedAlbums.map((album) => (
+                  {recommendedAlbums.map((album) => (
                         <div key={album.id} className="flex-shrink-0 w-[180px] sm:w-[200px]">
                           <MusicCard
                             image={album.coverImage || undefined}
@@ -560,7 +560,7 @@ export default function AccountSettingsPage() {
                         </div>
                       ))}
                     </div>
-                  </div>
+                </div>
                 )
               )}
             </div>

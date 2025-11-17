@@ -213,6 +213,72 @@ class SongService {
     }
   }
   
+  static async searchSongs(query, limit = 10) {
+    try {
+      if (!query || query.trim() === '') {
+        return [];
+      }
+
+      const searchTerm = `%${query.trim().toLowerCase()}%`;
+      const searchQuery = `
+        SELECT DISTINCT ON (s.songid)
+          s.songid,
+          s.songname,
+          s.artistname,
+          s.genre,
+          s.duration,
+          p.processingid,
+          p.coverimage,
+          p.status,
+          p.approvalstatus,
+          p.sharestatus
+        FROM songs s
+        LEFT JOIN LATERAL (
+          SELECT 
+            p1.processingid,
+            p1.coverimage,
+            p1.status,
+            p1.approvalstatus,
+            p1.sharestatus
+          FROM songaiprocessing p1
+          WHERE p1.songid = s.songid
+            AND p1.status = 'completed'
+            AND p1.approvalstatus = 'approved'
+            AND p1.sharestatus = 'public_approved'
+          ORDER BY 
+            CASE WHEN p1.totalratings > 0 THEN 0 ELSE 1 END,
+            p1.totalratings DESC,
+            p1.averagerating DESC NULLS LAST,
+            p1.createdat DESC
+          LIMIT 1
+        ) p ON true
+        WHERE s.isactive = TRUE
+          AND (
+            LOWER(s.songname) LIKE $1
+            OR LOWER(s.artistname) LIKE $1
+          )
+        ORDER BY s.songid, s.songname
+        LIMIT $2
+      `;
+
+      const result = await DatabaseService.query(searchQuery, [searchTerm, limit]);
+
+      return result.rows.map(row => ({
+        songID: row.songid,
+        songName: row.songname,
+        artistName: row.artistname,
+        genre: row.genre,
+        duration: row.duration,
+        processingID: row.processingid,
+        coverImage: row.coverimage,
+        hasProcessing: !!row.processingid
+      }));
+    } catch (error) {
+      logger.error('Error in SongService.searchSongs:', error);
+      throw error;
+    }
+  }
+
   static mapTranslationToFull(translationWithPreview, fullLyrics) {
     if (!translationWithPreview || !fullLyrics) {
       return translationWithPreview;
