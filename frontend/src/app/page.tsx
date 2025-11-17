@@ -1,11 +1,13 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { Search, Languages, RefreshCcw, AudioLines, Music } from 'lucide-react';
 import MusicCard from '@/components/MusicCard';
 import SkeletonCard from '@/components/SkeletonCard';
 import { fetchHomeContent } from '@/services/homeService';
 import { lyricsService } from '@/services/lyricsService';
 import { analysisService } from '@/services/analysisService';
+import { songService } from '@/services/songService';
+import type { AnalysisRequest } from '@/types/analysis';
 import type { LyricsRecord } from '@/types/lyrics';
 import { LocalStorageManager } from '@/utils/localStorageManager';
 import { localStorageKeys } from '@/utils/localStorageKeys';
@@ -13,6 +15,14 @@ import type { HomeResponse } from '@/types/home';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { TranslationLanguageModal } from '@/components/modals';
+
+type SelectedRecord = AnalysisRequest['lyricsRecord'];
+type NavbarStartDetail = {
+  songID?: string;
+  query?: string;
+};
+
+const NAVBAR_START_EVENT = 'muse-navbar-start-analysis';
 
 export default function Home() {
   const [data, setData] = useState<HomeResponse>({ hero: [], sections: [] });
@@ -22,7 +32,7 @@ export default function Home() {
   const [searching, setSearching] = useState<boolean>(false);
   const [results, setResults] = useState<LyricsRecord[]>([]);
   const [rateLimited, setRateLimited] = useState<boolean>(false);
-  const [selected, setSelected] = useState<LyricsRecord | null>(null);
+  const [selected, setSelected] = useState<SelectedRecord | null>(null);
   const [analyzing, setAnalyzing] = useState<boolean>(false);
   const [showLanguageModal, setShowLanguageModal] = useState<boolean>(false);
   const [translationConfig, setTranslationConfig] = useState<{ originalLanguage: string; targetLanguage: string }>({
@@ -34,12 +44,81 @@ export default function Home() {
   const searchWrapRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const router = useRouter();
+
+  const selectLyricsRecord = useCallback((record: LyricsRecord) => {
+    setSelected(record);
+    skipNextSearchRef.current = true;
+    setQuery(`${record.trackName} - ${record.artistName}`);
+    setResults([]);
+    setShowDropdown(false);
+    if (inputRef.current) inputRef.current.blur();
+    LocalStorageManager.set<number>(localStorageKeys.SELECTED_LRCLIB_ID, record.id);
+  }, []);
   const formatDuration = (secs: number): string => {
     const total = Math.max(0, Math.round(secs));
     const m = Math.floor(total / 60);
     const s = total % 60;
     return `${m}:${s.toString().padStart(2, '0')}`;
   };
+
+  const runImmediateLyricsSearch = useCallback(async (rawQuery: string) => {
+    const trimmedQuery = rawQuery.trim();
+    if (!trimmedQuery) return;
+    setQuery(trimmedQuery);
+    skipNextSearchRef.current = true;
+    try {
+      setSearching(true);
+      setRateLimited(false);
+      const data = await lyricsService.search({ q: trimmedQuery });
+      if (data.length > 0) {
+        selectLyricsRecord(data[0]);
+      } else {
+        setResults([]);
+        setShowDropdown(true);
+      }
+    } catch {
+      setRateLimited(true);
+      setShowDropdown(true);
+    } finally {
+      setSearching(false);
+    }
+  }, [selectLyricsRecord]);
+
+  const handleSongPrefetch = useCallback(async (rawSongID: string) => {
+    const trimmedSongID = rawSongID.trim();
+    if (!trimmedSongID) return;
+    try {
+      setSearching(true);
+      setRateLimited(false);
+      const detail = await songService.getSongDetail(trimmedSongID);
+      if (!detail?.song) {
+        toast.error('Song not found in the library');
+        return;
+      }
+      const { song } = detail;
+      skipNextSearchRef.current = true;
+      const displayQuery = song.artistName ? `${song.songName} - ${song.artistName}` : song.songName;
+      setQuery(displayQuery);
+      setSelected({
+        songID: song.songID,
+        trackName: song.songName,
+        artistName: song.artistName,
+        albumName: song.genre || '',
+        duration: song.duration ?? 0,
+        instrumental: false
+      });
+      setResults([]);
+      setShowDropdown(false);
+      if (inputRef.current) inputRef.current.blur();
+      toast.success('Song is ready for analysis');
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('Failed to preload song from navbar search', error);
+      toast.error('Unable to prepare this song for analysis');
+    } finally {
+      setSearching(false);
+    }
+  }, []);
 
   useEffect(() => {
     const run = async () => {
@@ -50,6 +129,62 @@ export default function Home() {
     };
     run();
   }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const urlParams = new URLSearchParams(window.location.search);
+    const rawSongID = urlParams.get('songID') ?? urlParams.get('songId');
+    if (!rawSongID || !rawSongID.trim()) {
+      return;
+    }
+    const trimmedSongID = rawSongID.trim();
+    (async () => {
+      try {
+        await handleSongPrefetch(trimmedSongID);
+      } finally {
+        urlParams.delete('songID');
+        urlParams.delete('songId');
+        const search = urlParams.toString();
+        const nextUrl = `${window.location.pathname}${search ? `?${search}` : ''}`;
+        window.history.replaceState(null, '', nextUrl);
+      }
+    })();
+  }, [handleSongPrefetch]);
+
+  // Handle query parameter from URL (for external search)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const urlParams = new URLSearchParams(window.location.search);
+    const queryParam = urlParams.get('q');
+    
+    if (queryParam && queryParam.trim()) {
+      const trimmedQuery = queryParam.trim();
+      (async () => {
+        try {
+          await runImmediateLyricsSearch(trimmedQuery);
+        } finally {
+          urlParams.delete('q');
+          const search = urlParams.toString();
+          const nextUrl = `${window.location.pathname}${search ? `?${search}` : ''}`;
+          window.history.replaceState(null, '', nextUrl);
+        }
+      })();
+    }
+  }, [runImmediateLyricsSearch]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent<NavbarStartDetail>).detail || {};
+      if (detail.songID) {
+        void handleSongPrefetch(detail.songID);
+      } else if (detail.query) {
+        void runImmediateLyricsSearch(detail.query);
+      }
+    };
+    window.addEventListener(NAVBAR_START_EVENT, handler as EventListener);
+    return () => window.removeEventListener(NAVBAR_START_EVENT, handler as EventListener);
+  }, [handleSongPrefetch, runImmediateLyricsSearch]);
 
   useEffect(() => {
     let active = true;
@@ -227,25 +362,11 @@ export default function Home() {
                         role="option"
                         aria-selected="false"
                         tabIndex={0}
-                        onClick={() => {
-                          setSelected(r);
-                          skipNextSearchRef.current = true;
-                          setQuery(`${r.trackName} - ${r.artistName}`);
-                          setResults([]);
-                          setShowDropdown(false);
-                          if (inputRef.current) inputRef.current.blur();
-                          LocalStorageManager.set<number>(localStorageKeys.SELECTED_LRCLIB_ID, r.id);
-                        }}
+                        onClick={() => selectLyricsRecord(r)}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter' || e.key === ' ') {
                             e.preventDefault();
-                            setSelected(r);
-                            skipNextSearchRef.current = true;
-                            setQuery(`${r.trackName} - ${r.artistName}`);
-                            setResults([]);
-                            setShowDropdown(false);
-                            if (inputRef.current) inputRef.current.blur();
-                            LocalStorageManager.set<number>(localStorageKeys.SELECTED_LRCLIB_ID, r.id);
+                            selectLyricsRecord(r);
                           }
                         }}
                       >

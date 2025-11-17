@@ -46,11 +46,11 @@ const MoodCard: React.FC<MoodCardProps> = ({ moodType, percentage }) => {
         </div>
         
         {/* Small smile icon at bottom right */}
-        <div className="absolute bottom-0 right-0">
+        {/* <div className="absolute bottom-0 right-0">
           <div className="w-12 h-12 bg-white/80 rounded-lg flex items-center justify-center">
             <Smile className="text-[#7B61FF]" size={20} />
           </div>
-        </div>
+        </div> */}
       </div>
     </div>
   );

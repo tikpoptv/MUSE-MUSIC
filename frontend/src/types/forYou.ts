@@ -4,6 +4,7 @@ export interface ForYouTrackItem {
   artist: string;
   image: string;
   processingID?: string | null;
+  mood?: { type: string; percentage: number } | null;
 }
 
 export interface MoodStats {

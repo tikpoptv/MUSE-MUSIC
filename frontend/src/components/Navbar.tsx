@@ -2,12 +2,14 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { ChartArea } from 'lucide-react';
 import { authService } from '@/services/authService';
 import { userService } from '@/services/userService';
+import { songService, type SearchSongResult } from '@/services/songService';
 import { UserData } from '@/types/user';
+import StartAnalysisModal from './modals/StartAnalysisModal';
 
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -16,6 +18,15 @@ export default function Navbar() {
   const [profilePicture, setProfilePicture] = useState<string | null>(null);
   const [isMobile, setIsMobile] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [searchResults, setSearchResults] = useState<SearchSongResult[]>([]);
+  const [showSearchDropdown, setShowSearchDropdown] = useState<boolean>(false);
+  const [isSearching, setIsSearching] = useState<boolean>(false);
+  const [showStartAnalysisModal, setShowStartAnalysisModal] = useState<boolean>(false);
+  const [pendingSearchQuery, setPendingSearchQuery] = useState<string>('');
+  const [pendingSongID, setPendingSongID] = useState<string | null>(null);
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const searchWrapRef = useRef<HTMLDivElement | null>(null);
   const pathname = usePathname();
   const router = useRouter();
   const shouldHideSearch = pathname === '/test'|| pathname === '/login' || pathname === '/register' || pathname === '/forgot-password' || pathname === '/account/settings' || pathname.startsWith('/setup');
@@ -78,6 +89,161 @@ export default function Navbar() {
     router.push('/account/settings');
   };
 
+  // Handle search
+  useEffect(() => {
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    if (!searchQuery.trim()) {
+      setSearchResults([]);
+      setShowSearchDropdown(false);
+      return;
+    }
+
+    searchTimeoutRef.current = setTimeout(async () => {
+      try {
+        setIsSearching(true);
+        const results = await songService.searchSongs(searchQuery.trim(), 5);
+        setSearchResults(results);
+        setShowSearchDropdown(true);
+      } catch {
+        // If search fails, just show empty results
+        setSearchResults([]);
+        setShowSearchDropdown(false);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 300);
+
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, [searchQuery]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (searchWrapRef.current && !searchWrapRef.current.contains(event.target as Node)) {
+        setShowSearchDropdown(false);
+      }
+    }
+
+    if (showSearchDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showSearchDropdown]);
+
+  const handleSearchSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!searchQuery.trim()) {
+      return;
+    }
+
+    // First, try to search in system
+    try {
+      const results = await songService.searchSongs(searchQuery.trim(), 1);
+      if (results.length > 0 && results[0].hasProcessing && results[0].processingID) {
+        // Found in system, redirect to song detail
+        router.push(`/song/${results[0].songID}?processingID=${results[0].processingID}`);
+        setSearchQuery('');
+        setShowSearchDropdown(false);
+        return;
+      }
+      if (results.length > 0) {
+        const firstResult = results[0];
+        setPendingSearchQuery(`${firstResult.songName} - ${firstResult.artistName}`);
+        setPendingSongID(firstResult.songID);
+        setShowStartAnalysisModal(true);
+        setShowSearchDropdown(false);
+        return;
+      }
+    } catch {
+      // Continue to fallback
+    }
+
+    // Not found in system, show modal to ask if user wants to start analysis
+    setPendingSearchQuery(searchQuery.trim());
+    setPendingSongID(null);
+    setShowStartAnalysisModal(true);
+    setShowSearchDropdown(false);
+  };
+
+  const dispatchHomeAutoStart = (detail: { songID?: string; query?: string }) => {
+    if (typeof window === 'undefined') return;
+    window.dispatchEvent(new CustomEvent('muse-navbar-start-analysis', { detail }));
+  };
+
+  const handleStartAnalysisConfirm = () => {
+    const query = pendingSearchQuery;
+    const songID = pendingSongID;
+    setShowStartAnalysisModal(false);
+    setPendingSearchQuery('');
+    setPendingSongID(null);
+    setSearchQuery('');
+    if (songID) {
+      if (pathname === '/') {
+        dispatchHomeAutoStart({ songID });
+      } else {
+        router.push(`/?songID=${encodeURIComponent(songID)}`);
+      }
+      return;
+    }
+    if (query) {
+      if (pathname === '/') {
+        dispatchHomeAutoStart({ query });
+      } else {
+        router.push(`/?q=${encodeURIComponent(query)}`);
+      }
+    }
+  };
+
+  const handleStartAnalysisCancel = () => {
+    setShowStartAnalysisModal(false);
+    setPendingSearchQuery('');
+    setPendingSongID(null);
+  };
+
+  const handleResultClick = (
+    e: React.MouseEvent,
+    songID: string,
+    processingID: string | null,
+    hasProcessing: boolean,
+    songName: string,
+    artistName: string
+  ) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Close dropdown first
+    setShowSearchDropdown(false);
+    const currentQuery = searchQuery;
+    setSearchQuery('');
+    
+    // Navigate to song detail page only if has processing
+    if (hasProcessing && processingID && processingID !== 'null' && processingID !== 'undefined' && processingID.trim() !== '') {
+      const url = `/song/${songID}?processingID=${processingID}`;
+      // eslint-disable-next-line no-console
+      console.log('Navigating to:', url, { songID, processingID, hasProcessing });
+      router.push(url);
+    } else {
+      // If no processingID, show modal to start analysis
+      // eslint-disable-next-line no-console
+      console.log('No processing available, prompting start analysis', { songID, processingID, hasProcessing });
+      const label = songName && artistName ? `${songName} - ${artistName}` : (songName || currentQuery.trim());
+      setPendingSearchQuery(label);
+      setPendingSongID(songID);
+      setShowStartAnalysisModal(true);
+    }
+  };
+
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-white shadow-sm border-b border-gray-200 dark:bg-white dark:border-gray-200" style={{ colorScheme: 'light' }}>
@@ -100,29 +266,79 @@ export default function Navbar() {
             
             {!shouldHideSearch && !isMobile && (
               <div className="ml-4 pr-2 flex-shrink" id="search-container" style={{ display: 'block' }}>
-                <div className="relative">
-                  <input
-                    type="text"
-                    placeholder="Search song by name, artist, etc."
-                    className="px-4 pl-4 pr-10 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#7B61FF] focus:border-transparent text-sm"
-                    style={{ width: '435px', height: '40px', color: '#1a1a1a', borderRadius: '12px', minWidth: '200px', maxWidth: '435px' }}
-                  />
-                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                    <svg 
-                      className="h-4 w-4" 
-                      fill="none" 
-                      stroke="currentColor" 
-                      viewBox="0 0 24 24"
-                      style={{ color: '#8A73FF' }}
-                    >
-                      <path 
-                        strokeLinecap="round" 
-                        strokeLinejoin="round" 
-                        strokeWidth={2} 
-                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" 
-                      />
-                    </svg>
-                  </div>
+                <div className="relative" ref={searchWrapRef}>
+                  <form onSubmit={handleSearchSubmit}>
+                    <input
+                      type="text"
+                      placeholder="Search song by name, artist, etc."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onFocus={() => {
+                        if (searchResults.length > 0) {
+                          setShowSearchDropdown(true);
+                        }
+                      }}
+                      className="px-4 pl-4 pr-10 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#7B61FF] focus:border-transparent text-sm"
+                      style={{ width: '435px', height: '40px', color: '#1a1a1a', borderRadius: '12px', minWidth: '200px', maxWidth: '435px' }}
+                    />
+                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                      <svg 
+                        className="h-4 w-4" 
+                        fill="none" 
+                        stroke="currentColor" 
+                        viewBox="0 0 24 24"
+                        style={{ color: '#8A73FF' }}
+                      >
+                        <path 
+                          strokeLinecap="round" 
+                          strokeLinejoin="round" 
+                          strokeWidth={2} 
+                          d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" 
+                        />
+                      </svg>
+                    </div>
+                  </form>
+                  {showSearchDropdown && searchQuery && (
+                    <div className="absolute left-0 right-0 top-full mt-2 z-50 bg-white border border-gray-200 rounded-lg shadow-lg p-3 max-h-80 overflow-auto">
+                      {isSearching ? (
+                        <div className="text-sm text-gray-500">Searching...</div>
+                      ) : searchResults.length === 0 ? (
+                        <div className="py-2 px-2 text-sm text-gray-500">
+                          No results found
+                        </div>
+                      ) : (
+                        <ul className="divide-y divide-gray-100">
+                          {searchResults.map((result) => (
+                            <li
+                              key={result.songID}
+                              className="py-2 px-2 rounded cursor-pointer hover:bg-gray-50"
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                handleResultClick(
+                                  e as unknown as React.MouseEvent,
+                                  result.songID,
+                                  result.processingID || null,
+                                  result.hasProcessing,
+                                  result.songName,
+                                  result.artistName
+                                );
+                              }}
+                            >
+                              <div className="flex items-center justify-between">
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-sm font-medium text-gray-900 truncate">{result.songName}</p>
+                                  <p className="text-xs text-[#7B61FF] truncate">{result.artistName}</p>
+                                </div>
+                                {result.hasProcessing && (
+                                  <span className="ml-3 text-[10px] text-green-600 flex-shrink-0">Available</span>
+                                )}
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -251,29 +467,79 @@ export default function Navbar() {
           <div className="px-2 pt-2 pb-4 space-y-1 bg-white dark:bg-white border-t border-gray-200 dark:border-gray-200">
             {!shouldHideSearch && (
               <div className="px-3 py-3">
-                <div className="relative">
-                  <input
-                    type="text"
-                    placeholder="Search song by name, artist, etc."
-                    className="w-full px-4 pl-4 pr-10 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#7B61FF] focus:border-transparent text-sm"
-                    style={{ height: '40px', color: '#1a1a1a', borderRadius: '12px' }}
-                  />
-                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                    <svg 
-                      className="h-4 w-4" 
-                      fill="none" 
-                      stroke="currentColor" 
-                      viewBox="0 0 24 24"
-                      style={{ color: '#8A73FF' }}
-                    >
-                      <path 
-                        strokeLinecap="round" 
-                        strokeLinejoin="round" 
-                        strokeWidth={2} 
-                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" 
-                      />
-                    </svg>
-                  </div>
+                <div className="relative" ref={searchWrapRef}>
+                  <form onSubmit={handleSearchSubmit}>
+                    <input
+                      type="text"
+                      placeholder="Search song by name, artist, etc."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onFocus={() => {
+                        if (searchResults.length > 0) {
+                          setShowSearchDropdown(true);
+                        }
+                      }}
+                      className="w-full px-4 pl-4 pr-10 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#7B61FF] focus:border-transparent text-sm"
+                      style={{ height: '40px', color: '#1a1a1a', borderRadius: '12px' }}
+                    />
+                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                      <svg 
+                        className="h-4 w-4" 
+                        fill="none" 
+                        stroke="currentColor" 
+                        viewBox="0 0 24 24"
+                        style={{ color: '#8A73FF' }}
+                      >
+                        <path 
+                          strokeLinecap="round" 
+                          strokeLinejoin="round" 
+                          strokeWidth={2} 
+                          d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" 
+                        />
+                      </svg>
+                    </div>
+                  </form>
+                  {showSearchDropdown && searchQuery && (
+                    <div className="absolute left-0 right-0 top-full mt-2 z-50 bg-white border border-gray-200 rounded-lg shadow-lg p-3 max-h-80 overflow-auto">
+                      {isSearching ? (
+                        <div className="text-sm text-gray-500">Searching...</div>
+                      ) : searchResults.length === 0 ? (
+                        <div className="py-2 px-2 text-sm text-gray-500">
+                          No results found
+                        </div>
+                      ) : (
+                        <ul className="divide-y divide-gray-100">
+                          {searchResults.map((result) => (
+                            <li
+                              key={result.songID}
+                              className="py-2 px-2 rounded cursor-pointer hover:bg-gray-50"
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                handleResultClick(
+                                  e as unknown as React.MouseEvent,
+                                  result.songID,
+                                  result.processingID || null,
+                                  result.hasProcessing,
+                                  result.songName,
+                                  result.artistName
+                                );
+                              }}
+                            >
+                              <div className="flex items-center justify-between">
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-sm font-medium text-gray-900 truncate">{result.songName}</p>
+                                  <p className="text-xs text-[#7B61FF] truncate">{result.artistName}</p>
+                                </div>
+                                {result.hasProcessing && (
+                                  <span className="ml-3 text-[10px] text-green-600 flex-shrink-0">Available</span>
+                                )}
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -378,6 +644,13 @@ export default function Navbar() {
           </div>
         </div>
       </div>
+
+      <StartAnalysisModal
+        isOpen={showStartAnalysisModal}
+        onClose={handleStartAnalysisCancel}
+        onConfirm={handleStartAnalysisConfirm}
+        searchQuery={pendingSearchQuery}
+      />
     </nav>
   );
 }

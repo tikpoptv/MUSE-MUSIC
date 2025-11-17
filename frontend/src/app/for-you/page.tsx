@@ -75,6 +75,7 @@ export default function ForYouPage() {
                         title={item.title}
                         artist={item.artist}
                         href={`/song/${item.id}${item.processingID ? `?processingID=${item.processingID}` : ''}`}
+                        mood={item.mood || undefined}
                       />
                     ))
                   : (
@@ -107,6 +108,7 @@ export default function ForYouPage() {
                             title={item.title}
                             artist={item.artist}
                             href={`/song/${item.id}${item.processingID ? `?processingID=${item.processingID}` : ''}`}
+                            mood={item.mood || undefined}
                           />
                         ))
                       : (
@@ -146,6 +148,7 @@ export default function ForYouPage() {
                               title={item.title}
                               artist={item.artist}
                               href={`/song/${item.id}${item.processingID ? `?processingID=${item.processingID}` : ''}`}
+                              mood={item.mood || undefined}
                             />
                           ))
                         : (
