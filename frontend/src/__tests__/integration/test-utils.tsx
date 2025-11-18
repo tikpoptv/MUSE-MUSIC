@@ -104,6 +104,7 @@ export const integrationTestData = {
     loginStatus: 'active',
     setupCompleted: true,
     setupSkipped: false,
+    termsAccepted: true,
     registerDate: '2024-01-01',
     createdAt: '2024-01-01T00:00:00Z',
     updatedAt: '2024-01-01T00:00:00Z',

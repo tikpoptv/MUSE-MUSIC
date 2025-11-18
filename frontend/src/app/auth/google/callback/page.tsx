@@ -1,15 +1,20 @@
 'use client';
 
-import { useEffect, Suspense } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { authService } from '../../../../services/authService';
+import { userService } from '../../../../services/userService';
 import toast from 'react-hot-toast';
 import { LocalStorageManager } from '../../../../utils/localStorageManager';
 import { localStorageKeys } from '../../../../utils/localStorageKeys';
+import TermsModal from '../../../../components/TermsModal';
+import { AuthData } from '../../../../types/auth';
 
 function GoogleCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [showTermsModal, setShowTermsModal] = useState(false);
+  const [pendingAuthData, setPendingAuthData] = useState<AuthData | null>(null);
 
   useEffect(() => {
     const handleGoogleCallback = async () => {
@@ -80,7 +85,19 @@ function GoogleCallbackContent() {
         }
         const data = await response.json();
         if (data.success && data.data) {
-          authService.setAuthData(data.data);
+          const responseData = data.data;
+          const isNewUser = responseData.isNewUser === true;
+          const termsAccepted = responseData.user?.termsAccepted ?? false;
+          
+          if ((isNewUser || !termsAccepted) && type !== 'link') {
+            const { isNewUser: _, ...authData } = responseData;
+            setPendingAuthData(authData as AuthData);
+            setShowTermsModal(true);
+            return;
+          }
+          
+          const { isNewUser: _, ...authData } = responseData;
+          authService.setAuthData(authData as AuthData);
           if (type === 'link') {
             LocalStorageManager.remove(localStorageKeys.GOOGLE_LINK_USERID);
             LocalStorageManager.remove(localStorageKeys.GOOGLE_AUTH_TYPE);
@@ -118,13 +135,42 @@ function GoogleCallbackContent() {
     handleGoogleCallback();
   }, [router, searchParams]);
 
+  const handleAcceptTerms = async () => {
+    if (pendingAuthData) {
+      try {
+        authService.setAuthData(pendingAuthData);
+        await userService.acceptTerms();
+        LocalStorageManager.remove(localStorageKeys.GOOGLE_AUTH_TYPE);
+        LocalStorageManager.remove(localStorageKeys.GOOGLE_BACKEND_TYPE);
+        toast.success('Successfully signed in with Google!');
+        setTimeout(() => {
+          window.location.href = '/';
+        }, 1500);
+      } catch {
+        toast.error('Failed to accept terms. Please try again.');
+      }
+    }
+  };
+
   return (
-    <div className="flex items-center justify-center min-h-[60vh]">
-      <div className="text-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4" />
-        <p>Processing Google authentication...</p>
+    <>
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4" />
+          <p>Processing Google authentication...</p>
+        </div>
       </div>
-    </div>
+      <TermsModal
+        isOpen={showTermsModal}
+        onClose={() => {
+          setShowTermsModal(false);
+          LocalStorageManager.remove(localStorageKeys.GOOGLE_AUTH_TYPE);
+          LocalStorageManager.remove(localStorageKeys.GOOGLE_BACKEND_TYPE);
+          router.push('/login');
+        }}
+        onAccept={handleAcceptTerms}
+      />
+    </>
   );
 }
 

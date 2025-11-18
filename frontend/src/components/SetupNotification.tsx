@@ -23,7 +23,7 @@ export default function SetupNotification({ onSetup, onDismiss }: SetupNotificat
   if (!isVisible) return null;
 
   return (
-    <div className="fixed top-4 right-4 bg-white border border-gray-200 rounded-xl shadow-lg p-4 max-w-sm z-50">
+    <div className="fixed bottom-4 right-4 bg-white border border-gray-200 rounded-xl shadow-lg p-4 max-w-sm z-50">
       <div className="flex items-start space-x-3">
         <div className="w-8 h-8 bg-[#7B61FF] rounded-full flex items-center justify-center flex-shrink-0">
           <svg 

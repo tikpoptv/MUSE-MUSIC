@@ -66,5 +66,13 @@ export const userService = {
     }
     
     return response.data.data.stats;
+  },
+
+  async acceptTerms(): Promise<void> {
+    const response = await apiService.post<{ success: boolean; message: string }>('/api/user/accept-terms', {});
+    
+    if (!response.success) {
+      throw new Error(response.error || 'Failed to accept terms');
+    }
   }
 };

@@ -13,6 +13,7 @@ class User {
     this.loginStatus = data.loginStatus;
     this.setupCompleted = data.setupCompleted;
     this.setupSkipped = data.setupSkipped;
+    this.termsAccepted = data.termsAccepted ?? false;
     this.registerDate = data.registerDate;
     this.createdAt = data.createdAt;
     this.updatedAt = data.updatedAt;
@@ -32,6 +33,7 @@ class User {
       loginStatus: this.loginStatus,
       setupCompleted: this.setupCompleted,
       setupSkipped: this.setupSkipped,
+      termsAccepted: this.termsAccepted,
       registerDate: this.registerDate,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt

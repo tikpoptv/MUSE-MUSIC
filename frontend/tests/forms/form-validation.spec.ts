@@ -29,6 +29,12 @@ test.describe('Form Validation Tests', () => {
     await page.waitForTimeout(200);
     
     await page.fill('input[name="confirmPassword"]', 'TestPassword123!');
+    await page.waitForTimeout(200);
+    
+    const termsCheckbox = page.locator('input[type="checkbox"][id="acceptTerms"]');
+    await expect(termsCheckbox).toBeVisible({ timeout: 5000 });
+    await termsCheckbox.check();
+    await page.waitForTimeout(200);
     
     await page.waitForFunction(() => {
       const button = document.querySelector('button[type="submit"]') as HTMLButtonElement;
