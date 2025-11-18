@@ -11,6 +11,7 @@ export interface UserData {
   loginStatus: string;
   setupCompleted: boolean;
   setupSkipped: boolean;
+  termsAccepted: boolean;
   registerDate: string;
   createdAt: string;
   updatedAt: string;
