@@ -12,6 +12,11 @@ const getBrowserTimezone = (): string => {
   }
 };
 
+const isThailandTimezone = (): boolean => {
+  const timezone = getBrowserTimezone();
+  return timezone === 'Asia/Bangkok' || timezone === 'Asia/Phnom_Penh' || timezone === 'Asia/Vientiane' || timezone === 'Asia/Ho_Chi_Minh';
+};
+
 export const formatDateThai = (
   dateString: string | Date,
   options: Intl.DateTimeFormatOptions = {},
@@ -33,7 +38,11 @@ export const formatDateThai = (
   if (userTimezone) {
     defaultOptions.timeZone = userTimezone;
   } else if (!defaultOptions.timeZone) {
-    defaultOptions.timeZone = getBrowserTimezone();
+    if (isThailandTimezone()) {
+      defaultOptions.timeZone = 'Asia/Bangkok';
+    } else {
+      defaultOptions.timeZone = getBrowserTimezone();
+    }
   }
   
   return date.toLocaleString(getBrowserLocale(), defaultOptions);
@@ -57,7 +66,11 @@ export const formatDateOnlyThai = (
   if (userTimezone) {
     defaultOptions.timeZone = userTimezone;
   } else if (!defaultOptions.timeZone) {
-    defaultOptions.timeZone = getBrowserTimezone();
+    if (isThailandTimezone()) {
+      defaultOptions.timeZone = 'Asia/Bangkok';
+    } else {
+      defaultOptions.timeZone = getBrowserTimezone();
+    }
   }
   
   return date.toLocaleDateString(getBrowserLocale(), defaultOptions);
@@ -81,7 +94,11 @@ export const formatTimeThai = (
   if (userTimezone) {
     defaultOptions.timeZone = userTimezone;
   } else if (!defaultOptions.timeZone) {
-    defaultOptions.timeZone = getBrowserTimezone();
+    if (isThailandTimezone()) {
+      defaultOptions.timeZone = 'Asia/Bangkok';
+    } else {
+      defaultOptions.timeZone = getBrowserTimezone();
+    }
   }
   
   return date.toLocaleTimeString(getBrowserLocale(), defaultOptions);
@@ -103,7 +120,11 @@ export const formatDateLongThai = (
   if (userTimezone) {
     options.timeZone = userTimezone;
   } else {
-    options.timeZone = getBrowserTimezone();
+    if (isThailandTimezone()) {
+      options.timeZone = 'Asia/Bangkok';
+    } else {
+      options.timeZone = getBrowserTimezone();
+    }
   }
   
   return date.toLocaleDateString(getBrowserLocale(), options);
