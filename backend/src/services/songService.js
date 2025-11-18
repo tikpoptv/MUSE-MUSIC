@@ -2,6 +2,47 @@ const DatabaseService = require('./databaseService');
 const lyricsService = require('./lyricsService');
 const { logger } = require('../middleware/logger');
 
+const LANGUAGE_CODE_TO_NAME = {
+  en: 'English',
+  th: 'Thai',
+  ko: 'Korean',
+  ja: 'Japanese',
+  zh: 'Chinese',
+  es: 'Spanish',
+  fr: 'French',
+  de: 'German',
+  it: 'Italian',
+  pt: 'Portuguese',
+  ru: 'Russian',
+  vi: 'Vietnamese',
+  id: 'Indonesian',
+  ms: 'Malay',
+  hi: 'Hindi'
+};
+
+const normalizeLanguageInput = (language) => {
+  if (!language || typeof language !== 'string') {
+    return null;
+  }
+
+  const trimmed = language.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  const lower = trimmed.toLowerCase();
+
+  if (LANGUAGE_CODE_TO_NAME[lower]) {
+    return LANGUAGE_CODE_TO_NAME[lower];
+  }
+
+  const matchedName = Object.values(LANGUAGE_CODE_TO_NAME).find(
+    (name) => name.toLowerCase() === lower
+  );
+
+  return matchedName || trimmed;
+};
+
 class SongService {
   static async getSongDetail(songID, processingID = null) {
     try {
@@ -156,25 +197,10 @@ class SongService {
         throw new Error('targetLanguage is required');
       }
 
-      const languageCodeToName = {
-        'en': 'English',
-        'th': 'Thai',
-        'ko': 'Korean',
-        'ja': 'Japanese',
-        'zh': 'Chinese',
-        'es': 'Spanish',
-        'fr': 'French',
-        'de': 'German',
-        'it': 'Italian',
-        'pt': 'Portuguese',
-        'ru': 'Russian',
-        'vi': 'Vietnamese',
-        'id': 'Indonesian',
-        'ms': 'Malay',
-        'hi': 'Hindi'
-      };
-
-      const languageName = languageCodeToName[targetLanguage] || targetLanguage;
+      const languageName = normalizeLanguageInput(targetLanguage);
+      if (!languageName) {
+        throw new Error('targetLanguage is required');
+      }
 
       const query = `
         SELECT processingid, songid, targetlanguage, totalratings, averagerating, createdat
@@ -209,6 +235,73 @@ class SongService {
       };
     } catch (error) {
       logger.error('Error in SongService.checkProcessingByLanguage:', error);
+      throw error;
+    }
+  }
+
+  static async getProcessingVersions(songID, targetLanguage = null) {
+    try {
+      if (!songID || songID === 'undefined') {
+        throw new Error('Invalid songID');
+      }
+
+      const params = [songID];
+      let paramIndex = 2;
+
+      let query = `
+        SELECT 
+          processingid,
+          songid,
+          targetlanguage,
+          totalratings,
+          averagerating,
+          createdat,
+          updatedat,
+          approvedat,
+          approvalstatus,
+          sharestatus,
+          status
+        FROM songaiprocessing
+        WHERE songid = $1
+          AND status = 'completed'
+          AND approvalstatus = 'approved'
+          AND sharestatus = 'public_approved'
+      `;
+
+      const normalizedLanguage = normalizeLanguageInput(targetLanguage);
+      if (normalizedLanguage) {
+        query += ` AND LOWER(targetlanguage) = LOWER($${paramIndex})`;
+        params.push(normalizedLanguage);
+        paramIndex++;
+      }
+
+      query += `
+        ORDER BY 
+          CASE WHEN totalratings > 0 THEN 0 ELSE 1 END,
+          totalratings DESC,
+          averagerating DESC NULLS LAST,
+          COALESCE(approvedat, createdat) DESC,
+          createdat DESC
+      `;
+
+      const result = await DatabaseService.query(query, params);
+
+      return result.rows.map((row, index) => ({
+        versionNumber: index + 1,
+        processingID: row.processingid,
+        songID: row.songid,
+        targetLanguage: row.targetlanguage,
+        totalRatings: row.totalratings || 0,
+        averageRating: row.averagerating ? parseFloat(row.averagerating) : null,
+        createdAt: row.createdat,
+        updatedAt: row.updatedat,
+        approvedAt: row.approvedat,
+        approvalStatus: row.approvalstatus,
+        shareStatus: row.sharestatus,
+        status: row.status
+      }));
+    } catch (error) {
+      logger.error('Error in SongService.getProcessingVersions:', error);
       throw error;
     }
   }

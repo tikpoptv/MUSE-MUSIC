@@ -21,10 +21,20 @@ module.exports = {};
  *         artistName:
  *           type: string
  *           example: "Ed Sheeran"
+ *         processingID:
+ *           type: string
+ *           format: uuid
+ *           example: "11111111-2222-3333-4444-555555555555"
  *         coverImage:
  *           type: string
  *           nullable: true
  *           example: "https://example.com/cover.jpg"
+ *         originalLanguage:
+ *           type: string
+ *           example: "English"
+ *         targetLanguage:
+ *           type: string
+ *           example: "Thai"
  *         createdAt:
  *           type: string
  *           format: date-time
@@ -59,12 +69,12 @@ module.exports = {};
  *     AddFavoriteRequest:
  *       type: object
  *       required:
- *         - songID
+ *         - processingID
  *       properties:
- *         songID:
+ *         processingID:
  *           type: string
  *           format: uuid
- *           example: "84031827-4916-41a7-acfa-5539ba484bdd"
+ *           example: "11111111-2222-3333-4444-555555555555"
  *     
  *     AddFavoriteResponse:
  *       type: object
@@ -85,12 +95,12 @@ module.exports = {};
  *     RemoveFavoriteRequest:
  *       type: object
  *       required:
- *         - songID
+ *         - processingID
  *       properties:
- *         songID:
+ *         processingID:
  *           type: string
  *           format: uuid
- *           example: "84031827-4916-41a7-acfa-5539ba484bdd"
+ *           example: "11111111-2222-3333-4444-555555555555"
  *     
  *     CheckFavoriteResponse:
  *       type: object

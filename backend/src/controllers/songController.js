@@ -48,6 +48,42 @@ const getSongDetail = async (req, res) => {
   }
 };
 
+const getProcessingVersions = async (req, res) => {
+  try {
+    const { songID } = req.params;
+    const { targetLanguage } = req.query;
+
+    if (!songID || songID === 'undefined') {
+      return res.status(400).json(
+        errorResponse('songID is required', 400)
+      );
+    }
+
+    const versions = await SongService.getProcessingVersions(
+      songID,
+      targetLanguage || null
+    );
+
+    return res.json(
+      successResponse('Processing versions fetched successfully', {
+        versions
+      })
+    );
+  } catch (error) {
+    logger.error('Error in getProcessingVersions:', error);
+
+    if (error.message.includes('Invalid') || error.message.includes('required')) {
+      return res.status(400).json(
+        errorResponse(error.message, 400)
+      );
+    }
+
+    return res.status(500).json(
+      errorResponse('Failed to fetch processing versions', 500, error.message)
+    );
+  }
+};
+
 const checkProcessingByLanguage = async (req, res) => {
   try {
     const { songID } = req.params;
@@ -121,6 +157,7 @@ const searchSongs = async (req, res) => {
 
 module.exports = {
   getSongDetail,
+  getProcessingVersions,
   checkProcessingByLanguage,
   searchSongs
 };

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import {
   Card,
   CardContent,
@@ -15,7 +16,7 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart";
 import AdminMenu from "@/components/AdminMenu";
-import { CalendarDays, Music2, Star, Bot } from "lucide-react";
+import { CalendarDays, Music2, Star, Bot, X } from "lucide-react";
 import {
   CartesianGrid,
   XAxis,
@@ -136,9 +137,11 @@ function SubMoodCard({
 }
 
 export default function AdminAnalysis() {
+  const router = useRouter();
   const [analysisData, setAnalysisData] = useState<AdminAnalysisData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showSuggestionsModal, setShowSuggestionsModal] = useState(false);
 
   useEffect(() => {
     const fetchAnalysisData = async () => {
@@ -373,6 +376,7 @@ export default function AdminAnalysis() {
             <Button
               variant="outline"
               className="text-sm font-medium text-violet-600 border-violet-600 hover:bg-violet-50"
+              onClick={() => setShowSuggestionsModal(true)}
             >
               View All
             </Button>
@@ -383,10 +387,15 @@ export default function AdminAnalysis() {
               <p className="text-sm text-slate-500 text-center py-8">No suggestions available</p>
             ) : (
               <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-[repeat(auto-fit,minmax(260px,1fr))]">
-                {analysisData.suggestions.map((item) => (
+                {analysisData.suggestions.slice(0, 3).map((item) => (
                   <div
                     key={item.id}
-                    className="rounded-md border border-slate-200 bg-white p-4 sm:p-5 shadow-sm"
+                    className="rounded-md border border-slate-200 bg-white p-4 sm:p-5 shadow-sm cursor-pointer transition-all hover:border-violet-400 hover:shadow-md"
+                    onClick={() => {
+                      if (item.songID && item.processingID) {
+                        router.push(`/song/${item.songID}?processingID=${item.processingID}`);
+                      }
+                    }}
                   >
                     <div className="flex items-center gap-2 text-xs sm:text-sm text-slate-500">
                       <CalendarDays className="h-3 w-3 sm:h-4 sm:w-4 text-violet-500 flex-shrink-0" />
@@ -420,6 +429,71 @@ export default function AdminAnalysis() {
           ))}
         </div>
       </div>
+
+      {showSuggestionsModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            onClick={() => setShowSuggestionsModal(false)}
+          />
+          <div className="relative z-10 w-full max-w-4xl rounded-2xl bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+              <div>
+                <h3 className="text-xl font-semibold text-slate-900">All Suggestions</h3>
+                <p className="text-sm text-slate-500">
+                  Showing {analysisData.suggestions.length} recent items
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowSuggestionsModal(false)}
+                className="rounded-full p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
+                aria-label="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="max-h-[70vh] overflow-y-auto px-6 py-4 space-y-4">
+              {analysisData.suggestions.length === 0 ? (
+                <p className="text-sm text-slate-500 text-center py-8">
+                  No suggestions available
+                </p>
+              ) : (
+                analysisData.suggestions.map((item) => (
+                  <div
+                    key={`modal-${item.id}`}
+                    className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm cursor-pointer transition-all hover:border-violet-400 hover:shadow-md"
+                    onClick={() => {
+                      if (item.songID && item.processingID) {
+                        router.push(`/song/${item.songID}?processingID=${item.processingID}`);
+                      }
+                    }}
+                  >
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <p className="text-base font-semibold text-slate-900">
+                          {item.songName}
+                        </p>
+                        <p className="text-xs text-slate-500">
+                          {item.date || "No date"}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1 text-lg font-semibold text-pink-600">
+                        <Star className="h-4 w-4" />
+                        <span>{item.rating.toFixed(1)} / 5</span>
+                      </div>
+                    </div>
+                    <p className="mt-3 text-sm leading-6 text-slate-600">
+                      {item.comment || "No comment provided"}
+                    </p>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </AdminMenu>
   );
 }

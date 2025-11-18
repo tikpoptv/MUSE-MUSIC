@@ -14,7 +14,7 @@
  *           schema:
  *             $ref: '#/components/schemas/AddFavoriteRequest'
  *           example:
- *             songID: "84031827-4916-41a7-acfa-5539ba484bdd"
+ *             processingID: "11111111-2222-3333-4444-555555555555"
  *     responses:
  *       200:
  *         description: Favorite added successfully or already exists
@@ -51,7 +51,7 @@
  *           schema:
  *             $ref: '#/components/schemas/RemoveFavoriteRequest'
  *           example:
- *             songID: "84031827-4916-41a7-acfa-5539ba484bdd"
+ *             processingID: "11111111-2222-3333-4444-555555555555"
  *     responses:
  *       200:
  *         description: Favorite removed successfully
@@ -133,12 +133,12 @@
  *       - bearerAuth: []
  *     parameters:
  *       - in: query
- *         name: songID
+ *         name: processingID
  *         required: true
  *         schema:
  *           type: string
  *           format: uuid
- *         description: Song ID to check
+ *         description: Processing ID to check
  *     responses:
  *       200:
  *         description: Favorite status retrieved successfully

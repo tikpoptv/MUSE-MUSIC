@@ -2,24 +2,46 @@ const { pool } = require('../config/database');
 const { logger } = require('../middleware/logger');
 
 class FavoriteService {
-  static async addFavorite(userID, songID) {
+  static async addFavorite(userID, processingID) {
     const client = await pool.connect();
     try {
-      if (!userID || !songID) {
-        logger.warn('Cannot add favorite: missing userID or songID', { userID, songID });
+      if (!userID || !processingID) {
+        logger.warn('Cannot add favorite: missing userID or processingID', { userID, processingID });
+        return null;
+      }
+
+      const processingQuery = `
+        SELECT processingid, songid
+        FROM SongAIProcessing
+        WHERE processingid = $1
+        LIMIT 1
+      `;
+
+      const processingResult = await client.query(processingQuery, [processingID]);
+
+      if (processingResult.rows.length === 0) {
+        logger.warn('Processing not found for favorite', { processingID });
+        return null;
+      }
+
+      const processing = processingResult.rows[0];
+      const songID = processing.songid;
+
+      if (!songID) {
+        logger.warn('Processing missing songID when adding favorite', { processingID });
         return null;
       }
 
       const checkQuery = `
         SELECT favoriteid
         FROM UserFavorites
-        WHERE userid = $1 AND songid = $2 AND favoritetype = 'song'
+        WHERE userid = $1 AND processingid = $2 AND favoritetype = 'song'
       `;
 
-      const existing = await client.query(checkQuery, [userID, songID]);
+      const existing = await client.query(checkQuery, [userID, processingID]);
 
       if (existing.rows.length > 0) {
-        logger.info('Song already favorited', { userID, songID });
+        logger.info('Processing already favorited', { userID, processingID });
         return {
           favoriteID: existing.rows[0].favoriteid,
           isNew: false
@@ -27,17 +49,18 @@ class FavoriteService {
       }
 
       const insertQuery = `
-        INSERT INTO UserFavorites (userid, songid, favoritetype)
-        VALUES ($1, $2, 'song')
+        INSERT INTO UserFavorites (userid, songid, processingid, favoritetype)
+        VALUES ($1, $2, $3, 'song')
         RETURNING favoriteid, createdat
       `;
 
-      const result = await client.query(insertQuery, [userID, songID]);
+      const result = await client.query(insertQuery, [userID, songID, processingID]);
 
       logger.info('Favorite added', {
         favoriteID: result.rows[0].favoriteid,
         userID,
-        songID
+        songID,
+        processingID
       });
 
       return {
@@ -53,24 +76,24 @@ class FavoriteService {
     }
   }
 
-  static async removeFavorite(userID, songID) {
+  static async removeFavorite(userID, processingID) {
     const client = await pool.connect();
     try {
-      if (!userID || !songID) {
-        logger.warn('Cannot remove favorite: missing userID or songID', { userID, songID });
+      if (!userID || !processingID) {
+        logger.warn('Cannot remove favorite: missing userID or processingID', { userID, processingID });
         return false;
       }
 
       const deleteQuery = `
         DELETE FROM UserFavorites
-        WHERE userid = $1 AND songid = $2 AND favoritetype = 'song'
+        WHERE userid = $1 AND processingid = $2 AND favoritetype = 'song'
         RETURNING favoriteid
       `;
 
-      const result = await client.query(deleteQuery, [userID, songID]);
+      const result = await client.query(deleteQuery, [userID, processingID]);
 
       if (result.rows.length > 0) {
-        logger.info('Favorite removed', { userID, songID });
+        logger.info('Favorite removed', { userID, processingID });
         return true;
       }
 
@@ -95,35 +118,20 @@ class FavoriteService {
       const query = `
         SELECT 
           f.favoriteid,
-          f.songid,
           f.createdat,
+          s.songid,
           s.songname,
           s.artistname,
-          p.coverimage,
           p.processingid,
+          p.coverimage,
           p.originallanguage,
           p.targetlanguage
         FROM UserFavorites f
-        INNER JOIN Songs s ON f.songid = s.songid
-        LEFT JOIN LATERAL (
-          SELECT 
-            p1.processingid,
-            p1.coverimage,
-            p1.originallanguage,
-            p1.targetlanguage
-          FROM SongAIProcessing p1
-          WHERE p1.songid = f.songid
-            AND p1.status = 'completed'
-            AND p1.approvalstatus = 'approved'
-            AND p1.sharestatus = 'public_approved'
-          ORDER BY 
-            CASE WHEN p1.totalratings > 0 THEN 0 ELSE 1 END,
-            p1.totalratings DESC,
-            p1.averagerating DESC NULLS LAST,
-            p1.createdat DESC
-          LIMIT 1
-        ) p ON true
-        WHERE f.userid = $1 AND f.favoritetype = 'song'
+        INNER JOIN SongAIProcessing p ON f.processingid = p.processingid
+        INNER JOIN Songs s ON p.songid = s.songid
+        WHERE f.userid = $1 
+          AND f.favoritetype = 'song'
+          AND p.status = 'completed'
         ORDER BY f.createdat DESC
         LIMIT $2 OFFSET $3
       `;
@@ -171,21 +179,21 @@ class FavoriteService {
     }
   }
 
-  static async isFavorite(userID, songID) {
+  static async isFavorite(userID, processingID) {
     const client = await pool.connect();
     try {
-      if (!userID || !songID) {
+      if (!userID || !processingID) {
         return false;
       }
 
       const query = `
         SELECT favoriteid
         FROM UserFavorites
-        WHERE userid = $1 AND songid = $2 AND favoritetype = 'song'
+        WHERE userid = $1 AND processingid = $2 AND favoritetype = 'song'
         LIMIT 1
       `;
 
-      const result = await client.query(query, [userID, songID]);
+      const result = await client.query(query, [userID, processingID]);
 
       return result.rows.length > 0;
     } catch (error) {

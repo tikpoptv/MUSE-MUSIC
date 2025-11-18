@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { useParams, useRouter, useSearchParams, usePathname } from 'next/navigation';
-import { Heart, Share2, MoreVertical } from 'lucide-react';
+import { Heart, Share2, MoreVertical, Link2, ExternalLink, Flag, ShieldCheck, ShieldOff } from 'lucide-react';
 import MusicCard from '@/components/MusicCard';
 import SkeletonCard from '@/components/SkeletonCard';
 import LyricsTranslationViewer from '@/components/LyricsTranslationViewer';
@@ -14,9 +14,10 @@ import FeedbackSection, { type FeedbackSectionRef } from '@/components/FeedbackS
 import CoverImageUpload from '@/components/CoverImageUpload';
 import SyncedLyricsPlayer, { type SyncedLyricsLine } from '@/components/SyncedLyricsPlayer';
 import ProcessingVersionBar from '@/components/ProcessingVersionBar';
-import { songService, type SongDetail, type ProcessingDetail } from '@/services/songService';
+import { songService, type SongDetail, type ProcessingDetail, type ProcessingVersion } from '@/services/songService';
 import { analysisService } from '@/services/analysisService';
 import { recommendSongsService, type RecommendedSong } from '@/services/recommendSongsService';
+import { adminSongsService } from '@/services/adminSongsService';
 import shareService from '@/services/shareService';
 import { authService } from '@/services/authService';
 import { historyService } from '@/services/historyService';
@@ -24,6 +25,7 @@ import { favoriteService } from '@/services/favoriteService';
 import ReAnalyzeConfirmModal from '@/components/modals/ReAnalyzeConfirmModal';
 import NavigateAwayConfirmModal from '@/components/modals/NavigateAwayConfirmModal';
 import SocialShareModal from '@/components/SocialShareModal';
+import ApproveRejectModal from '@/components/modals/ApproveRejectModal';
 import toast from 'react-hot-toast';
 
 const languageNameToCode: Record<string, string> = {
@@ -56,6 +58,7 @@ export default function SongDetailPage() {
   const processingID = isAnalysisRoute 
     ? (params.processingID as string)
     : (searchParams.get('processingID') || '');
+  const isDetailRoute = !isAnalysisRoute;
 
   const [songData, setSongData] = useState<SongDetail | null>(null);
   const [processingData, setProcessingData] = useState<ProcessingDetail | null>(null);
@@ -86,6 +89,7 @@ export default function SongDetailPage() {
   const [isNavigateAwayModalOpen, setIsNavigateAwayModalOpen] = useState(false);
   const [pendingLanguageChange, setPendingLanguageChange] = useState<string | null>(null);
   const [pendingProcessingID, setPendingProcessingID] = useState<string | null>(null);
+  const [newAnalysisShareRequest, setNewAnalysisShareRequest] = useState<boolean>(true);
   const [recommendedByLanguage, setRecommendedByLanguage] = useState<RecommendedSong[]>([]);
   const [recommendedByMood, setRecommendedByMood] = useState<RecommendedSong[]>([]);
   const [loadingRecommendationsByLanguage, setLoadingRecommendationsByLanguage] = useState(false);
@@ -96,15 +100,61 @@ export default function SongDetailPage() {
   const [isFavorite, setIsFavorite] = useState(false);
   const [isCheckingFavorite, setIsCheckingFavorite] = useState(false);
   const [isTogglingFavorite, setIsTogglingFavorite] = useState(false);
+  const [processingVersions, setProcessingVersions] = useState<ProcessingVersion[]>([]);
+  const [currentVersionNumber, setCurrentVersionNumber] = useState<number>(1);
+  const [moreMenuTarget, setMoreMenuTarget] = useState<'desktop' | 'mobile' | null>(null);
+  const [adminModalType, setAdminModalType] = useState<'approve' | 'reject' | null>(null);
+  const [isAdminActionProcessing, setIsAdminActionProcessing] = useState(false);
+  const desktopMenuRef = useRef<HTMLDivElement>(null);
+  const mobileMenuRef = useRef<HTMLDivElement>(null);
+  const feedbackSectionAnchorId = 'feedback-section-anchor';
+
+  const effectiveProcessingID = useMemo(() => {
+    if (processingID && processingID !== 'undefined' && processingID !== '') {
+      return processingID;
+    }
+    return processingData?.processingID || '';
+  }, [processingID, processingData?.processingID]);
+
+  const toggleMoreMenu = (target: 'desktop' | 'mobile') => {
+    setMoreMenuTarget((prev) => (prev === target ? null : target));
+  };
+
+  const closeMoreMenu = () => setMoreMenuTarget(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (!moreMenuTarget) return;
+
+      const target = event.target as Node;
+      if (
+        (desktopMenuRef.current && desktopMenuRef.current.contains(target)) ||
+        (mobileMenuRef.current && mobileMenuRef.current.contains(target))
+      ) {
+        return;
+      }
+
+      setMoreMenuTarget(null);
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [moreMenuTarget]);
 
   const checkFavoriteStatus = useCallback(async () => {
     if (!songID || songID === 'undefined' || !authService.isAuthenticated()) {
       return;
     }
 
+    if (!effectiveProcessingID || effectiveProcessingID === 'undefined') {
+      return;
+    }
+
     try {
       setIsCheckingFavorite(true);
-      const favorite = await favoriteService.checkFavorite(songID);
+      const favorite = await favoriteService.checkFavorite(effectiveProcessingID);
       setIsFavorite(favorite);
     } catch (error) {
       // eslint-disable-next-line no-console
@@ -112,7 +162,7 @@ export default function SongDetailPage() {
     } finally {
       setIsCheckingFavorite(false);
     }
-  }, [songID]);
+  }, [songID, effectiveProcessingID]);
 
   useEffect(() => {
     const checkAdminStatus = async () => {
@@ -131,8 +181,7 @@ export default function SongDetailPage() {
     checkAdminStatus();
   }, []);
 
-  useEffect(() => {
-    const fetchSongData = async () => {
+  const fetchSongData = useCallback(async () => {
       if (!songID || songID === 'undefined') {
         toast.error('Invalid song ID');
         router.push('/');
@@ -147,6 +196,17 @@ export default function SongDetailPage() {
 
       try {
         setLoading(true);
+        
+        // Check admin status fresh to avoid race condition
+        let currentIsAdmin = isAdmin;
+        if (authService.isAuthenticated()) {
+          try {
+            currentIsAdmin = await authService.checkAdminStatus();
+          } catch {
+            currentIsAdmin = false;
+          }
+        }
+        
         const data = await songService.getSongDetail(songID, processingID);
         
         setSongData(data.song);
@@ -156,11 +216,13 @@ export default function SongDetailPage() {
           if (isAnalysisRoute) {
             const isApproved = processing.approvalStatus === 'approved' && processing.shareStatus === 'public_approved';
             
-            if (isApproved && !isAdmin) {
-              toast.error('This processing has been reviewed and approved. You can no longer edit it.');
+            // If approved, only admin can access (everyone else including owner cannot edit after approval)
+            if (isApproved && !currentIsAdmin) {
+              toast.error('This processing has been reviewed and approved. Only admin can access analysis mode.');
               window.location.href = `/song/${songID}?processingID=${processingID}`;
               return;
             }
+            // If not approved, anyone can access (no need to check owner/login status)
           }
           
           setProcessingData(processing);
@@ -178,16 +240,192 @@ export default function SongDetailPage() {
       } finally {
         setLoading(false);
       }
-    };
-
-    fetchSongData();
   }, [songID, processingID, router, isAnalysisRoute, isAdmin]);
+
+  useEffect(() => {
+    fetchSongData();
+  }, [fetchSongData]);
+
+  const handleCopyLink = useCallback(async () => {
+    if (!effectiveProcessingID || effectiveProcessingID === 'undefined') {
+      toast.error('Processing ID not available');
+      closeMoreMenu();
+      return;
+    }
+
+    try {
+      const shareLink = await shareService.createShareLink(effectiveProcessingID);
+      await navigator.clipboard.writeText(shareLink.shareUrl);
+      toast.success('Short link copied to clipboard');
+    } catch (error) {
+      toast.error('Failed to create short link');
+      // eslint-disable-next-line no-console
+      console.error('Copy link error:', error);
+    } finally {
+      closeMoreMenu();
+    }
+  }, [effectiveProcessingID]);
+
+  const handleToggleViewMode = useCallback(async () => {
+    if (!songID || !effectiveProcessingID) {
+      toast.error('Processing data not available');
+      closeMoreMenu();
+      return;
+    }
+
+    // Check admin status fresh to avoid race condition
+    let currentIsAdmin = isAdmin;
+    if (authService.isAuthenticated()) {
+      try {
+        currentIsAdmin = await authService.checkAdminStatus();
+      } catch {
+        currentIsAdmin = false;
+      }
+    }
+
+    // Check if processing is approved
+    const isApproved = processingData?.approvalStatus === 'approved' && processingData?.shareStatus === 'public_approved';
+
+    // Admin can always access analysis mode
+    if (currentIsAdmin) {
+      if (isAnalysisRoute) {
+        router.push(`/song/${songID}?processingID=${effectiveProcessingID}`);
+      } else {
+        router.push(`/song/${songID}/analysis/${effectiveProcessingID}`);
+      }
+      closeMoreMenu();
+      return;
+    }
+
+    // If approved, only admin can access (block everyone else)
+    if (isApproved) {
+      toast.error('This processing has been reviewed and approved. Only admin can access analysis mode.');
+      closeMoreMenu();
+      return;
+    }
+
+    // If not approved yet, anyone can access (including non-logged-in users)
+    if (isAnalysisRoute) {
+      router.push(`/song/${songID}?processingID=${effectiveProcessingID}`);
+    } else {
+      router.push(`/song/${songID}/analysis/${effectiveProcessingID}`);
+    }
+    closeMoreMenu();
+  }, [router, songID, effectiveProcessingID, isAnalysisRoute, isAdmin, processingData?.approvalStatus, processingData?.shareStatus]);
+
+  const handleReportIssue = useCallback(() => {
+    if (typeof document !== 'undefined') {
+      const anchor =
+        document.getElementById(feedbackSectionAnchorId) ||
+        document.getElementById(`${feedbackSectionAnchorId}-mobile`);
+      if (anchor) {
+        anchor.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // Shake feedback section after scroll (like when saving without rating)
+        setTimeout(() => {
+          feedbackSectionRef.current?.shake();
+        }, 500);
+      }
+    }
+    closeMoreMenu();
+  }, []);
+
+  const openShareModalFromMenu = async () => {
+    const effectiveProcessingID = processingID || processingData?.processingID || '';
+    if (!effectiveProcessingID || effectiveProcessingID === 'undefined') {
+      toast.error('No processing ID available');
+      closeMoreMenu();
+      return;
+    }
+
+    try {
+      setIsCreatingShareLink(true);
+      const shareLink = await shareService.createShareLink(effectiveProcessingID);
+      setShareUrl(shareLink.shareUrl);
+      setIsSocialShareModalOpen(true);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to create share link');
+    } finally {
+      setIsCreatingShareLink(false);
+      closeMoreMenu();
+    }
+  };
+
+  const openAdminModal = (type: 'approve' | 'reject') => {
+    setAdminModalType(type);
+    closeMoreMenu();
+  };
+
+  const handleAdminActionConfirm = useCallback(async () => {
+    if (!adminModalType || !processingData?.processingID) {
+      return;
+    }
+
+    try {
+      setIsAdminActionProcessing(true);
+      if (adminModalType === 'approve') {
+        await adminSongsService.approveSong(processingData.processingID);
+        toast.success('Processing approved successfully');
+      } else {
+        await adminSongsService.rejectSong(processingData.processingID);
+        toast.success('Processing rejected successfully');
+      }
+      await fetchSongData();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to update processing';
+      toast.error(message);
+    } finally {
+      setIsAdminActionProcessing(false);
+      setAdminModalType(null);
+    }
+  }, [adminModalType, processingData?.processingID, fetchSongData]);
+
+  const canApprove = isAdmin && processingData?.approvalStatus !== 'approved';
+  const canReject = isAdmin && processingData?.approvalStatus !== 'rejected';
 
   useEffect(() => {
     if (songID && songID !== 'undefined' && authService.isAuthenticated()) {
       checkFavoriteStatus();
     }
   }, [songID, checkFavoriteStatus]);
+
+  useEffect(() => {
+    const fetchProcessingVersions = async () => {
+      if (!songID || songID === 'undefined' || !isDetailRoute) {
+        return;
+      }
+
+      try {
+        const targetLanguage = processingData?.targetLanguage || null;
+        const versions = await songService.getProcessingVersions(
+          songID,
+          targetLanguage || undefined
+        );
+        setProcessingVersions(versions);
+
+        if (effectiveProcessingID && effectiveProcessingID !== 'undefined') {
+          const currentVersion = versions.find(
+            (v) => v.processingID === effectiveProcessingID
+          );
+          if (currentVersion) {
+            setCurrentVersionNumber(currentVersion.versionNumber);
+          } else {
+            setCurrentVersionNumber(1);
+          }
+        } else {
+          setCurrentVersionNumber(1);
+        }
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.error('Failed to fetch processing versions:', error);
+        setProcessingVersions([]);
+        setCurrentVersionNumber(1);
+      }
+    };
+
+    if (isDetailRoute && songID && songID !== 'undefined') {
+      fetchProcessingVersions();
+    }
+  }, [songID, processingData?.targetLanguage, effectiveProcessingID, isDetailRoute]);
 
   useEffect(() => {
     const fetchRecommendationsByLanguage = async () => {
@@ -302,6 +540,9 @@ export default function SongDetailPage() {
           window.location.href = `/song/${songID}?processingID=${checkResult.processingID}`;
         }
       } else {
+        if (isDetailRoute) {
+          setNewAnalysisShareRequest(true);
+        }
         setIsReAnalyzeModalOpen(true);
         setPendingLanguageChange(language);
       }
@@ -328,6 +569,9 @@ export default function SongDetailPage() {
   };
 
   const handleReAnalyzeClick = () => {
+    if (isDetailRoute) {
+      setNewAnalysisShareRequest(true);
+    }
     setIsReAnalyzeModalOpen(true);
   };
 
@@ -351,8 +595,8 @@ export default function SongDetailPage() {
   };
 
   const handleReAnalyzeConfirm = async () => {
-    if (!processingID || processingID === 'undefined') {
-      toast.error('Invalid processing ID');
+    if (!songID || songID === 'undefined') {
+      toast.error('Invalid song ID');
       return;
     }
 
@@ -368,6 +612,55 @@ export default function SongDetailPage() {
 
     const rawOriginal = processingData.originalLanguage;
     const originalLanguage = rawOriginal ? (languageCodeToName[rawOriginal as keyof typeof languageCodeToName] || rawOriginal) : undefined;
+
+    if (!targetLanguage) {
+      toast.error('Target language is required');
+      return;
+    }
+
+    if (!isAnalysisRoute) {
+      try {
+        setIsReAnalyzing(true);
+        toast.loading('Starting new analysis...', { id: 'new-analysis' });
+
+        const result = await analysisService.newAnalysis({
+          lyricsRecord: { songID },
+          actions: {
+            translate: true,
+            mood: true
+          },
+          translationConfig: {
+            targetLanguage,
+            ...(originalLanguage ? { originalLanguage } : {})
+          },
+          shareRequest: newAnalysisShareRequest
+        });
+
+        if (!result || !result.songID || !result.processingID) {
+          throw new Error('Invalid response from server');
+        }
+
+        toast.success('New analysis started!', { id: 'new-analysis' });
+        setIsReAnalyzeModalOpen(false);
+        setPendingLanguageChange(null);
+        setNewAnalysisShareRequest(true);
+        router.push(`/song/${result.songID}/analysis/${result.processingID}`);
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : 'Failed to start new analysis', { id: 'new-analysis' });
+        setIsReAnalyzeModalOpen(false);
+        setPendingLanguageChange(null);
+        setNewAnalysisShareRequest(true);
+      } finally {
+        setIsReAnalyzing(false);
+      }
+
+      return;
+    }
+
+    if (!processingID || processingID === 'undefined') {
+      toast.error('Invalid processing ID');
+      return;
+    }
 
     try {
       setIsReAnalyzing(true);
@@ -443,6 +736,11 @@ export default function SongDetailPage() {
       return;
     }
 
+    if (!effectiveProcessingID || effectiveProcessingID === 'undefined') {
+      toast.error('Processing ID is missing');
+      return;
+    }
+
     if (!authService.isAuthenticated()) {
       toast.error('Please login to add favorites');
       return;
@@ -452,7 +750,7 @@ export default function SongDetailPage() {
       setIsTogglingFavorite(true);
       
       if (isFavorite) {
-        const removed = await favoriteService.removeFavorite({ songID });
+        const removed = await favoriteService.removeFavorite({ processingID: effectiveProcessingID });
         if (removed) {
           setIsFavorite(false);
           toast.success('Removed from favorites');
@@ -460,7 +758,7 @@ export default function SongDetailPage() {
           toast.error('Failed to remove favorite');
         }
       } else {
-        const result = await favoriteService.addFavorite({ songID });
+        const result = await favoriteService.addFavorite({ processingID: effectiveProcessingID });
         if (result) {
           setIsFavorite(true);
           toast.success('Added to favorites');
@@ -791,17 +1089,85 @@ export default function SongDetailPage() {
                 >
                   <Share2 className="h-6 w-6" style={{ color: '#7B61FF' }} />
                 </button>
-                <button className="p-3 rounded-full hover:bg-gray-100 transition-colors">
+                <div className="relative" ref={desktopMenuRef}>
+                  <button
+                    type="button"
+                    onClick={() => toggleMoreMenu('desktop')}
+                    className="p-3 rounded-full hover:bg-gray-100 transition-colors"
+                    aria-label="More actions"
+                  >
                   <MoreVertical className="h-6 w-6" style={{ color: '#7B61FF' }} />
                 </button>
+                  {moreMenuTarget === 'desktop' && (
+                    <div className="absolute right-0 mt-2 w-64 bg-white border border-gray-200 rounded-2xl shadow-xl py-2 z-20">
+                      <button
+                        type="button"
+                        onClick={handleCopyLink}
+                        className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                      >
+                        <Link2 className="h-4 w-4 text-gray-500" />
+                        Copy song link
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleToggleViewMode}
+                        className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                      >
+                        <ExternalLink className="h-4 w-4 text-gray-500" />
+                        {isAnalysisRoute ? 'Open detail view' : 'Open analysis mode'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleReportIssue}
+                        className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                      >
+                        <Flag className="h-4 w-4 text-gray-500" />
+                        Report / give feedback
+                      </button>
+                      <button
+                        type="button"
+                        onClick={openShareModalFromMenu}
+                        className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                      >
+                        <Share2 className="h-4 w-4 text-gray-500" />
+                        Share with friends
+                      </button>
+                      {isAdmin && (
+                        <>
+                          <div className="my-2 border-t border-gray-100" />
+                          <button
+                            type="button"
+                            onClick={() => openAdminModal('approve')}
+                            disabled={!canApprove}
+                            className="w-full flex items-center gap-3 px-4 py-2 text-sm text-green-700 hover:bg-green-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            <ShieldCheck className="h-4 w-4" />
+                            Approve processing
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => openAdminModal('reject')}
+                            disabled={!canReject}
+                            className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-700 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            <ShieldOff className="h-4 w-4" />
+                            Reject processing
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Feedback Section */}
+              <div id={feedbackSectionAnchorId} className="w-full flex justify-center">
               <FeedbackSection 
                 ref={feedbackSectionRef}
                 processingID={processingID} 
                 onRatingSubmitted={handleRatingSubmitted}
               />
+              </div>
             </div>
 
             {/* Recommend with language */}
@@ -892,9 +1258,75 @@ export default function SongDetailPage() {
               >
                 <Share2 className="h-6 w-6" style={{ color: '#7B61FF' }} />
               </button>
-              <button className="p-3 rounded-full hover:bg-gray-100 transition-colors">
+              <div className="relative" ref={mobileMenuRef}>
+                <button
+                  type="button"
+                  onClick={() => toggleMoreMenu('mobile')}
+                  className="p-3 rounded-full hover:bg-gray-100 transition-colors"
+                  aria-label="More actions"
+                >
                 <MoreVertical className="h-6 w-6" style={{ color: '#7B61FF' }} />
               </button>
+                {moreMenuTarget === 'mobile' && (
+                  <div className="absolute right-0 mt-2 w-64 bg-white border border-gray-200 rounded-2xl shadow-xl py-2 z-20">
+                    <button
+                      type="button"
+                      onClick={handleCopyLink}
+                      className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                    >
+                      <Link2 className="h-4 w-4 text-gray-500" />
+                      Copy song link
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleToggleViewMode}
+                      className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                    >
+                      <ExternalLink className="h-4 w-4 text-gray-500" />
+                      {isAnalysisRoute ? 'Open detail view' : 'Open analysis mode'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleReportIssue}
+                      className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                    >
+                      <Flag className="h-4 w-4 text-gray-500" />
+                      Report / give feedback
+                    </button>
+                    <button
+                      type="button"
+                      onClick={openShareModalFromMenu}
+                      className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                    >
+                      <Share2 className="h-4 w-4 text-gray-500" />
+                      Share with friends
+                    </button>
+                    {isAdmin && (
+                      <>
+                        <div className="my-2 border-t border-gray-100" />
+                        <button
+                          type="button"
+                          onClick={() => openAdminModal('approve')}
+                          disabled={!canApprove}
+                          className="w-full flex items-center gap-3 px-4 py-2 text-sm text-green-700 hover:bg-green-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <ShieldCheck className="h-4 w-4" />
+                          Approve processing
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => openAdminModal('reject')}
+                          disabled={!canReject}
+                          className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-700 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <ShieldOff className="h-4 w-4" />
+                          Reject processing
+                        </button>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
@@ -909,10 +1341,22 @@ export default function SongDetailPage() {
               processingData && (
                 <div style={{ width: '100%', marginBottom: '16px' }}>
                   <ProcessingVersionBar
-                    versionNumber={1}
+                    versionNumber={currentVersionNumber}
                     processingID={processingData.processingID}
                     rating={processingData.averageRating ? Math.round(processingData.averageRating) : undefined}
                     onNewAnalyze={handleReAnalyzeClick}
+                    newAnalyzeLabel={isDetailRoute ? 'New analyze' : 'Re-analyze'}
+                    versions={processingVersions.map(v => ({ 
+                      versionNumber: v.versionNumber, 
+                      processingID: v.processingID,
+                      averageRating: v.averageRating
+                    }))}
+                    onVersionClick={(clickedProcessingID) => {
+                      if (clickedProcessingID !== effectiveProcessingID) {
+                        window.location.href = `/song/${songID}?processingID=${clickedProcessingID}`;
+                      }
+                    }}
+                    currentProcessingID={effectiveProcessingID}
                   />
                 </div>
               )
@@ -996,7 +1440,10 @@ export default function SongDetailPage() {
             <MoodAnalyzeSection processingData={processingData} />
 
             {/* Mobile: Feedback Section - อยู่หลัง Mood Analyze */}
-            <div className="lg:hidden mt-6 w-full flex justify-center">
+            <div
+              id={`${feedbackSectionAnchorId}-mobile`}
+              className="lg:hidden mt-6 w-full flex justify-center"
+            >
               <FeedbackSection 
                 ref={feedbackSectionRef}
                 processingID={processingID} 
@@ -1062,8 +1509,10 @@ export default function SongDetailPage() {
 
             {/* Action Buttons */}
             <SongActionButtons 
-              onReAnalyzeClick={handleReAnalyzeClick}
-              isReAnalyzing={isReAnalyzing}
+              onActionClick={handleReAnalyzeClick}
+              isProcessing={isReAnalyzing}
+              actionLabel={isAnalysisRoute ? 'Re-analyze' : 'New analyze'}
+              processingLabel={isAnalysisRoute ? 'Re-analyzing...' : 'Starting...'}
             />
           </div>
         </div>
@@ -1094,10 +1543,28 @@ export default function SongDetailPage() {
         onClose={() => {
           setIsReAnalyzeModalOpen(false);
           setPendingLanguageChange(null);
+          if (isDetailRoute) {
+            setNewAnalysisShareRequest(true);
+          }
         }}
         onConfirm={handleReAnalyzeConfirm}
         isProcessing={isReAnalyzing}
         targetLanguage={pendingLanguageChange || selectedLanguage}
+        mode={isAnalysisRoute ? 're-analyze' : 'new-analysis'}
+        shareRequest={isAnalysisRoute ? undefined : newAnalysisShareRequest}
+        onShareRequestChange={isAnalysisRoute ? undefined : setNewAnalysisShareRequest}
+      />
+      <ApproveRejectModal
+        isOpen={adminModalType !== null}
+        onClose={() => {
+          if (!isAdminActionProcessing) {
+            setAdminModalType(null);
+          }
+        }}
+        onConfirm={handleAdminActionConfirm}
+        type={adminModalType ?? 'approve'}
+        songName={songData?.songName || 'this song'}
+        isProcessing={isAdminActionProcessing}
       />
     </main>
   );

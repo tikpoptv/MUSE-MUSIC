@@ -273,6 +273,179 @@ class AnalysisService {
     }
   }
 
+  static async processNew(lyricsRecord, actions, translationConfig, userId = null, shareRequest = false) {
+    try {
+      let lyricsResult = await this.ensureLyricsSearchResult(lyricsRecord);
+      let song = await this.ensureSong(lyricsRecord, lyricsResult, userId);
+      
+      // Skip existing check - always create new analysis
+      
+      // Validate userId exists in Users table if provided
+      const validUserId = await this.validateUserId(userId);
+      
+      const shareStatus = shareRequest ? 'public_pending' : 'private';
+      const approvalStatus = shareRequest ? 'pending' : null;
+      const processingInsertQuery = `
+        INSERT INTO songaiprocessing 
+        (songid, aimodel, status, createdby, sharestatus, approvalstatus) 
+        VALUES ($1, $2, $3, $4, $5, $6) 
+        RETURNING *
+      `;
+      const processingInsertResult = await DatabaseService.query(processingInsertQuery, [
+        song.songID,
+        'n8n-translate',
+        'processing',
+        validUserId,
+        shareStatus,
+        approvalStatus
+      ]);
+      const processingRaw = processingInsertResult.rows[0];
+      const processing = {
+        processingID: processingRaw.processingid,
+        songID: song.songID,
+        aiModel: processingRaw.aimodel,
+        status: processingRaw.status,
+        createdBy: processingRaw.createdby
+      };
+      
+      if (!processing.processingID) {
+        throw new Error('Failed to create processing record: processingID is missing');
+      }
+      if (!song.songID) {
+        throw new Error('Failed to get song record: songID is missing');
+      }
+      
+      const startTime = Date.now();
+      let translationResult = null;
+      let moodResult = null;
+      
+      let fullLyrics = null;
+      if (actions.translate || actions.mood) {
+        fullLyrics = await this.fetchFullLyrics(
+          lyricsRecord.plainLyrics || lyricsRecord.lyrics,
+          lyricsResult.externalID
+        );
+      }
+      
+      if (actions.translate) {
+        // Pass moodEnabled to processTranslation if mood is requested
+        const moodEnabled = actions.mood ? true : null;
+        translationResult = await this.processTranslation(
+          fullLyrics,
+          translationConfig,
+          processing.processingID,
+          moodEnabled,
+          4 // moodTopK default to 4
+        );
+        logger.info('Translation result received:', {
+          hasTranslation: !!translationResult?.translation,
+          hasInterpretation: !!translationResult?.interpretation,
+          hasSummary: !!translationResult?.summary,
+          hasMood: !!translationResult?.mood,
+          interpretationLength: translationResult?.interpretation?.length || 0,
+          summaryLength: translationResult?.summary?.length || 0
+        });
+      }
+      
+      // Mood analysis is now handled by n8n webhook if translate is enabled
+      // If only mood is requested without translate, we still need to handle it separately
+      if (actions.mood && !actions.translate) {
+        // If mood is requested but no translate, we can't use n8n mood analysis
+        // This case should be handled separately if needed
+        logger.warn('Mood analysis without translation is not supported. Please enable translation for mood analysis.');
+        throw new Error('Mood analysis requires translation to be enabled');
+      }
+      
+      // Mood result is extracted from translation result if available
+      if (actions.mood && translationResult && translationResult.mood) {
+        moodResult = translationResult.mood;
+      }
+      
+      const processingTime = Date.now() - startTime;
+      
+      const updateFields = [];
+      const updateValues = [];
+      let paramIndex = 1;
+      
+      updateFields.push(`processingtime = $${paramIndex++}`);
+      updateValues.push(processingTime);
+      
+      updateFields.push(`status = $${paramIndex++}`);
+      updateValues.push('completed');
+      
+      if (translationResult) {
+        const mappedTranslation = this.mapTranslationToPreview(translationResult.translation);
+        updateFields.push(`translation = $${paramIndex++}`);
+        updateValues.push(mappedTranslation);
+        
+        updateFields.push(`interpretation = $${paramIndex++}`);
+        updateValues.push(translationResult.interpretation);
+        
+        if (translationConfig && translationConfig.originalLanguage != null) {
+          updateFields.push(`originallanguage = $${paramIndex++}`);
+          updateValues.push(translationConfig.originalLanguage);
+        }
+        
+        if (translationConfig && translationConfig.targetLanguage != null) {
+          updateFields.push(`targetlanguage = $${paramIndex++}`);
+          updateValues.push(translationConfig.targetLanguage);
+        }
+        
+        updateFields.push(`translationconfidence = $${paramIndex++}`);
+        updateValues.push(0.95);
+      }
+      
+      if (moodResult) {
+        updateFields.push(`moodtype = $${paramIndex++}`);
+        updateValues.push(JSON.stringify(moodResult.moods));
+        
+        updateFields.push(`moodscore = $${paramIndex++}`);
+        updateValues.push(moodResult.topScore || 0.00);
+        
+        updateFields.push(`moodconfidence = $${paramIndex++}`);
+        updateValues.push(moodResult.confidence || 0.0);
+      }
+      
+      const requestedActions = [];
+      if (actions.translate && translationResult) requestedActions.push('translate');
+      if (actions.mood && moodResult) requestedActions.push('mood');
+      updateFields.push(`iscompleteprocessing = $${paramIndex++}`);
+      updateValues.push(requestedActions.length > 0);
+      
+      const whereValueIndex = paramIndex;
+      updateValues.push(processing.processingID);
+      
+      const updateQuery = `
+        UPDATE songaiprocessing 
+        SET ${updateFields.join(', ')} 
+        WHERE processingid = $${whereValueIndex}
+      `;
+      await DatabaseService.query(updateQuery, updateValues);
+      
+      if (!processing.processingID || !song.songID) {
+        logger.error('Missing IDs in result:', { processingID: processing.processingID, songID: song.songID });
+        throw new Error('Failed to complete analysis: missing IDs');
+      }
+      
+      return {
+        processingID: String(processing.processingID),
+        songID: String(song.songID),
+        status: 'completed',
+        translation: translationResult ? {
+          text: translationResult.translation,
+          interpretation: translationResult.interpretation,
+          originalLanguage: translationConfig.originalLanguage ?? null,
+          targetLanguage: translationConfig.targetLanguage ?? null
+        } : null,
+        mood: moodResult
+      };
+      
+    } catch (error) {
+      logger.error('Error in AnalysisService.processNew:', error);
+      throw error;
+    }
+  }
+
   static async reAnalyze(processingID, actions, translationConfig) {
     try {
       if (!processingID) {

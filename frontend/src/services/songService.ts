@@ -89,6 +89,25 @@ export interface ProcessingCheckResponse {
   averageRating?: number | null;
 }
 
+export interface ProcessingVersion {
+  versionNumber: number;
+  processingID: string;
+  songID: string;
+  targetLanguage: string;
+  status: string;
+  approvalStatus: string;
+  shareStatus: string;
+  totalRatings: number;
+  averageRating: number | null;
+  createdAt: string;
+  updatedAt: string;
+  approvedAt: string | null;
+}
+
+export interface ProcessingVersionsResponse {
+  versions: ProcessingVersion[];
+}
+
 export const songService = {
   async getSongDetail(songID: string, processingID?: string): Promise<SongDetailResponse> {
     const url = processingID 
@@ -243,6 +262,27 @@ export const songService = {
     }
     
     return backendResponse.data.songs;
+  },
+
+  async getProcessingVersions(songID: string, targetLanguage?: string): Promise<ProcessingVersion[]> {
+    let url = `/api/songs/${songID}/processing-versions`;
+    if (targetLanguage) {
+      url += `?targetLanguage=${encodeURIComponent(targetLanguage)}`;
+    }
+    
+    const res = await apiService.get<{ success: boolean; message?: string; data: ProcessingVersionsResponse }>(url);
+    
+    if (!res.success || !res.data) {
+      throw new Error(res.message || 'Failed to fetch processing versions');
+    }
+    
+    const backendResponse = res.data as { data?: ProcessingVersionsResponse };
+    
+    if (!backendResponse.data) {
+      throw new Error('Missing data in response');
+    }
+    
+    return backendResponse.data.versions;
   }
 };
 

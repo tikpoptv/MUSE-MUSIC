@@ -109,13 +109,13 @@ export const favoriteService = {
     }
   },
 
-  async checkFavorite(songID: string): Promise<boolean> {
+  async checkFavorite(processingID: string): Promise<boolean> {
     try {
       const response = await apiService.get<{
         success: boolean;
         message?: string;
         data: CheckFavoriteResponse;
-      }>(`/api/favorites/check?songID=${songID}`);
+      }>(`/api/favorites/check?processingID=${processingID}`);
 
       if (response.success && response.data) {
         const backendResponse = response.data as {

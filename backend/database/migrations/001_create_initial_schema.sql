@@ -383,16 +383,18 @@ CREATE TABLE UserFavorites (
     userID UUID NOT NULL,
     songID UUID,
     playlistID UUID,
+    processingID UUID,
     favoriteType VARCHAR(20) NOT NULL, -- 'song', 'playlist'
     createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (userID) REFERENCES Users(userID) ON DELETE CASCADE,
     FOREIGN KEY (songID) REFERENCES Songs(songID) ON DELETE CASCADE,
     FOREIGN KEY (playlistID) REFERENCES Playlists(playlistID) ON DELETE CASCADE,
+    FOREIGN KEY (processingID) REFERENCES SongAIProcessing(processingID) ON DELETE CASCADE,
     CONSTRAINT check_favorite_type CHECK (favoriteType IN ('song', 'playlist')),
     CONSTRAINT check_favorite_target CHECK (
-        (favoriteType = 'song' AND songID IS NOT NULL AND playlistID IS NULL) OR
-        (favoriteType = 'playlist' AND playlistID IS NOT NULL AND songID IS NULL)
+        (favoriteType = 'song' AND songID IS NOT NULL AND playlistID IS NULL AND processingID IS NOT NULL) OR
+        (favoriteType = 'playlist' AND playlistID IS NOT NULL AND songID IS NULL AND processingID IS NULL)
     )
 );
 
@@ -551,6 +553,7 @@ CREATE INDEX idx_notifications_created ON Notifications(createdAt);
 CREATE INDEX idx_favorites_user ON UserFavorites(userID);
 CREATE INDEX idx_favorites_type ON UserFavorites(favoriteType);
 CREATE INDEX idx_favorites_song ON UserFavorites(songID);
+CREATE INDEX idx_favorites_processing ON UserFavorites(processingID);
 CREATE INDEX idx_favorites_playlist ON UserFavorites(playlistID);
 
 -- Reports table indexes
@@ -657,31 +660,31 @@ DECLARE
 BEGIN
     -- Determine which processingID to update based on operation type
     IF TG_OP = 'DELETE' THEN
-        target_processing_id := OLD.processingID;
+        target_processing_id := OLD.processingid;
     ELSE
-        target_processing_id := NEW.processingID;
+        target_processing_id := NEW.processingid;
     END IF;
     
     -- Update rating statistics in SongAIProcessing table
-    UPDATE SongAIProcessing 
+    UPDATE songaiprocessing 
     SET 
-        totalRatings = (
+        totalratings = (
             SELECT COUNT(*) 
-            FROM AIProcessingRatings 
-            WHERE processingID = target_processing_id
+            FROM aiprocessingratings 
+            WHERE processingid = target_processing_id
         ),
-        averageRating = (
+        averagerating = (
             SELECT COALESCE(ROUND(AVG(rating::DECIMAL), 2), 0.00)
-            FROM AIProcessingRatings 
-            WHERE processingID = target_processing_id
+            FROM aiprocessingratings 
+            WHERE processingid = target_processing_id
         ),
-        starCount = (
+        starcount = (
             SELECT COALESCE(ROUND(AVG(rating::DECIMAL))::INT, 0)
-            FROM AIProcessingRatings 
-            WHERE processingID = target_processing_id
+            FROM aiprocessingratings 
+            WHERE processingid = target_processing_id
         ),
-        updatedAt = CURRENT_TIMESTAMP
-    WHERE processingID = target_processing_id;
+        updatedat = CURRENT_TIMESTAMP
+    WHERE processingid = target_processing_id;
     
     -- Return appropriate row based on operation
     IF TG_OP = 'DELETE' THEN
@@ -694,7 +697,7 @@ $$ language 'plpgsql';
 
 -- Create trigger to auto-update rating statistics
 CREATE TRIGGER update_rating_stats_trigger 
-    AFTER INSERT OR UPDATE OR DELETE ON AIProcessingRatings
+    AFTER INSERT OR UPDATE OR DELETE ON aiprocessingratings
     FOR EACH ROW EXECUTE FUNCTION update_rating_stats();
 
 -- =========================

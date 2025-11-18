@@ -97,6 +97,7 @@ class AdminAnalysisService {
           r.comment,
           r.feedback,
           r.createdat,
+          s.songid,
           s.songname
         FROM aiprocessingratings r
         INNER JOIN songaiprocessing p ON r.processingid = p.processingid
@@ -213,6 +214,7 @@ class AdminAnalysisService {
       const suggestions = suggestionsResult.rows.map(row => ({
         id: row.ratingid,
         processingID: row.processingid,
+        songID: row.songid,
         songName: row.songname,
         rating: parseFloat(row.rating),
         comment: row.comment || row.feedback || '',
