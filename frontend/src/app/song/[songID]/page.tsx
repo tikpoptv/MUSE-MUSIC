@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { useParams, useRouter, useSearchParams, usePathname } from 'next/navigation';
-import { Heart, Share2, MoreVertical } from 'lucide-react';
+import { Heart, Share2, MoreVertical, Link2, ExternalLink, Flag, ShieldCheck, ShieldOff } from 'lucide-react';
 import MusicCard from '@/components/MusicCard';
 import SkeletonCard from '@/components/SkeletonCard';
 import LyricsTranslationViewer from '@/components/LyricsTranslationViewer';
@@ -17,6 +17,7 @@ import ProcessingVersionBar from '@/components/ProcessingVersionBar';
 import { songService, type SongDetail, type ProcessingDetail, type ProcessingVersion } from '@/services/songService';
 import { analysisService } from '@/services/analysisService';
 import { recommendSongsService, type RecommendedSong } from '@/services/recommendSongsService';
+import { adminSongsService } from '@/services/adminSongsService';
 import shareService from '@/services/shareService';
 import { authService } from '@/services/authService';
 import { historyService } from '@/services/historyService';
@@ -24,6 +25,7 @@ import { favoriteService } from '@/services/favoriteService';
 import ReAnalyzeConfirmModal from '@/components/modals/ReAnalyzeConfirmModal';
 import NavigateAwayConfirmModal from '@/components/modals/NavigateAwayConfirmModal';
 import SocialShareModal from '@/components/SocialShareModal';
+import ApproveRejectModal from '@/components/modals/ApproveRejectModal';
 import toast from 'react-hot-toast';
 
 const languageNameToCode: Record<string, string> = {
@@ -100,6 +102,12 @@ export default function SongDetailPage() {
   const [isTogglingFavorite, setIsTogglingFavorite] = useState(false);
   const [processingVersions, setProcessingVersions] = useState<ProcessingVersion[]>([]);
   const [currentVersionNumber, setCurrentVersionNumber] = useState<number>(1);
+  const [moreMenuTarget, setMoreMenuTarget] = useState<'desktop' | 'mobile' | null>(null);
+  const [adminModalType, setAdminModalType] = useState<'approve' | 'reject' | null>(null);
+  const [isAdminActionProcessing, setIsAdminActionProcessing] = useState(false);
+  const desktopMenuRef = useRef<HTMLDivElement>(null);
+  const mobileMenuRef = useRef<HTMLDivElement>(null);
+  const feedbackSectionAnchorId = 'feedback-section-anchor';
 
   const effectiveProcessingID = useMemo(() => {
     if (processingID && processingID !== 'undefined' && processingID !== '') {
@@ -107,6 +115,33 @@ export default function SongDetailPage() {
     }
     return processingData?.processingID || '';
   }, [processingID, processingData?.processingID]);
+
+  const toggleMoreMenu = (target: 'desktop' | 'mobile') => {
+    setMoreMenuTarget((prev) => (prev === target ? null : target));
+  };
+
+  const closeMoreMenu = () => setMoreMenuTarget(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (!moreMenuTarget) return;
+
+      const target = event.target as Node;
+      if (
+        (desktopMenuRef.current && desktopMenuRef.current.contains(target)) ||
+        (mobileMenuRef.current && mobileMenuRef.current.contains(target))
+      ) {
+        return;
+      }
+
+      setMoreMenuTarget(null);
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [moreMenuTarget]);
 
   const checkFavoriteStatus = useCallback(async () => {
     if (!songID || songID === 'undefined' || !authService.isAuthenticated()) {
@@ -146,8 +181,7 @@ export default function SongDetailPage() {
     checkAdminStatus();
   }, []);
 
-  useEffect(() => {
-    const fetchSongData = async () => {
+  const fetchSongData = useCallback(async () => {
       if (!songID || songID === 'undefined') {
         toast.error('Invalid song ID');
         router.push('/');
@@ -162,6 +196,17 @@ export default function SongDetailPage() {
 
       try {
         setLoading(true);
+        
+        // Check admin status fresh to avoid race condition
+        let currentIsAdmin = isAdmin;
+        if (authService.isAuthenticated()) {
+          try {
+            currentIsAdmin = await authService.checkAdminStatus();
+          } catch {
+            currentIsAdmin = false;
+          }
+        }
+        
         const data = await songService.getSongDetail(songID, processingID);
         
         setSongData(data.song);
@@ -171,11 +216,13 @@ export default function SongDetailPage() {
           if (isAnalysisRoute) {
             const isApproved = processing.approvalStatus === 'approved' && processing.shareStatus === 'public_approved';
             
-            if (isApproved && !isAdmin) {
-              toast.error('This processing has been reviewed and approved. You can no longer edit it.');
+            // If approved, only admin can access (everyone else including owner cannot edit after approval)
+            if (isApproved && !currentIsAdmin) {
+              toast.error('This processing has been reviewed and approved. Only admin can access analysis mode.');
               window.location.href = `/song/${songID}?processingID=${processingID}`;
               return;
             }
+            // If not approved, anyone can access (no need to check owner/login status)
           }
           
           setProcessingData(processing);
@@ -193,10 +240,147 @@ export default function SongDetailPage() {
       } finally {
         setLoading(false);
       }
-    };
-
-    fetchSongData();
   }, [songID, processingID, router, isAnalysisRoute, isAdmin]);
+
+  useEffect(() => {
+    fetchSongData();
+  }, [fetchSongData]);
+
+  const handleCopyLink = useCallback(async () => {
+    if (!effectiveProcessingID || effectiveProcessingID === 'undefined') {
+      toast.error('Processing ID not available');
+      closeMoreMenu();
+      return;
+    }
+
+    try {
+      const shareLink = await shareService.createShareLink(effectiveProcessingID);
+      await navigator.clipboard.writeText(shareLink.shareUrl);
+      toast.success('Short link copied to clipboard');
+    } catch (error) {
+      toast.error('Failed to create short link');
+      // eslint-disable-next-line no-console
+      console.error('Copy link error:', error);
+    } finally {
+      closeMoreMenu();
+    }
+  }, [effectiveProcessingID]);
+
+  const handleToggleViewMode = useCallback(async () => {
+    if (!songID || !effectiveProcessingID) {
+      toast.error('Processing data not available');
+      closeMoreMenu();
+      return;
+    }
+
+    // Check admin status fresh to avoid race condition
+    let currentIsAdmin = isAdmin;
+    if (authService.isAuthenticated()) {
+      try {
+        currentIsAdmin = await authService.checkAdminStatus();
+      } catch {
+        currentIsAdmin = false;
+      }
+    }
+
+    // Check if processing is approved
+    const isApproved = processingData?.approvalStatus === 'approved' && processingData?.shareStatus === 'public_approved';
+
+    // Admin can always access analysis mode
+    if (currentIsAdmin) {
+      if (isAnalysisRoute) {
+        router.push(`/song/${songID}?processingID=${effectiveProcessingID}`);
+      } else {
+        router.push(`/song/${songID}/analysis/${effectiveProcessingID}`);
+      }
+      closeMoreMenu();
+      return;
+    }
+
+    // If approved, only admin can access (block everyone else)
+    if (isApproved) {
+      toast.error('This processing has been reviewed and approved. Only admin can access analysis mode.');
+      closeMoreMenu();
+      return;
+    }
+
+    // If not approved yet, anyone can access (including non-logged-in users)
+    if (isAnalysisRoute) {
+      router.push(`/song/${songID}?processingID=${effectiveProcessingID}`);
+    } else {
+      router.push(`/song/${songID}/analysis/${effectiveProcessingID}`);
+    }
+    closeMoreMenu();
+  }, [router, songID, effectiveProcessingID, isAnalysisRoute, isAdmin, processingData?.approvalStatus, processingData?.shareStatus]);
+
+  const handleReportIssue = useCallback(() => {
+    if (typeof document !== 'undefined') {
+      const anchor =
+        document.getElementById(feedbackSectionAnchorId) ||
+        document.getElementById(`${feedbackSectionAnchorId}-mobile`);
+      if (anchor) {
+        anchor.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // Shake feedback section after scroll (like when saving without rating)
+        setTimeout(() => {
+          feedbackSectionRef.current?.shake();
+        }, 500);
+      }
+    }
+    closeMoreMenu();
+  }, []);
+
+  const openShareModalFromMenu = async () => {
+    const effectiveProcessingID = processingID || processingData?.processingID || '';
+    if (!effectiveProcessingID || effectiveProcessingID === 'undefined') {
+      toast.error('No processing ID available');
+      closeMoreMenu();
+      return;
+    }
+
+    try {
+      setIsCreatingShareLink(true);
+      const shareLink = await shareService.createShareLink(effectiveProcessingID);
+      setShareUrl(shareLink.shareUrl);
+      setIsSocialShareModalOpen(true);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to create share link');
+    } finally {
+      setIsCreatingShareLink(false);
+      closeMoreMenu();
+    }
+  };
+
+  const openAdminModal = (type: 'approve' | 'reject') => {
+    setAdminModalType(type);
+    closeMoreMenu();
+  };
+
+  const handleAdminActionConfirm = useCallback(async () => {
+    if (!adminModalType || !processingData?.processingID) {
+      return;
+    }
+
+    try {
+      setIsAdminActionProcessing(true);
+      if (adminModalType === 'approve') {
+        await adminSongsService.approveSong(processingData.processingID);
+        toast.success('Processing approved successfully');
+      } else {
+        await adminSongsService.rejectSong(processingData.processingID);
+        toast.success('Processing rejected successfully');
+      }
+      await fetchSongData();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to update processing';
+      toast.error(message);
+    } finally {
+      setIsAdminActionProcessing(false);
+      setAdminModalType(null);
+    }
+  }, [adminModalType, processingData?.processingID, fetchSongData]);
+
+  const canApprove = isAdmin && processingData?.approvalStatus !== 'approved';
+  const canReject = isAdmin && processingData?.approvalStatus !== 'rejected';
 
   useEffect(() => {
     if (songID && songID !== 'undefined' && authService.isAuthenticated()) {
@@ -905,17 +1089,85 @@ export default function SongDetailPage() {
                 >
                   <Share2 className="h-6 w-6" style={{ color: '#7B61FF' }} />
                 </button>
-                <button className="p-3 rounded-full hover:bg-gray-100 transition-colors">
+                <div className="relative" ref={desktopMenuRef}>
+                  <button
+                    type="button"
+                    onClick={() => toggleMoreMenu('desktop')}
+                    className="p-3 rounded-full hover:bg-gray-100 transition-colors"
+                    aria-label="More actions"
+                  >
                   <MoreVertical className="h-6 w-6" style={{ color: '#7B61FF' }} />
                 </button>
+                  {moreMenuTarget === 'desktop' && (
+                    <div className="absolute right-0 mt-2 w-64 bg-white border border-gray-200 rounded-2xl shadow-xl py-2 z-20">
+                      <button
+                        type="button"
+                        onClick={handleCopyLink}
+                        className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                      >
+                        <Link2 className="h-4 w-4 text-gray-500" />
+                        Copy song link
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleToggleViewMode}
+                        className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                      >
+                        <ExternalLink className="h-4 w-4 text-gray-500" />
+                        {isAnalysisRoute ? 'Open detail view' : 'Open analysis mode'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleReportIssue}
+                        className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                      >
+                        <Flag className="h-4 w-4 text-gray-500" />
+                        Report / give feedback
+                      </button>
+                      <button
+                        type="button"
+                        onClick={openShareModalFromMenu}
+                        className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                      >
+                        <Share2 className="h-4 w-4 text-gray-500" />
+                        Share with friends
+                      </button>
+                      {isAdmin && (
+                        <>
+                          <div className="my-2 border-t border-gray-100" />
+                          <button
+                            type="button"
+                            onClick={() => openAdminModal('approve')}
+                            disabled={!canApprove}
+                            className="w-full flex items-center gap-3 px-4 py-2 text-sm text-green-700 hover:bg-green-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            <ShieldCheck className="h-4 w-4" />
+                            Approve processing
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => openAdminModal('reject')}
+                            disabled={!canReject}
+                            className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-700 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            <ShieldOff className="h-4 w-4" />
+                            Reject processing
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Feedback Section */}
+              <div id={feedbackSectionAnchorId} className="w-full flex justify-center">
               <FeedbackSection 
                 ref={feedbackSectionRef}
                 processingID={processingID} 
                 onRatingSubmitted={handleRatingSubmitted}
               />
+              </div>
             </div>
 
             {/* Recommend with language */}
@@ -1006,9 +1258,75 @@ export default function SongDetailPage() {
               >
                 <Share2 className="h-6 w-6" style={{ color: '#7B61FF' }} />
               </button>
-              <button className="p-3 rounded-full hover:bg-gray-100 transition-colors">
+              <div className="relative" ref={mobileMenuRef}>
+                <button
+                  type="button"
+                  onClick={() => toggleMoreMenu('mobile')}
+                  className="p-3 rounded-full hover:bg-gray-100 transition-colors"
+                  aria-label="More actions"
+                >
                 <MoreVertical className="h-6 w-6" style={{ color: '#7B61FF' }} />
               </button>
+                {moreMenuTarget === 'mobile' && (
+                  <div className="absolute right-0 mt-2 w-64 bg-white border border-gray-200 rounded-2xl shadow-xl py-2 z-20">
+                    <button
+                      type="button"
+                      onClick={handleCopyLink}
+                      className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                    >
+                      <Link2 className="h-4 w-4 text-gray-500" />
+                      Copy song link
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleToggleViewMode}
+                      className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                    >
+                      <ExternalLink className="h-4 w-4 text-gray-500" />
+                      {isAnalysisRoute ? 'Open detail view' : 'Open analysis mode'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleReportIssue}
+                      className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                    >
+                      <Flag className="h-4 w-4 text-gray-500" />
+                      Report / give feedback
+                    </button>
+                    <button
+                      type="button"
+                      onClick={openShareModalFromMenu}
+                      className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                    >
+                      <Share2 className="h-4 w-4 text-gray-500" />
+                      Share with friends
+                    </button>
+                    {isAdmin && (
+                      <>
+                        <div className="my-2 border-t border-gray-100" />
+                        <button
+                          type="button"
+                          onClick={() => openAdminModal('approve')}
+                          disabled={!canApprove}
+                          className="w-full flex items-center gap-3 px-4 py-2 text-sm text-green-700 hover:bg-green-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <ShieldCheck className="h-4 w-4" />
+                          Approve processing
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => openAdminModal('reject')}
+                          disabled={!canReject}
+                          className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-700 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <ShieldOff className="h-4 w-4" />
+                          Reject processing
+                        </button>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
@@ -1122,7 +1440,10 @@ export default function SongDetailPage() {
             <MoodAnalyzeSection processingData={processingData} />
 
             {/* Mobile: Feedback Section - อยู่หลัง Mood Analyze */}
-            <div className="lg:hidden mt-6 w-full flex justify-center">
+            <div
+              id={`${feedbackSectionAnchorId}-mobile`}
+              className="lg:hidden mt-6 w-full flex justify-center"
+            >
               <FeedbackSection 
                 ref={feedbackSectionRef}
                 processingID={processingID} 
@@ -1232,6 +1553,18 @@ export default function SongDetailPage() {
         mode={isAnalysisRoute ? 're-analyze' : 'new-analysis'}
         shareRequest={isAnalysisRoute ? undefined : newAnalysisShareRequest}
         onShareRequestChange={isAnalysisRoute ? undefined : setNewAnalysisShareRequest}
+      />
+      <ApproveRejectModal
+        isOpen={adminModalType !== null}
+        onClose={() => {
+          if (!isAdminActionProcessing) {
+            setAdminModalType(null);
+          }
+        }}
+        onConfirm={handleAdminActionConfirm}
+        type={adminModalType ?? 'approve'}
+        songName={songData?.songName || 'this song'}
+        isProcessing={isAdminActionProcessing}
       />
     </main>
   );
