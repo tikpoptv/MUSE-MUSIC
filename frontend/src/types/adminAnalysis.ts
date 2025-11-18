@@ -6,6 +6,7 @@ export interface MoodStat {
 export interface Suggestion {
   id: string;
   processingID: string;
+  songID: string;
   songName: string;
   rating: number;
   comment: string;

@@ -167,19 +167,53 @@ class ForYouService {
   static async getRecentlySearched(userID, limit = 4) {
     try {
       const query = `
-        SELECT DISTINCT ON (s.songid)
-          s.songid as id,
-          s.songname as title,
-          s.artistname as artist,
-          COALESCE(p.coverimage, '') as image,
-          p.processingid as processingid,
-          p.moodtype as moodtype
+        WITH RecentHistory AS (
+          SELECT DISTINCT ON (h.songid)
+            h.songid,
+            h.processingid,
+            h.timestamp
         FROM history h
         INNER JOIN songs s ON h.songid = s.songid
-        LEFT JOIN songaiprocessing p ON h.processingid = p.processingid
         WHERE h.userid = $1
           AND s.isactive = TRUE
-        ORDER BY s.songid, h.timestamp DESC NULLS LAST
+          ORDER BY h.songid, h.timestamp DESC
+        ),
+        RankedProcessing AS (
+          SELECT 
+            rh.songid,
+            rh.timestamp,
+            p.processingid,
+            p.coverimage,
+            p.moodtype,
+            s.songname,
+            s.artistname,
+            ROW_NUMBER() OVER (
+              PARTITION BY rh.songid 
+              ORDER BY 
+                CASE WHEN p.totalratings > 0 THEN 0 ELSE 1 END,
+                p.totalratings DESC,
+                p.averagerating DESC NULLS LAST,
+                p.createdat DESC
+            ) as rn
+          FROM RecentHistory rh
+          INNER JOIN songs s ON rh.songid = s.songid
+          LEFT JOIN songaiprocessing p ON (
+            p.songid = rh.songid
+            AND p.sharestatus = 'public_approved'
+            AND p.approvalstatus = 'approved'
+            AND p.status = 'completed'
+          )
+        )
+        SELECT 
+          songid as id,
+          songname as title,
+          artistname as artist,
+          COALESCE(coverimage, '') as image,
+          processingid as processingid,
+          moodtype as moodtype
+        FROM RankedProcessing
+        WHERE rn = 1
+        ORDER BY timestamp DESC NULLS LAST
         LIMIT $2
       `;
 
@@ -253,20 +287,45 @@ class ForYouService {
   static async getTopHits(limit = 5) {
     try {
       const query = `
-        SELECT DISTINCT ON (s.songid)
-          s.songid as id,
-          s.songname as title,
-          s.artistname as artist,
-          COALESCE(p.coverimage, '') as image,
-          p.processingid as processingid,
-          p.moodtype as moodtype
-        FROM songs s
-        INNER JOIN songaiprocessing p ON s.songid = p.songid
+        WITH RankedProcessing AS (
+          SELECT 
+            p.processingid,
+            p.songid,
+            p.totalratings,
+            p.averagerating,
+            p.coverimage,
+            p.moodtype,
+            s.songname,
+            s.artistname,
+            ROW_NUMBER() OVER (
+              PARTITION BY p.songid 
+              ORDER BY 
+                CASE WHEN p.totalratings > 0 THEN 0 ELSE 1 END,
+                p.totalratings DESC,
+                p.averagerating DESC NULLS LAST,
+                p.createdat DESC
+            ) as rn
+          FROM songaiprocessing p
+          INNER JOIN songs s ON p.songid = s.songid
         WHERE s.isactive = TRUE
           AND p.sharestatus = 'public_approved'
           AND p.approvalstatus = 'approved'
           AND p.status = 'completed'
-        ORDER BY s.songid, p.totalratings DESC, p.averagerating DESC NULLS LAST
+        )
+        SELECT 
+          songid as id,
+          songname as title,
+          artistname as artist,
+          COALESCE(coverimage, '') as image,
+          processingid as processingid,
+          moodtype as moodtype
+        FROM RankedProcessing
+        WHERE rn = 1
+        ORDER BY 
+          CASE WHEN totalratings > 0 THEN 0 ELSE 1 END,
+          totalratings DESC,
+          averagerating DESC NULLS LAST,
+          createdat DESC
         LIMIT $1
       `;
 
@@ -363,7 +422,11 @@ class ForYouService {
               WHERE p.songid = ss.songid
                 AND p.createdby = $1
                 AND p.status = 'completed'
-              ORDER BY p.createdat DESC
+              ORDER BY 
+                CASE WHEN p.totalratings > 0 THEN 0 ELSE 1 END,
+                p.totalratings DESC,
+                p.averagerating DESC NULLS LAST,
+                p.createdat DESC
               LIMIT 1
             ) as processingid,
             (
@@ -372,7 +435,11 @@ class ForYouService {
               WHERE p.songid = ss.songid
                 AND p.createdby = $1
                 AND p.status = 'completed'
-              ORDER BY p.createdat DESC
+              ORDER BY 
+                CASE WHEN p.totalratings > 0 THEN 0 ELSE 1 END,
+                p.totalratings DESC,
+                p.averagerating DESC NULLS LAST,
+                p.createdat DESC
               LIMIT 1
             ) as coverimage,
             (
@@ -382,7 +449,11 @@ class ForYouService {
                 AND p.createdby = $1
                 AND p.status = 'completed'
                 AND p.moodtype IS NOT NULL
-              ORDER BY p.createdat DESC
+              ORDER BY 
+                CASE WHEN p.totalratings > 0 THEN 0 ELSE 1 END,
+                p.totalratings DESC,
+                p.averagerating DESC NULLS LAST,
+                p.createdat DESC
               LIMIT 1
             ) as moodtype
           FROM song_scores ss
