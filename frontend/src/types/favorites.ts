@@ -23,7 +23,7 @@ export interface UserFavoritesResponse {
 }
 
 export interface AddFavoriteRequest {
-  songID: string;
+  processingID: string;
 }
 
 export interface AddFavoriteResponse {
@@ -33,7 +33,7 @@ export interface AddFavoriteResponse {
 }
 
 export interface RemoveFavoriteRequest {
-  songID: string;
+  processingID: string;
 }
 
 export interface CheckFavoriteResponse {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { useParams, useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { Heart, Share2, MoreVertical } from 'lucide-react';
 import MusicCard from '@/components/MusicCard';
@@ -56,6 +56,7 @@ export default function SongDetailPage() {
   const processingID = isAnalysisRoute 
     ? (params.processingID as string)
     : (searchParams.get('processingID') || '');
+  const isDetailRoute = !isAnalysisRoute;
 
   const [songData, setSongData] = useState<SongDetail | null>(null);
   const [processingData, setProcessingData] = useState<ProcessingDetail | null>(null);
@@ -86,6 +87,7 @@ export default function SongDetailPage() {
   const [isNavigateAwayModalOpen, setIsNavigateAwayModalOpen] = useState(false);
   const [pendingLanguageChange, setPendingLanguageChange] = useState<string | null>(null);
   const [pendingProcessingID, setPendingProcessingID] = useState<string | null>(null);
+  const [newAnalysisShareRequest, setNewAnalysisShareRequest] = useState<boolean>(true);
   const [recommendedByLanguage, setRecommendedByLanguage] = useState<RecommendedSong[]>([]);
   const [recommendedByMood, setRecommendedByMood] = useState<RecommendedSong[]>([]);
   const [loadingRecommendationsByLanguage, setLoadingRecommendationsByLanguage] = useState(false);
@@ -97,14 +99,25 @@ export default function SongDetailPage() {
   const [isCheckingFavorite, setIsCheckingFavorite] = useState(false);
   const [isTogglingFavorite, setIsTogglingFavorite] = useState(false);
 
+  const effectiveProcessingID = useMemo(() => {
+    if (processingID && processingID !== 'undefined' && processingID !== '') {
+      return processingID;
+    }
+    return processingData?.processingID || '';
+  }, [processingID, processingData?.processingID]);
+
   const checkFavoriteStatus = useCallback(async () => {
     if (!songID || songID === 'undefined' || !authService.isAuthenticated()) {
       return;
     }
 
+    if (!effectiveProcessingID || effectiveProcessingID === 'undefined') {
+      return;
+    }
+
     try {
       setIsCheckingFavorite(true);
-      const favorite = await favoriteService.checkFavorite(songID);
+      const favorite = await favoriteService.checkFavorite(effectiveProcessingID);
       setIsFavorite(favorite);
     } catch (error) {
       // eslint-disable-next-line no-console
@@ -112,7 +125,7 @@ export default function SongDetailPage() {
     } finally {
       setIsCheckingFavorite(false);
     }
-  }, [songID]);
+  }, [songID, effectiveProcessingID]);
 
   useEffect(() => {
     const checkAdminStatus = async () => {
@@ -302,6 +315,9 @@ export default function SongDetailPage() {
           window.location.href = `/song/${songID}?processingID=${checkResult.processingID}`;
         }
       } else {
+        if (isDetailRoute) {
+          setNewAnalysisShareRequest(true);
+        }
         setIsReAnalyzeModalOpen(true);
         setPendingLanguageChange(language);
       }
@@ -328,6 +344,9 @@ export default function SongDetailPage() {
   };
 
   const handleReAnalyzeClick = () => {
+    if (isDetailRoute) {
+      setNewAnalysisShareRequest(true);
+    }
     setIsReAnalyzeModalOpen(true);
   };
 
@@ -351,8 +370,8 @@ export default function SongDetailPage() {
   };
 
   const handleReAnalyzeConfirm = async () => {
-    if (!processingID || processingID === 'undefined') {
-      toast.error('Invalid processing ID');
+    if (!songID || songID === 'undefined') {
+      toast.error('Invalid song ID');
       return;
     }
 
@@ -368,6 +387,55 @@ export default function SongDetailPage() {
 
     const rawOriginal = processingData.originalLanguage;
     const originalLanguage = rawOriginal ? (languageCodeToName[rawOriginal as keyof typeof languageCodeToName] || rawOriginal) : undefined;
+
+    if (!targetLanguage) {
+      toast.error('Target language is required');
+      return;
+    }
+
+    if (!isAnalysisRoute) {
+      try {
+        setIsReAnalyzing(true);
+        toast.loading('Starting new analysis...', { id: 'new-analysis' });
+
+        const result = await analysisService.newAnalysis({
+          lyricsRecord: { songID },
+          actions: {
+            translate: true,
+            mood: true
+          },
+          translationConfig: {
+            targetLanguage,
+            ...(originalLanguage ? { originalLanguage } : {})
+          },
+          shareRequest: newAnalysisShareRequest
+        });
+
+        if (!result || !result.songID || !result.processingID) {
+          throw new Error('Invalid response from server');
+        }
+
+        toast.success('New analysis started!', { id: 'new-analysis' });
+        setIsReAnalyzeModalOpen(false);
+        setPendingLanguageChange(null);
+        setNewAnalysisShareRequest(true);
+        router.push(`/song/${result.songID}/analysis/${result.processingID}`);
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : 'Failed to start new analysis', { id: 'new-analysis' });
+        setIsReAnalyzeModalOpen(false);
+        setPendingLanguageChange(null);
+        setNewAnalysisShareRequest(true);
+      } finally {
+        setIsReAnalyzing(false);
+      }
+
+      return;
+    }
+
+    if (!processingID || processingID === 'undefined') {
+      toast.error('Invalid processing ID');
+      return;
+    }
 
     try {
       setIsReAnalyzing(true);
@@ -443,6 +511,11 @@ export default function SongDetailPage() {
       return;
     }
 
+    if (!effectiveProcessingID || effectiveProcessingID === 'undefined') {
+      toast.error('Processing ID is missing');
+      return;
+    }
+
     if (!authService.isAuthenticated()) {
       toast.error('Please login to add favorites');
       return;
@@ -452,7 +525,7 @@ export default function SongDetailPage() {
       setIsTogglingFavorite(true);
       
       if (isFavorite) {
-        const removed = await favoriteService.removeFavorite({ songID });
+        const removed = await favoriteService.removeFavorite({ processingID: effectiveProcessingID });
         if (removed) {
           setIsFavorite(false);
           toast.success('Removed from favorites');
@@ -460,7 +533,7 @@ export default function SongDetailPage() {
           toast.error('Failed to remove favorite');
         }
       } else {
-        const result = await favoriteService.addFavorite({ songID });
+        const result = await favoriteService.addFavorite({ processingID: effectiveProcessingID });
         if (result) {
           setIsFavorite(true);
           toast.success('Added to favorites');
@@ -913,6 +986,7 @@ export default function SongDetailPage() {
                     processingID={processingData.processingID}
                     rating={processingData.averageRating ? Math.round(processingData.averageRating) : undefined}
                     onNewAnalyze={handleReAnalyzeClick}
+                    newAnalyzeLabel={isDetailRoute ? 'New analyze' : 'Re-analyze'}
                   />
                 </div>
               )
@@ -1062,8 +1136,10 @@ export default function SongDetailPage() {
 
             {/* Action Buttons */}
             <SongActionButtons 
-              onReAnalyzeClick={handleReAnalyzeClick}
-              isReAnalyzing={isReAnalyzing}
+              onActionClick={handleReAnalyzeClick}
+              isProcessing={isReAnalyzing}
+              actionLabel={isAnalysisRoute ? 'Re-analyze' : 'New analyze'}
+              processingLabel={isAnalysisRoute ? 'Re-analyzing...' : 'Starting...'}
             />
           </div>
         </div>
@@ -1094,10 +1170,16 @@ export default function SongDetailPage() {
         onClose={() => {
           setIsReAnalyzeModalOpen(false);
           setPendingLanguageChange(null);
+          if (isDetailRoute) {
+            setNewAnalysisShareRequest(true);
+          }
         }}
         onConfirm={handleReAnalyzeConfirm}
         isProcessing={isReAnalyzing}
         targetLanguage={pendingLanguageChange || selectedLanguage}
+        mode={isAnalysisRoute ? 're-analyze' : 'new-analysis'}
+        shareRequest={isAnalysisRoute ? undefined : newAnalysisShareRequest}
+        onShareRequestChange={isAnalysisRoute ? undefined : setNewAnalysisShareRequest}
       />
     </main>
   );

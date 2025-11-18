@@ -7,13 +7,15 @@ interface ProcessingVersionBarProps {
   processingID: string;
   rating?: number;
   onNewAnalyze?: () => void;
+  newAnalyzeLabel?: string;
 }
 
 export default function ProcessingVersionBar({
   versionNumber,
   processingID,
   rating,
-  onNewAnalyze
+  onNewAnalyze,
+  newAnalyzeLabel = 'New analyze'
 }: ProcessingVersionBarProps) {
   return (
     <div className="w-full flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
@@ -56,7 +58,7 @@ export default function ProcessingVersionBar({
               background: '#FEB21A'
             }}
           >
-            New analyze
+            {newAnalyzeLabel}
           </button>
         )}
       </div>
