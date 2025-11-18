@@ -12,21 +12,20 @@ class UserService {
     const hashedPassword = await bcrypt.hash(password, saltRounds);
     
     const query = `
-      INSERT INTO Users (username, email, password, fullName, provider, role)
-      VALUES ($1, $2, $3, $4, $5, $6)
-      RETURNING userID, username, email, fullName, provider, role, registerDate, createdAt
+      INSERT INTO Users (username, email, password, fullName, provider, role, termsAccepted)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      RETURNING userID, username, email, fullName, provider, role, termsAccepted, registerDate, createdAt
     `;
     
-    const values = [username, email, hashedPassword, fullName, 'local', 'customer'];
+    const values = [username, email, hashedPassword, fullName, 'local', 'customer', true];
     const result = await DatabaseService.query(query, values);
     
-    // Normalize data from database (lowercase) to camelCase for User model
     const userDataFromDB = result.rows[0];
     const normalizedData = {
       userID: userDataFromDB.userid,
       username: userDataFromDB.username,
       email: userDataFromDB.email,
-      password: null, // Don't include password in user object
+      password: null,
       fullName: userDataFromDB.fullname,
       profilePicture: null,
       provider: userDataFromDB.provider,
@@ -36,6 +35,7 @@ class UserService {
       loginStatus: null,
       setupCompleted: null,
       setupSkipped: null,
+      termsAccepted: userDataFromDB.termsaccepted ?? true,
       registerDate: userDataFromDB.registerdate,
       createdAt: userDataFromDB.createdat,
       updatedAt: null
@@ -48,7 +48,7 @@ class UserService {
     const query = `
       SELECT userID, username, email, password, fullName, profilePicture, 
              provider, providerID, providerEmail, role, loginStatus, 
-             setupCompleted, setupSkipped, registerDate, createdAt, updatedAt
+             setupCompleted, setupSkipped, termsAccepted, registerDate, createdAt, updatedAt
       FROM Users WHERE username = $1
     `;
     const result = await DatabaseService.query(query, [username]);
@@ -72,6 +72,7 @@ class UserService {
       loginStatus: userData.loginstatus,
       setupCompleted: userData.setupcompleted,
       setupSkipped: userData.setupskipped,
+      termsAccepted: userData.termsaccepted ?? false,
       registerDate: userData.registerdate,
       createdAt: userData.createdat,
       updatedAt: userData.updatedat
@@ -84,7 +85,7 @@ class UserService {
     const query = `
       SELECT userID, username, email, password, fullName, profilePicture, 
              provider, providerID, providerEmail, role, loginStatus, 
-             setupCompleted, setupSkipped, registerDate, createdAt, updatedAt
+             setupCompleted, setupSkipped, termsAccepted, registerDate, createdAt, updatedAt
       FROM Users WHERE email = $1
     `;
     const result = await DatabaseService.query(query, [email]);
@@ -108,6 +109,7 @@ class UserService {
       loginStatus: userData.loginstatus,
       setupCompleted: userData.setupcompleted,
       setupSkipped: userData.setupskipped,
+      termsAccepted: userData.termsaccepted ?? false,
       registerDate: userData.registerdate,
       createdAt: userData.createdat,
       updatedAt: userData.updatedat
@@ -120,7 +122,7 @@ class UserService {
     const query = `
       SELECT userID, username, email, password, fullName, profilePicture, 
              provider, providerID, providerEmail, role, loginStatus, 
-             setupCompleted, setupSkipped, registerDate, createdAt, updatedAt
+             setupCompleted, setupSkipped, termsAccepted, registerDate, createdAt, updatedAt
       FROM Users WHERE userID = $1
     `;
     const result = await DatabaseService.query(query, [userID]);
@@ -144,6 +146,7 @@ class UserService {
       loginStatus: userData.loginstatus,
       setupCompleted: userData.setupcompleted,
       setupSkipped: userData.setupskipped,
+      termsAccepted: userData.termsaccepted ?? false,
       registerDate: userData.registerdate,
       createdAt: userData.createdat,
       updatedAt: userData.updatedat
@@ -378,6 +381,22 @@ class UserService {
       stepData,
       twoFAStatus
     };
+  }
+
+  static async acceptTerms(userID) {
+    const query = `
+      UPDATE Users 
+      SET termsAccepted = true, updatedAt = CURRENT_TIMESTAMP
+      WHERE userID = $1
+      RETURNING userID, termsAccepted
+    `;
+    const result = await DatabaseService.query(query, [userID]);
+    
+    if (result.rows.length === 0) {
+      return null;
+    }
+    
+    return result.rows[0].termsaccepted;
   }
 
   static async verifyPassword(plainPassword, hashedPassword) {

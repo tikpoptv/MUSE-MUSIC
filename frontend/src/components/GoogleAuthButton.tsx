@@ -11,6 +11,8 @@ interface GoogleAuthButtonProps {
   className?: string;
   disabled?: boolean;
   children?: React.ReactNode;
+  requireTermsAcceptance?: boolean;
+  onTermsRequired?: () => void;
 }
 
 export default function GoogleAuthButton({ 
@@ -18,11 +20,18 @@ export default function GoogleAuthButton({
   onAuthError, 
   className = "",
   disabled = false,
-  children 
+  children,
+  requireTermsAcceptance = false,
+  onTermsRequired
 }: GoogleAuthButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
 
   const handleGoogleAuth = async () => {
+    if (requireTermsAcceptance && onTermsRequired) {
+      onTermsRequired();
+      return;
+    }
+
     try {
       setIsLoading(true);
       onAuthStart?.();

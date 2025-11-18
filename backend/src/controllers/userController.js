@@ -173,10 +173,33 @@ const getUserStats = async (req, res) => {
   }
 };
 
+const acceptTerms = async (req, res) => {
+  try {
+    const userId = req.user.userID;
+
+    const result = await UserService.acceptTerms(userId);
+
+    if (result === null) {
+      return res.status(404).json(
+        errorResponse('User not found', 404)
+      );
+    }
+
+    res.json(successResponse('Terms and conditions accepted successfully'));
+
+  } catch (error) {
+    logger.error('Error accepting terms:', error);
+    res.status(500).json(
+      errorResponse('Internal server error', 500)
+    );
+  }
+};
+
 module.exports = {
   getUserData,
   getUserSettings,
   updateUserSettings,
   resetPassword,
-  getUserStats
+  getUserStats,
+  acceptTerms
 };

@@ -26,6 +26,7 @@ CREATE TABLE Users (
     loginStatus VARCHAR(50) DEFAULT 'offline',
     setupCompleted BOOLEAN DEFAULT FALSE, -- ตั้งค่าเริ่มต้นเสร็จหรือไม่
     setupSkipped BOOLEAN DEFAULT FALSE, -- ข้ามการตั้งค่าเริ่มต้นหรือไม่
+    termsAccepted BOOLEAN DEFAULT FALSE, -- ยอมรับ terms and conditions หรือไม่
     
     -- Password Reset
     passwordResetToken VARCHAR(255),
@@ -426,6 +427,7 @@ CREATE INDEX idx_users_role ON Users(role);
 CREATE INDEX idx_users_login_status ON Users(loginStatus);
 CREATE INDEX idx_users_setup ON Users(setupCompleted);
 CREATE INDEX idx_users_setup_skipped ON Users(setupSkipped);
+CREATE INDEX idx_users_terms_accepted ON Users(termsAccepted) WHERE termsAccepted = FALSE;
 CREATE INDEX idx_users_profile_picture ON Users(profilePicture) WHERE profilePicture IS NOT NULL;
 CREATE INDEX idx_users_2fa_enabled ON Users(twoFactorEnabled);
 CREATE INDEX idx_users_2fa_setup_completed ON Users(twoFactorSetupCompleted);
