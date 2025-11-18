@@ -176,8 +176,29 @@ class LogService {
         client.query(countQuery, queryParams.slice(0, -2))
       ]);
 
+      // Map database field names (lowercase) to camelCase for frontend
+      const mappedLogs = result.rows.map(row => ({
+        logID: row.logid,
+        level: row.level,
+        category: row.category,
+        message: row.message,
+        details: row.details,
+        method: row.method,
+        path: row.path,
+        statusCode: row.statuscode,
+        userID: row.userid,
+        userRole: row.userrole,
+        ipAddress: row.ipaddress,
+        userAgent: row.useragent,
+        requestID: row.requestid,
+        errorStack: row.errorstack,
+        errorCode: row.errorcode,
+        duration: row.duration,
+        createdAt: row.createdat
+      }));
+
       return {
-        logs: result.rows,
+        logs: mappedLogs,
         pagination: {
           page,
           limit,

@@ -14,6 +14,7 @@ import NavMenuItem from '@/components/NavMenuItem';
 import MusicCard from '@/components/MusicCard';
 import Image from 'next/image';
 import { X } from 'lucide-react';
+import { formatDateOnlyThai, formatDateLongThai } from '@/utils/dateUtils';
 
 // Dev-only logger helper
 const devLog = (...args: unknown[]) => {
@@ -414,11 +415,7 @@ export default function AccountSettingsPage() {
                               </span>
                             </div>
                             <p className="text-xs text-gray-500 font-medium">
-                              Added {new Date(song.addedAt).toLocaleDateString('en-US', {
-                                year: 'numeric',
-                                month: 'short',
-                                day: 'numeric'
-                              })}
+                              Added {formatDateOnlyThai(song.addedAt)}
                             </p>
                           </div>
                         </div>
@@ -506,11 +503,7 @@ export default function AccountSettingsPage() {
                               </span>
                             </div>
                             <p className="text-xs text-gray-500 font-medium">
-                              Saved {new Date(translation.savedAt).toLocaleDateString('en-US', {
-                                year: 'numeric',
-                                month: 'short',
-                                day: 'numeric'
-                              })}
+                              Saved {formatDateOnlyThai(translation.savedAt)}
                             </p>
                           </div>
                         </div>
@@ -625,11 +618,7 @@ export default function AccountSettingsPage() {
                     </span>
                   </div>
                   <p className="text-sm text-gray-500 mb-6">
-                    Added {new Date(selectedFavorite.addedAt).toLocaleDateString('en-US', {
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric'
-                    })}
+                    Added {formatDateLongThai(selectedFavorite.addedAt)}
                   </p>
                   <Link
                     href={`/song/${selectedFavorite.id}?processingID=${selectedFavorite.processingID}`}
@@ -701,11 +690,7 @@ export default function AccountSettingsPage() {
                     </span>
                   </div>
                   <p className="text-sm text-gray-500 mb-6">
-                    Saved {new Date(selectedTranslation.savedAt).toLocaleDateString('en-US', {
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric'
-                    })}
+                    Saved {formatDateLongThai(selectedTranslation.savedAt)}
                   </p>
                   {selectedTranslation.translation && (
                     <div className="mb-6 p-4 bg-gray-50 rounded-xl border border-gray-200">

@@ -1,6 +1,11 @@
 const { logger } = require('./logger');
 
-const errorHandler = (err, req, res) => {
+const errorHandler = (err, req, res, next) => {
+  // Skip if response already sent
+  if (res.headersSent) {
+    return next(err);
+  }
+
   let error = { ...err };
   error.message = err.message;
 
@@ -21,11 +26,30 @@ const errorHandler = (err, req, res) => {
     error = { message, statusCode: 400 };
   }
 
-  res.status(error.statusCode || 500).json({
-    success: false,
-    error: error.message || 'Server Error',
-    ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
-  });
+  const statusCode = error.statusCode || 500;
+  
+  // Check if res.status is a function before using it
+  if (typeof res.status === 'function') {
+    res.status(statusCode).json({
+      success: false,
+      error: error.message || 'Server Error',
+      ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
+    });
+  } else {
+    // Fallback: try to send response directly
+    try {
+      res.writeHead(statusCode, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        success: false,
+        error: error.message || 'Server Error',
+        ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
+      }));
+    } catch (e) {
+      // If all else fails, just log the error
+      // eslint-disable-next-line no-console
+      console.error('Failed to send error response:', e);
+    }
+  }
 };
 
 module.exports = errorHandler;

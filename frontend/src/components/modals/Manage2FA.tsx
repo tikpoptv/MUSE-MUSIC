@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import toast from 'react-hot-toast';
 import { twoFactorService } from '@/services/twoFactorService';
+import { formatDateThai } from '@/utils/dateUtils';
 
 interface Manage2FAProps {
   twoFAStatus: {
@@ -53,7 +54,7 @@ export default function Manage2FA({ twoFAStatus }: Manage2FAProps) {
 
   const handleDownloadBackupCodes = () => {
     const content = `MuseMusic - Two-Factor Authentication Backup Codes
-Generated: ${new Date().toLocaleString()}
+Generated: ${formatDateThai(new Date())}
 
 IMPORTANT: Save these codes in a safe place!
 

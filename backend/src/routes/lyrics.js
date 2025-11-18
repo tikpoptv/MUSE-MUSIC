@@ -1,13 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const LyricsController = require('../controllers/lyricsController');
-const enforceFrontendOrigin = require('../middleware/enforceFrontendOrigin');
 
-router.get('/search', enforceFrontendOrigin, LyricsController.search);
-router.get('/get', enforceFrontendOrigin, LyricsController.get);
-router.get('/get-cached', enforceFrontendOrigin, LyricsController.getCached);
-router.get('/get/:id', enforceFrontendOrigin, LyricsController.getById);
+router.get('/search', LyricsController.search);
+router.get('/get', LyricsController.get);
+router.get('/get-cached', LyricsController.getCached);
+router.get('/get/:id', LyricsController.getById);
 
 module.exports = router;
-
-

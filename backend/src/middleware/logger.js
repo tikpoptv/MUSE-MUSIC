@@ -18,6 +18,64 @@ const getRealIP = (req) => {
   return ip;
 };
 
+// Safe JSON stringify that handles circular references
+const safeStringify = (obj, space = null) => {
+  const seen = new WeakSet();
+  return JSON.stringify(obj, (key, value) => {
+    // Skip circular references
+    if (typeof value === 'object' && value !== null) {
+      if (seen.has(value)) {
+        return '[Circular]';
+      }
+      seen.add(value);
+    }
+    // Skip functions
+    if (typeof value === 'function') {
+      return '[Function]';
+    }
+    // Skip req/res objects that have circular references
+    if (value && (value.constructor?.name === 'IncomingMessage' || value.constructor?.name === 'ServerResponse')) {
+      return `[${value.constructor.name}]`;
+    }
+    return value;
+  }, space);
+};
+
+// Serialize args safely, extracting only safe properties
+const serializeArgs = (args) => {
+  return args.map(arg => {
+    if (arg === null || arg === undefined) {
+      return arg;
+    }
+    if (typeof arg === 'string' || typeof arg === 'number' || typeof arg === 'boolean') {
+      return arg;
+    }
+    if (arg instanceof Error) {
+      return {
+        name: arg.name,
+        message: arg.message,
+        stack: arg.stack,
+        code: arg.code
+      };
+    }
+    // For objects, try to extract safe properties
+    if (typeof arg === 'object') {
+      try {
+        // Check if it's a req/res object
+        if (arg.constructor?.name === 'IncomingMessage' || arg.constructor?.name === 'ServerResponse') {
+          return `[${arg.constructor.name}]`;
+        }
+        // Try to stringify, but catch circular reference errors
+        return JSON.parse(safeStringify(arg));
+      } catch (e) {
+        // If stringify fails, return a simple representation
+        return `[Object: ${arg.constructor?.name || 'Object'}]`;
+      }
+    }
+    return String(arg);
+  });
+};
+
 // Logger object with methods
 const logger = {
   info: (message, ...args) => {
@@ -27,8 +85,8 @@ const logger = {
     try {
       getLogService().saveLog({
         level: 'info',
-        message: typeof message === 'string' ? message : JSON.stringify(message),
-        details: args.length > 0 ? { args } : null
+        message: typeof message === 'string' ? message : safeStringify(message),
+        details: args.length > 0 ? { args: serializeArgs(args) } : null
       }).catch(err => console.error('Failed to save log:', err));
     } catch (err) {
       // Ignore
@@ -43,8 +101,8 @@ const logger = {
       const error = args.find(arg => arg instanceof Error);
       getLogService().saveLog({
         level: 'error',
-        message: typeof message === 'string' ? message : JSON.stringify(message),
-        details: args.length > 0 ? { args: args.filter(a => !(a instanceof Error)) } : null,
+        message: typeof message === 'string' ? message : safeStringify(message),
+        details: args.length > 0 ? { args: serializeArgs(args.filter(a => !(a instanceof Error))) } : null,
         errorStack: error?.stack,
         errorCode: error?.code
       }).catch(err => console.error('Failed to save log:', err));
@@ -60,8 +118,8 @@ const logger = {
     try {
       getLogService().saveLog({
         level: 'warn',
-        message: typeof message === 'string' ? message : JSON.stringify(message),
-        details: args.length > 0 ? { args } : null
+        message: typeof message === 'string' ? message : safeStringify(message),
+        details: args.length > 0 ? { args: serializeArgs(args) } : null
       }).catch(err => console.error('Failed to save log:', err));
     } catch (err) {
       // Ignore if LogService is not available yet
@@ -77,8 +135,8 @@ const logger = {
       try {
         getLogService().saveLog({
           level: 'debug',
-          message: typeof message === 'string' ? message : JSON.stringify(message),
-          details: args.length > 0 ? { args } : null
+          message: typeof message === 'string' ? message : safeStringify(message),
+          details: args.length > 0 ? { args: serializeArgs(args) } : null
         }).catch(err => console.error('Failed to save log:', err));
       } catch (err) {
         // Ignore if LogService is not available yet
