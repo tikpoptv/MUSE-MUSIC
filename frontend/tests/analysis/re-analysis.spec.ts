@@ -82,8 +82,9 @@ test.describe('Re Analysis Flow', () => {
     if (await reAnalyzeButton.isVisible()) {
       await reAnalyzeButton.click()
       
-      // Check if modal appears
-      await expect(page.locator('text=/re-analyze|reanalyze|language/i')).toBeVisible({ timeout: 3000 })
+      // Check if modal appears (new analysis modal title)
+      const modalHeading = page.getByRole('heading', { name: /Start New Analysis/i })
+      await expect(modalHeading).toBeVisible({ timeout: 3000 })
     }
   })
 
@@ -91,24 +92,18 @@ test.describe('Re Analysis Flow', () => {
     const mockProcessingID = 'processing-123'
 
     // Mock re-analysis API
-    await page.route(`**/api/analysis/${mockProcessingID}/re-analyze`, async route => {
+    await page.route('**/api/analysis/new', async route => {
       if (route.request().method() === 'POST') {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
           body: JSON.stringify({
             success: true,
-            message: 'Re-analysis completed successfully',
+            message: 'New analysis started',
             data: {
               processingID: mockProcessingID,
               songID: 'song-123',
-              status: 'completed',
-              translation: {
-                text: 'New translation',
-                interpretation: 'New interpretation',
-                targetLanguage: 'Thai',
-                originalLanguage: 'English',
-              }
+              status: 'processing'
             }
           })
         })
@@ -145,15 +140,15 @@ test.describe('Re Analysis Flow', () => {
       await reAnalyzeButton.click()
       
       // Wait for modal
-      await page.waitForSelector('text=/re-analyze|language|confirm/i', { timeout: 3000 })
+      await page.waitForSelector('text=/Start New Analysis|New Analysis/i', { timeout: 3000 })
       
       // Click confirm button (use force to bypass backdrop)
-      const confirmButton = page.locator('button:has-text("Confirm"), button:has-text("Re-analyze"), button:has-text("Start")').first()
+      const confirmButton = page.locator('button:has-text("Start"), button:has-text("Start New Analysis"), button:has-text("Confirm")').first()
       if (await confirmButton.isVisible()) {
         await confirmButton.click({ force: true })
         
         // Wait for success message
-        await expect(page.locator('text=/success|re-analyzing|completed/i')).toBeVisible({ timeout: 10000 })
+        await expect(page.locator('text=/New analysis started|Starting new analysis/i')).toBeVisible({ timeout: 10000 })
       }
     }
   })
@@ -162,7 +157,7 @@ test.describe('Re Analysis Flow', () => {
     const mockProcessingID = 'processing-123'
 
     // Mock failed re-analysis
-    await page.route(`**/api/analysis/${mockProcessingID}/re-analyze`, async route => {
+    await page.route('**/api/analysis/new', async route => {
       if (route.request().method() === 'POST') {
         await route.fulfill({
           status: 500,
@@ -204,8 +199,8 @@ test.describe('Re Analysis Flow', () => {
     if (await reAnalyzeButton.isVisible()) {
       await reAnalyzeButton.click()
       
-      await page.waitForSelector('button:has-text("Confirm")', { timeout: 3000 })
-      const confirmButton = page.locator('button:has-text("Confirm")').first()
+      await page.waitForSelector('button:has-text("Start"), button:has-text("Start New Analysis")', { timeout: 3000 })
+      const confirmButton = page.locator('button:has-text("Start"), button:has-text("Start New Analysis")').first()
       if (await confirmButton.isVisible()) {
         await confirmButton.click()
         
