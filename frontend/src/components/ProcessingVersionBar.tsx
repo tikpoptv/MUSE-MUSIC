@@ -8,6 +8,9 @@ interface ProcessingVersionBarProps {
   rating?: number;
   onNewAnalyze?: () => void;
   newAnalyzeLabel?: string;
+  versions?: Array<{ versionNumber: number; processingID: string; averageRating?: number | null }>;
+  onVersionClick?: (processingID: string) => void;
+  currentProcessingID?: string;
 }
 
 export default function ProcessingVersionBar({
@@ -15,13 +18,53 @@ export default function ProcessingVersionBar({
   processingID,
   rating,
   onNewAnalyze,
-  newAnalyzeLabel = 'New analyze'
+  newAnalyzeLabel = 'New analyze',
+  versions,
+  onVersionClick,
+  currentProcessingID
 }: ProcessingVersionBarProps) {
+  const availableVersions = versions?.slice(0, 5) || [];
+  const hasMultipleVersions = availableVersions.length > 1;
+
   return (
     <div className="w-full flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
-      {/* Left Side - Version Badge and Button (Centered) */}
+      {/* Left Side - Version Badges and Button (Centered) */}
       <div className="flex items-center gap-2 sm:gap-3">
-        {/* Version Badge */}
+        {/* Version Badges (1-5) */}
+        {hasMultipleVersions ? (
+          <div className="flex items-center gap-2">
+            {availableVersions.map((version) => {
+              const isActive = version.processingID === (currentProcessingID || processingID);
+              return (
+                <button
+                  key={version.processingID}
+                  onClick={() => onVersionClick?.(version.processingID)}
+                  className="flex flex-col justify-center items-center rounded-lg flex-shrink-0 transition-all hover:opacity-80"
+                  style={{
+                    width: '26px',
+                    height: '26px',
+                    padding: '5px 9px',
+                    background: isActive ? '#7B61FF' : '#F5F5F5',
+                    gap: '10px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <span 
+                    className="font-semibold"
+                    style={{
+                      color: isActive ? '#FFFFFF' : '#000',
+                      fontSize: '16px',
+                      fontWeight: 600,
+                      lineHeight: 'normal'
+                    }}
+                  >
+                    {version.versionNumber}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        ) : (
         <div 
           className="flex flex-col justify-center items-center rounded-lg flex-shrink-0"
           style={{
@@ -44,6 +87,7 @@ export default function ProcessingVersionBar({
             {versionNumber}
           </span>
         </div>
+        )}
 
         {/* New Analyze Button */}
         {onNewAnalyze && (

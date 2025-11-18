@@ -62,26 +62,35 @@ export default function ForYouPage() {
                 <Clock className="h-6 w-6 text-[#7B61FF]" />
                 <h2 className="text-[24px] font-bold text-black">Recently search</h2>
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-5">
-                {loading
-                  ? Array.from({ length: 4 }).map((_, idx) => (
-                      <SkeletonCard key={`skeleton-recent-${idx}`} />
-                    ))
-                  : data?.recentlySearched && data.recentlySearched.length > 0
-                  ? data.recentlySearched.map((item, idx) => (
+              {loading ? (
+                <div className="overflow-x-auto pb-4 -mx-4 px-4 scrollbar-hide">
+                  <div className="flex gap-4 min-w-max">
+                    {Array.from({ length: 4 }).map((_, idx) => (
+                      <div key={`skeleton-recent-${idx}`} className="flex-shrink-0 w-[180px] sm:w-[200px]">
+                        <SkeletonCard />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : data?.recentlySearched && data.recentlySearched.length > 0 ? (
+                <div className="overflow-x-auto pb-4 -mx-4 px-4 scrollbar-hide">
+                  <div className="flex gap-4 min-w-max">
+                    {data.recentlySearched.map((item, idx) => (
+                      <div key={`recent-${idx}`} className="flex-shrink-0 w-[180px] sm:w-[200px]">
                       <MusicCard
-                        key={`recent-${idx}`}
                         image={item.image}
                         title={item.title}
                         artist={item.artist}
                         href={`/song/${item.id}${item.processingID ? `?processingID=${item.processingID}` : ''}`}
                         mood={item.mood || undefined}
                       />
-                    ))
-                  : (
-                      <p className="text-sm text-gray-500 col-span-full">No recently searched songs</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500">No recently searched songs</p>
                     )}
-              </div>
             </div>
           </div>
         </div>
@@ -90,32 +99,40 @@ export default function ForYouPage() {
         {data?.recommendations && data.recommendations.subsections && data.recommendations.subsections.length > 0 && (
           <div className="mb-12">
             <h2 className="text-[24px] font-bold text-black mb-6">Top-Hits.</h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-5">
-              {loading
-                ? Array.from({ length: 5 }).map((_, idx) => (
-                    <SkeletonCard key={`skeleton-top-${idx}`} />
-                  ))
-                : (() => {
+            {loading ? (
+              <div className="overflow-x-auto pb-4 -mx-4 px-4 scrollbar-hide">
+                <div className="flex gap-4 min-w-max">
+                  {Array.from({ length: 5 }).map((_, idx) => (
+                    <div key={`skeleton-top-${idx}`} className="flex-shrink-0 w-[180px] sm:w-[200px]">
+                      <SkeletonCard />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (() => {
                     const allItems = data.recommendations.subsections
-                      .flatMap(subsection => subsection.items || [])
-                      .slice(0, 5);
+                  .flatMap(subsection => subsection.items || []);
                     
-                    return allItems.length > 0
-                      ? allItems.map((item, idx) => (
+                return allItems.length > 0 ? (
+                  <div className="overflow-x-auto pb-4 -mx-4 px-4 scrollbar-hide">
+                    <div className="flex gap-4 min-w-max">
+                      {allItems.map((item, idx) => (
+                        <div key={`top-${idx}`} className="flex-shrink-0 w-[180px] sm:w-[200px]">
                           <MusicCard
-                            key={`top-${idx}`}
                             image={item.image}
                             title={item.title}
                             artist={item.artist}
                             href={`/song/${item.id}${item.processingID ? `?processingID=${item.processingID}` : ''}`}
                             mood={item.mood || undefined}
                           />
-                        ))
-                      : (
-                          <p className="text-sm text-gray-500 col-span-full">No recommendations available</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500">No recommendations available</p>
                         );
                   })()}
-            </div>
           </div>
         )}
 
@@ -135,26 +152,35 @@ export default function ForYouPage() {
                     <h3 className="text-[20px] font-bold text-black mb-4">
                       {subsection.title}.
                     </h3>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-5">
-                      {loading
-                        ? Array.from({ length: 5 }).map((_, idx) => (
-                            <SkeletonCard key={`skeleton-${subsection.title}-${idx}`} />
-                          ))
-                        : subsection.items && subsection.items.length > 0
-                        ? subsection.items.map((item, idx) => (
+                    {loading ? (
+                      <div className="overflow-x-auto pb-4 -mx-4 px-4 scrollbar-hide">
+                        <div className="flex gap-4 min-w-max">
+                          {Array.from({ length: 5 }).map((_, idx) => (
+                            <div key={`skeleton-${subsection.title}-${idx}`} className="flex-shrink-0 w-[180px] sm:w-[200px]">
+                              <SkeletonCard />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : subsection.items && subsection.items.length > 0 ? (
+                      <div className="overflow-x-auto pb-4 -mx-4 px-4 scrollbar-hide">
+                        <div className="flex gap-4 min-w-max">
+                          {subsection.items.map((item, idx) => (
+                            <div key={`${subsection.title}-${idx}`} className="flex-shrink-0 w-[180px] sm:w-[200px]">
                             <MusicCard
-                              key={`${subsection.title}-${idx}`}
                               image={item.image}
                               title={item.title}
                               artist={item.artist}
                               href={`/song/${item.id}${item.processingID ? `?processingID=${item.processingID}` : ''}`}
                               mood={item.mood || undefined}
                             />
-                          ))
-                        : (
-                            <p className="text-sm text-gray-500 col-span-full">No items in this section</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-500">No items in this section</p>
                           )}
-                    </div>
                   </div>
                 ))
               : (

@@ -660,31 +660,31 @@ DECLARE
 BEGIN
     -- Determine which processingID to update based on operation type
     IF TG_OP = 'DELETE' THEN
-        target_processing_id := OLD.processingID;
+        target_processing_id := OLD.processingid;
     ELSE
-        target_processing_id := NEW.processingID;
+        target_processing_id := NEW.processingid;
     END IF;
     
     -- Update rating statistics in SongAIProcessing table
-    UPDATE SongAIProcessing 
+    UPDATE songaiprocessing 
     SET 
-        totalRatings = (
+        totalratings = (
             SELECT COUNT(*) 
-            FROM AIProcessingRatings 
-            WHERE processingID = target_processing_id
+            FROM aiprocessingratings 
+            WHERE processingid = target_processing_id
         ),
-        averageRating = (
+        averagerating = (
             SELECT COALESCE(ROUND(AVG(rating::DECIMAL), 2), 0.00)
-            FROM AIProcessingRatings 
-            WHERE processingID = target_processing_id
+            FROM aiprocessingratings 
+            WHERE processingid = target_processing_id
         ),
-        starCount = (
+        starcount = (
             SELECT COALESCE(ROUND(AVG(rating::DECIMAL))::INT, 0)
-            FROM AIProcessingRatings 
-            WHERE processingID = target_processing_id
+            FROM aiprocessingratings 
+            WHERE processingid = target_processing_id
         ),
-        updatedAt = CURRENT_TIMESTAMP
-    WHERE processingID = target_processing_id;
+        updatedat = CURRENT_TIMESTAMP
+    WHERE processingid = target_processing_id;
     
     -- Return appropriate row based on operation
     IF TG_OP = 'DELETE' THEN
@@ -697,7 +697,7 @@ $$ language 'plpgsql';
 
 -- Create trigger to auto-update rating statistics
 CREATE TRIGGER update_rating_stats_trigger 
-    AFTER INSERT OR UPDATE OR DELETE ON AIProcessingRatings
+    AFTER INSERT OR UPDATE OR DELETE ON aiprocessingratings
     FOR EACH ROW EXECUTE FUNCTION update_rating_stats();
 
 -- =========================

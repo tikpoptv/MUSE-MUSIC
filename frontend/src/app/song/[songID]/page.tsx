@@ -14,7 +14,7 @@ import FeedbackSection, { type FeedbackSectionRef } from '@/components/FeedbackS
 import CoverImageUpload from '@/components/CoverImageUpload';
 import SyncedLyricsPlayer, { type SyncedLyricsLine } from '@/components/SyncedLyricsPlayer';
 import ProcessingVersionBar from '@/components/ProcessingVersionBar';
-import { songService, type SongDetail, type ProcessingDetail } from '@/services/songService';
+import { songService, type SongDetail, type ProcessingDetail, type ProcessingVersion } from '@/services/songService';
 import { analysisService } from '@/services/analysisService';
 import { recommendSongsService, type RecommendedSong } from '@/services/recommendSongsService';
 import shareService from '@/services/shareService';
@@ -98,6 +98,8 @@ export default function SongDetailPage() {
   const [isFavorite, setIsFavorite] = useState(false);
   const [isCheckingFavorite, setIsCheckingFavorite] = useState(false);
   const [isTogglingFavorite, setIsTogglingFavorite] = useState(false);
+  const [processingVersions, setProcessingVersions] = useState<ProcessingVersion[]>([]);
+  const [currentVersionNumber, setCurrentVersionNumber] = useState<number>(1);
 
   const effectiveProcessingID = useMemo(() => {
     if (processingID && processingID !== 'undefined' && processingID !== '') {
@@ -201,6 +203,45 @@ export default function SongDetailPage() {
       checkFavoriteStatus();
     }
   }, [songID, checkFavoriteStatus]);
+
+  useEffect(() => {
+    const fetchProcessingVersions = async () => {
+      if (!songID || songID === 'undefined' || !isDetailRoute) {
+        return;
+      }
+
+      try {
+        const targetLanguage = processingData?.targetLanguage || null;
+        const versions = await songService.getProcessingVersions(
+          songID,
+          targetLanguage || undefined
+        );
+        setProcessingVersions(versions);
+
+        if (effectiveProcessingID && effectiveProcessingID !== 'undefined') {
+          const currentVersion = versions.find(
+            (v) => v.processingID === effectiveProcessingID
+          );
+          if (currentVersion) {
+            setCurrentVersionNumber(currentVersion.versionNumber);
+          } else {
+            setCurrentVersionNumber(1);
+          }
+        } else {
+          setCurrentVersionNumber(1);
+        }
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.error('Failed to fetch processing versions:', error);
+        setProcessingVersions([]);
+        setCurrentVersionNumber(1);
+      }
+    };
+
+    if (isDetailRoute && songID && songID !== 'undefined') {
+      fetchProcessingVersions();
+    }
+  }, [songID, processingData?.targetLanguage, effectiveProcessingID, isDetailRoute]);
 
   useEffect(() => {
     const fetchRecommendationsByLanguage = async () => {
@@ -982,11 +1023,22 @@ export default function SongDetailPage() {
               processingData && (
                 <div style={{ width: '100%', marginBottom: '16px' }}>
                   <ProcessingVersionBar
-                    versionNumber={1}
+                    versionNumber={currentVersionNumber}
                     processingID={processingData.processingID}
                     rating={processingData.averageRating ? Math.round(processingData.averageRating) : undefined}
                     onNewAnalyze={handleReAnalyzeClick}
                     newAnalyzeLabel={isDetailRoute ? 'New analyze' : 'Re-analyze'}
+                    versions={processingVersions.map(v => ({ 
+                      versionNumber: v.versionNumber, 
+                      processingID: v.processingID,
+                      averageRating: v.averageRating
+                    }))}
+                    onVersionClick={(clickedProcessingID) => {
+                      if (clickedProcessingID !== effectiveProcessingID) {
+                        window.location.href = `/song/${songID}?processingID=${clickedProcessingID}`;
+                      }
+                    }}
+                    currentProcessingID={effectiveProcessingID}
                   />
                 </div>
               )
