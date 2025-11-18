@@ -45,9 +45,9 @@ export default function ReAnalyzeConfirmModal({
                   This will create a brand new analysis for this song. Existing public data remains untouched.
                 </p>
               ) : (
-                <p>
-                  Re-analyzing will overwrite all existing data. This action cannot be undone.
-                </p>
+              <p>
+                Re-analyzing will overwrite all existing data. This action cannot be undone.
+              </p>
               )}
               <div className="bg-gray-50 rounded-lg p-3 mt-3">
                 <p className="font-medium text-gray-900 mb-2">What will be processed:</p>
