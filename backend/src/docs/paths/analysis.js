@@ -119,6 +119,108 @@
  *       500:
  *         description: Server error
  *
+ * /api/analysis/new:
+ *   post:
+ *     summary: Start new AI analysis for a song (skip existing check)
+ *     description: Start a new AI analysis for lyrics including translation, mood analysis, and summary generation. This endpoint always creates a new analysis record without checking if an approved processing already exists for the song. Works with or without authentication.
+ *     tags: [Analysis]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - lyricsRecord
+ *               - actions
+ *             properties:
+ *               lyricsRecord:
+ *                 type: object
+ *                 required:
+ *                   - id
+ *                 properties:
+ *                   id:
+ *                     type: integer
+ *                     description: External lyrics ID (if from external source)
+ *                   songID:
+ *                     type: string
+ *                     format: uuid
+ *                     description: Song ID (if internal song)
+ *               actions:
+ *                 type: object
+ *                 required:
+ *                   - translate
+ *                   - mood
+ *                 properties:
+ *                   translate:
+ *                     type: boolean
+ *                     example: true
+ *                     description: Enable translation
+ *                   mood:
+ *                     type: boolean
+ *                     example: true
+ *                     description: Enable mood analysis
+ *               translationConfig:
+ *                 type: object
+ *                 required:
+ *                   - targetLanguage
+ *                 properties:
+ *                   targetLanguage:
+ *                     type: string
+ *                     example: "Thai"
+ *                     description: Target language for translation (required if translate is true)
+ *               shareRequest:
+ *                 type: boolean
+ *                 example: false
+ *                 description: "Whether to request sharing with community (default: false)"
+ *     responses:
+ *       200:
+ *         description: New analysis completed successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "New analysis completed successfully"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     songID:
+ *                       type: string
+ *                       format: uuid
+ *                     processingID:
+ *                       type: string
+ *                       format: uuid
+ *                     status:
+ *                       type: string
+ *                       example: "completed"
+ *                     translation:
+ *                       type: object
+ *                       nullable: true
+ *                       properties:
+ *                         text:
+ *                           type: string
+ *                         interpretation:
+ *                           type: string
+ *                         originalLanguage:
+ *                           type: string
+ *                         targetLanguage:
+ *                           type: string
+ *                     mood:
+ *                       type: object
+ *                       nullable: true
+ *       400:
+ *         description: Bad request - missing required fields or invalid configuration
+ *       500:
+ *         description: Server error
+ *
  * /api/analysis/{processingID}/re-analyze:
  *   post:
  *     summary: Re-analyze an existing processing record
