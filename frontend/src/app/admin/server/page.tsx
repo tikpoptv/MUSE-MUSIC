@@ -22,6 +22,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import toast from 'react-hot-toast';
+import { formatDateThai } from '@/utils/dateUtils';
 
 export default function ServerStatusPage() {
     const [logs, setLogs] = useState<SystemLog[]>([]);
@@ -148,14 +149,14 @@ export default function ServerStatusPage() {
     };
 
     const formatDate = (dateString: string) => {
-        const date = new Date(dateString);
-        return date.toLocaleString('en-US', {
+        return formatDateThai(dateString, {
             year: 'numeric',
             month: 'short',
             day: 'numeric',
             hour: '2-digit',
             minute: '2-digit',
-            second: '2-digit'
+            second: '2-digit',
+            timeZone: 'UTC'
         });
     };
 
@@ -312,7 +313,10 @@ export default function ServerStatusPage() {
                                                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Message</th>
                                                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Path</th>
                                                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Status</th>
-                                                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">Time</th>
+                                                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700">
+                                                    Time
+                                                    <span className="text-[10px] font-normal text-gray-400 ml-1">(UTC)</span>
+                                                </th>
                                             </tr>
                                         </thead>
                                         <tbody className="bg-white divide-y">
@@ -329,8 +333,11 @@ export default function ServerStatusPage() {
                                                     </td>
                                                 </tr>
                                             ) : (
-                                                logs.map((log) => (
-                                                    <tr key={log.logID} className="hover:bg-gray-50">
+                                                logs.map((log, index) => {
+                                                    // Fallback key: use logID, or logid (if backend returns lowercase), or index
+                                                    const logKey = log.logID || (log as SystemLog & { logid?: string }).logid || `log-${index}`;
+                                                    return (
+                                                    <tr key={logKey} className="hover:bg-gray-50">
                                                         <td className="px-4 py-3">
                                                             <div className="flex items-center gap-2">
                                                                 {getLevelIcon(log.level)}
@@ -363,9 +370,11 @@ export default function ServerStatusPage() {
                                                         </td>
                                                         <td className="px-4 py-3 text-sm text-gray-500">
                                                             {formatDate(log.createdAt)}
+                                                            <span className="text-[10px] text-gray-400 ml-1">UTC</span>
                                                         </td>
                                                     </tr>
-                                                ))
+                                                    );
+                                                })
                                             )}
                                         </tbody>
                                     </table>
