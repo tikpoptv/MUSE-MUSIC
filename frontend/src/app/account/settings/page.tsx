@@ -420,12 +420,16 @@ export default function SettingsPage() {
                       <GoogleSettingsButton 
                         onAuthStart={() => toast.loading('Connecting to Google...')}
                         onAuthError={(error) => toast.error(`Google connection failed: ${error}`)}
+                        className="px-4 py-2 bg-[#7B61FF] text-white text-sm rounded-lg hover:bg-[#6B51EF] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         Connect
                       </GoogleSettingsButton>
                     </div>
                   )}
                 </div>
+                <p className="text-xs text-gray-500 mt-2">
+                  Link your Google account for easier sign-in and account recovery
+                </p>
               </div>
             </div>
 

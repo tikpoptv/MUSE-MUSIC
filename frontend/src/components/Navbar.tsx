@@ -10,6 +10,7 @@ import { userService } from '@/services/userService';
 import { songService, type SearchSongResult } from '@/services/songService';
 import { UserData } from '@/types/user';
 import StartAnalysisModal from './modals/StartAnalysisModal';
+import SetupNotification from './SetupNotification';
 
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -25,6 +26,7 @@ export default function Navbar() {
   const [showStartAnalysisModal, setShowStartAnalysisModal] = useState<boolean>(false);
   const [pendingSearchQuery, setPendingSearchQuery] = useState<string>('');
   const [pendingSongID, setPendingSongID] = useState<string | null>(null);
+  const [showSetupNotification, setShowSetupNotification] = useState<boolean>(false);
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const searchWrapRef = useRef<HTMLDivElement | null>(null);
   const pathname = usePathname();
@@ -71,6 +73,10 @@ export default function Navbar() {
       const userRole = user.role?.toLowerCase();
       setIsAdmin(userRole === 'admin' || userRole === 'super_admin');
       
+      if (user.setupSkipped && !user.setupCompleted && !pathname.startsWith('/setup')) {
+        setShowSetupNotification(true);
+      }
+      
       // Load profile picture
       userService.getUserSettings()
         .then(settings => {
@@ -82,8 +88,9 @@ export default function Navbar() {
     } else {
       setIsAdmin(false);
       setProfilePicture(null);
+      setShowSetupNotification(false);
     }
-  }, []);
+  }, [pathname]);
 
   const handleProfileClick = () => {
     router.push('/account/settings');
@@ -651,6 +658,22 @@ export default function Navbar() {
         onConfirm={handleStartAnalysisConfirm}
         searchQuery={pendingSearchQuery}
       />
+
+      {showSetupNotification && (
+        <SetupNotification
+          onSetup={() => {
+            const user = authService.getUserData();
+            if (user?.provider === 'google') {
+              router.push('/setup/step1');
+            } else {
+              router.push('/setup/step2');
+            }
+          }}
+          onDismiss={() => {
+            setShowSetupNotification(false);
+          }}
+        />
+      )}
     </nav>
   );
 }

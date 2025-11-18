@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import GoogleAuthButton from '@/components/GoogleAuthButton';
+import TermsModal from '@/components/TermsModal';
 import { authService } from '@/services/authService';
 import { passwordRules, validatePassword, validateFormData } from '@/utils/passwordValidation';
 import toast from 'react-hot-toast';
@@ -12,6 +13,8 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [acceptTerms, setAcceptTerms] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
   const [formData, setFormData] = useState({
     username: '',
     password: '',
@@ -76,6 +79,12 @@ export default function RegisterPage() {
 
     if (formData.password !== formData.confirmPassword) {
       toast.error('Passwords do not match');
+      return;
+    }
+
+    if (!acceptTerms) {
+      toast.error('Please accept terms and conditions');
+      setShowTermsModal(true);
       return;
     }
 
@@ -267,11 +276,31 @@ export default function RegisterPage() {
             </div>
           </div>
 
+          <div className="flex items-start space-x-2">
+            <input
+              type="checkbox"
+              id="acceptTerms"
+              checked={acceptTerms}
+              onChange={(e) => setAcceptTerms(e.target.checked)}
+              className="mt-1 w-4 h-4 text-[#7B61FF] border-gray-300 rounded focus:ring-[#7B61FF]"
+            />
+            <label htmlFor="acceptTerms" className="text-sm text-gray-600">
+              I agree to the{' '}
+              <button
+                type="button"
+                onClick={() => setShowTermsModal(true)}
+                className="text-[#7B61FF] hover:underline"
+              >
+                Terms and Conditions
+              </button>
+            </label>
+          </div>
+
           <button
             type="submit"
-            disabled={isLoading || !isFormValid || !formData.username}
+            disabled={isLoading || !isFormValid || !formData.username || !acceptTerms}
             className={`w-full py-3 font-medium transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${
-              isFormValid && formData.username && !isLoading
+              isFormValid && formData.username && acceptTerms && !isLoading
                 ? 'bg-[#7B61FF] hover:bg-[#6B51EF] text-white'
                 : 'bg-gray-200 text-purple-600'
             }`}
@@ -286,7 +315,11 @@ export default function RegisterPage() {
           <span className="px-4 text-gray-500 text-sm">Or Sign in with</span>
           <div className="flex-1 border-t border-gray-300"></div>
         </div>
-        <GoogleAuthButton />
+        <GoogleAuthButton 
+          onAuthError={(message) => {
+            toast.error(message);
+          }}
+        />
 
         <div className="flex justify-start items-center mt-6">
           <Link href="/login" className="text-gray-500 text-sm hover:text-gray-700 transition-colors duration-200">
@@ -294,6 +327,15 @@ export default function RegisterPage() {
           </Link>
         </div>
       </div>
+
+      <TermsModal
+        isOpen={showTermsModal}
+        onClose={() => setShowTermsModal(false)}
+        onAccept={() => {
+          setAcceptTerms(true);
+          setShowTermsModal(false);
+        }}
+      />
     </div>
   );
 }

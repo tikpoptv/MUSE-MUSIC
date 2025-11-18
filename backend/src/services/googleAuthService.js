@@ -37,53 +37,50 @@ class GoogleAuthService {
     const { googleId, email } = googleUserData;
 
     if (type === 'link' && userId) {
-      // สำหรับ link account ตรวจสอบ Google account ก่อน
       const existingGoogleUser = await this.findByGoogleId(googleId);
       if (existingGoogleUser) {
         throw new Error('This Google account is already linked to another user');
       }
-      // สำหรับ link account ให้ใช้ userId ที่ส่งมา
       const user = await UserService.findByID(userId);
       if (!user) {
         throw new Error('User not found');
       }
       
-      // ตรวจสอบว่า user นี้มี Google account แล้วหรือไม่
       if (user.provider === 'google' && user.providerID) {
         throw new Error('This user already has a Google account linked');
       }
       
-      return await this.updateUserWithGoogleInfo(user.userID, googleId, email, googleUserData.picture, googleUserData.name);
+      const updatedUser = await this.updateUserWithGoogleInfo(user.userID, googleId, email, googleUserData.picture, googleUserData.name);
+      return { user: updatedUser, isNewUser: false };
     } else {
-      // สำหรับ login/register ใช้ logic เดียวกัน
       let user = await this.findByGoogleId(googleId);
       
       if (user) {
-        return user;
+        return { user, isNewUser: false };
       }
       
-      // หา user จาก email
       user = await UserService.findByEmail(email);
       
       if (user) {
-        // ตรวจสอบว่า Google account นี้มีเจ้าของแล้วหรือไม่
         const existingGoogleUser = await this.findByGoogleId(googleId);
         if (existingGoogleUser && existingGoogleUser.userID !== user.userID) {
           throw new Error('This Google account is already linked to another user');
         }
         
-        return await this.updateUserWithGoogleInfo(user.userID, googleId, email, googleUserData.picture, googleUserData.name);
+        const updatedUser = await this.updateUserWithGoogleInfo(user.userID, googleId, email, googleUserData.picture, googleUserData.name);
+        return { user: updatedUser, isNewUser: false };
       }
     }
 
-    return await this.createGoogleUser(googleUserData);
+    const newUser = await this.createGoogleUser(googleUserData);
+    return { user: newUser, isNewUser: true };
   }
 
   static async findByGoogleId(googleId) {
     const query = `
       SELECT userID, username, email, password, fullName, profilePicture, 
              provider, providerID, providerEmail, role, loginStatus, 
-             setupCompleted, setupSkipped, registerDate, createdAt, updatedAt
+             setupCompleted, setupSkipped, termsAccepted, registerDate, createdAt, updatedAt
       FROM Users WHERE providerID = $1 AND provider = 'google'
     `;
     
@@ -108,6 +105,7 @@ class GoogleAuthService {
       loginStatus: userData.loginstatus,
       setupCompleted: userData.setupcompleted,
       setupSkipped: userData.setupskipped,
+      termsAccepted: userData.termsaccepted ?? false,
       registerDate: userData.registerdate,
       createdAt: userData.createdat,
       updatedAt: userData.updatedat
@@ -130,7 +128,7 @@ class GoogleAuthService {
           END,
           updatedAt = CURRENT_TIMESTAMP
       WHERE userID = $5
-      RETURNING userID, username, email, fullName, profilePicture, provider, providerID, providerEmail, role, loginStatus, setupCompleted, setupSkipped, registerDate, createdAt, updatedAt
+      RETURNING userID, username, email, fullName, profilePicture, provider, providerID, providerEmail, role, loginStatus, setupCompleted, setupSkipped, termsAccepted, registerDate, createdAt, updatedAt
     `;
     
     const result = await DatabaseService.query(query, [googleId, email, picture, fullName, userID]);
@@ -154,6 +152,7 @@ class GoogleAuthService {
       loginStatus: userData.loginstatus,
       setupCompleted: userData.setupcompleted,
       setupSkipped: userData.setupskipped,
+      termsAccepted: userData.termsaccepted ?? false,
       registerDate: userData.registerdate,
       createdAt: userData.createdat,
       updatedAt: userData.updatedat
@@ -191,6 +190,7 @@ class GoogleAuthService {
       loginStatus: 'offline',
       setupCompleted: false,
       setupSkipped: false,
+      termsAccepted: false,
       registerDate: userData.registerdate,
       createdAt: userData.createdat,
       updatedAt: userData.createdat
@@ -221,7 +221,7 @@ class GoogleAuthService {
       throw new Error('Invalid Google token');
     }
 
-    const user = await this.findOrCreateGoogleUser(googleUserData, type, userId);
+    const { user, isNewUser } = await this.findOrCreateGoogleUser(googleUserData, type, userId);
     
     if (!user) {
       throw new Error('Failed to create or find user');
@@ -242,6 +242,7 @@ class GoogleAuthService {
     return {
       user,
       session,
+      isNewUser,
       tokens: {
         accessToken,
         refreshToken,
