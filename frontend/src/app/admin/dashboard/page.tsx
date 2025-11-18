@@ -28,6 +28,7 @@ import AdminMenu from '@/components/AdminMenu';
 import BigStatCard from '@/components/BigStatCard';
 import ServerStatus from '@/components/ServerStatus';
 import { ChartArea, Music2, SearchCheck, Activity } from 'lucide-react';
+import { formatDateOnlyThai } from '@/utils/dateUtils';
 import { dashboardService } from '@/services/dashboardService';
 import { DashboardData } from '@/types/dashboard';
 
@@ -278,7 +279,7 @@ export default function AdminDashboard() {
                                         if (!value) return '';
                                         const date = new Date(value);
                                         if (isNaN(date.getTime())) return '';
-                                    return date.toLocaleDateString("en-US", {
+                                    return formatDateOnlyThai(date, {
                                         month: "short",
                                         day: "numeric",
                                         });
@@ -292,7 +293,7 @@ export default function AdminDashboard() {
                                                 if (!value) return '';
                                                 const date = new Date(value);
                                                 if (isNaN(date.getTime())) return '';
-                                                return date.toLocaleDateString("en-US", {
+                                                return formatDateOnlyThai(date, {
                                                 month: "short",
                                                 day: "numeric",
                                                 year: "numeric",

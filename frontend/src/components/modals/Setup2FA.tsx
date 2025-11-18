@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect } from 'react';
 import Image from 'next/image';
 import toast from 'react-hot-toast';
 import { twoFactorService } from '@/services/twoFactorService';
+import { formatDateThai } from '@/utils/dateUtils';
 
 interface Setup2FAProps {
   onComplete: () => void;
@@ -83,7 +84,7 @@ export default function Setup2FA({ onComplete, onClose }: Setup2FAProps) {
 
   const handleDownloadBackupCodes = () => {
     const content = `MuseMusic - Two-Factor Authentication Backup Codes
-Generated: ${new Date().toLocaleString()}
+Generated: ${formatDateThai(new Date())}
 
 IMPORTANT: Save these codes in a safe place!
 
