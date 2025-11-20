@@ -1,4 +1,15 @@
 
+const path = require('path');
+const fs = require('fs');
+
+const backendRoot = path.resolve(__dirname, '..', '..');
+const inferTranscriptPython = () => {
+  const binName = process.platform === 'win32' ? 'python.exe' : 'python';
+  const dirName = process.platform === 'win32' ? 'Scripts' : 'bin';
+  const candidate = path.join(backendRoot, '.transcript-venv', dirName, binName);
+  return fs.existsSync(candidate) ? candidate : 'python3';
+};
+
 const config = {
   server: {
     port: process.env.BACKEND_PORT || 3001,
@@ -65,7 +76,16 @@ const config = {
   },
   
   youtube: {
-    apiKey: process.env.YOUTUBE_API_KEY
+    apiKey: process.env.YOUTUBE_API_KEY,
+    transcriptPythonBin: process.env.YT_TRANSCRIPT_PYTHON || inferTranscriptPython(),
+    transcriptLanguages: (() => {
+      const languages = (process.env.YT_TRANSCRIPT_LANGUAGES || 'th,en')
+        .split(',')
+        .map(lang => lang.trim())
+        .filter(Boolean);
+      return languages.length > 0 ? languages : ['th', 'en'];
+    })(),
+    transcriptPreserveFormatting: process.env.YT_TRANSCRIPT_PRESERVE === 'true'
   }
 };
 

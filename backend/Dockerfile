@@ -2,6 +2,9 @@ FROM node:18-alpine
 
 WORKDIR /app
 
+# Install system deps (python for transcript helper)
+RUN apk add --no-cache python3 py3-pip
+
 # Create user and group
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nodejs
@@ -37,6 +40,12 @@ ENV BACKEND_PORT=${BACKEND_PORT}
 
 # Copy source code with correct ownership
 COPY --chown=nodejs:nodejs . .
+
+# Set up python virtualenv for transcript service
+RUN python3 -m venv /app/.transcript-venv \
+  && /app/.transcript-venv/bin/pip install --upgrade pip \
+  && /app/.transcript-venv/bin/pip install -r python/requirements.txt \
+  && chown -R nodejs:nodejs /app/.transcript-venv
 
 USER nodejs
 
