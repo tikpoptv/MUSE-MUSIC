@@ -7,6 +7,7 @@ class RecommendSongsService {
       const languageCodeToName = {
         'en': 'English',
         'th': 'Thai',
+        'lo': 'Lao',
         'ko': 'Korean',
         'ja': 'Japanese',
         'zh': 'Chinese',

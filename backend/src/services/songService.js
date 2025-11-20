@@ -5,6 +5,7 @@ const { logger } = require('../middleware/logger');
 const LANGUAGE_CODE_TO_NAME = {
   en: 'English',
   th: 'Thai',
+  lo: 'Lao',
   ko: 'Korean',
   ja: 'Japanese',
   zh: 'Chinese',

@@ -1,3 +1,5 @@
+const path = require('path');
+const { spawn } = require('child_process');
 const { config } = require('../config/env');
 const { logger } = require('../middleware/logger');
 
@@ -149,6 +151,103 @@ class YouTubeService {
       logger.error('Error in YouTubeService.getVideoDetails:', error);
       throw error;
     }
+  }
+
+  static async getTranscript(videoId, options = {}) {
+    const trimmedVideoId = videoId ? videoId.trim() : '';
+    if (!trimmedVideoId) {
+      throw new Error('Video ID is required');
+    }
+
+    const {
+      format = 'raw',
+      languages,
+      preserveFormatting,
+      pythonBin,
+      strategy = 'fallback'
+    } = options;
+
+    const scriptPath = path.resolve(__dirname, '../../scripts/youtube_transcript.py');
+    const resolvedPythonBin = pythonBin || config.youtube.transcriptPythonBin || 'python3';
+    const resolvedLanguages = (languages && languages.length > 0)
+      ? languages
+      : config.youtube.transcriptLanguages;
+
+    const args = [
+      scriptPath,
+      '--video-id',
+      trimmedVideoId
+    ];
+
+    if (resolvedLanguages && resolvedLanguages.length > 0) {
+      args.push('--languages', ...resolvedLanguages);
+    }
+
+    args.push('--format', format === 'text' ? 'text' : 'raw');
+    args.push('--strategy', strategy === 'multi' ? 'multi' : 'fallback');
+
+    const preserveFlag = preserveFormatting !== undefined
+      ? preserveFormatting
+      : config.youtube.transcriptPreserveFormatting;
+
+    if (preserveFlag) {
+      args.push('--preserve-formatting');
+    }
+
+    logger.info('Spawning YouTube transcript script', {
+      videoId: trimmedVideoId,
+      format,
+      languages: resolvedLanguages,
+      pythonBin: resolvedPythonBin
+    });
+
+    return new Promise((resolve, reject) => {
+      const child = spawn(resolvedPythonBin, args, { stdio: ['ignore', 'pipe', 'pipe'] });
+      let stdout = '';
+      let stderr = '';
+
+      child.stdout.on('data', chunk => {
+        stdout += chunk.toString();
+      });
+
+      child.stderr.on('data', chunk => {
+        stderr += chunk.toString();
+      });
+
+      child.on('error', error => {
+        logger.error('Failed to start transcript script', { error });
+        reject(new Error('Failed to run Python transcript script'));
+      });
+
+      child.on('close', code => {
+        logger.info('Transcript script finished', { exitCode: code });
+        const output = stdout.trim() || stderr.trim();
+
+        if (!output) {
+          return reject(new Error('Python script returned no output'));
+        }
+
+        let payload;
+        try {
+          payload = JSON.parse(output);
+        } catch (parseError) {
+          logger.error('Failed to parse transcript script output', { output, parseError });
+          return reject(new Error('Unable to parse transcript response'));
+        }
+
+        if (code !== 0 || payload.success === false) {
+          const errorMessage = payload?.error || 'Unable to fetch transcript';
+          return reject(new Error(errorMessage));
+        }
+
+        return resolve({
+          format: payload.format,
+          strategy: payload.strategy || 'fallback',
+          languages: payload.languages,
+          transcript: payload.data
+        });
+      });
+    });
   }
 }
 

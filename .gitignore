@@ -143,6 +143,7 @@ next-env.d.ts
 openlrc-env/
 venv/
 env/
+backend/.transcript-venv/
 
 # Docker
 .dockerignore

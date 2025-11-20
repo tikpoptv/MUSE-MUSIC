@@ -7,6 +7,7 @@ import type { SongDetail, ProcessingDetail } from '@/services/songService';
 const languageToCountry: Record<string, string> = {
   'Thai': 'th',
   'English': 'us',
+  'Lao': 'la',
   'Japanese': 'jp',
   'Korean': 'kr'
 };
@@ -131,6 +132,7 @@ export default function SongDetailsCard({
             <option value="">Select country.</option>
             <option value="us">United States</option>
             <option value="th">Thailand</option>
+            <option value="la">Laos</option>
             <option value="jp">Japan</option>
             <option value="kr">South Korea</option>
           </select>
@@ -149,6 +151,7 @@ export default function SongDetailsCard({
             <option value="">Select language.</option>
             <option value="English">English</option>
             <option value="Thai">Thai</option>
+            <option value="Lao">Lao</option>
             <option value="Japanese">Japanese</option>
             <option value="Korean">Korean</option>
           </select>

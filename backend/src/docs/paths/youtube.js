@@ -133,3 +133,102 @@
  *         description: Server error or YouTube API configuration issue
  */
 
+/**
+ * @swagger
+ * /api/youtube/transcript/{videoId}:
+ *   get:
+ *     summary: Fetch YouTube transcript via python youtube-transcript-api
+ *     description: Use the internal Python helper to fetch transcripts via youtube-transcript-api
+ *     tags: [YouTube]
+ *     parameters:
+ *       - in: path
+ *         name: videoId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: YouTube video ID
+ *       - in: query
+ *         name: format
+ *         required: false
+ *         schema:
+ *           type: string
+ *           enum: [raw, text]
+ *           default: raw
+ *         description: raw returns list/dict structure, text returns merged plain text
+ *       - in: query
+ *         name: languages
+ *         required: false
+ *         schema:
+ *           type: string
+ *           example: "th,en"
+ *         description: Optional comma-separated language priority list
+ *       - in: query
+ *         name: mode
+ *         required: false
+ *         schema:
+ *           type: string
+ *           enum: [fallback, multi]
+ *           default: fallback
+ *         description: fallback returns first available language, multi returns every requested language that exists
+ *     responses:
+ *       200:
+ *         description: Transcript fetched successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "YouTube transcript retrieved"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     format:
+ *                       type: string
+ *                       enum: [raw, text]
+ *                     strategy:
+ *                       type: string
+ *                       enum: [fallback, multi]
+ *                     languages:
+ *                       type: array
+ *                       items:
+ *                         type: string
+ *                     transcript:
+ *                       oneOf:
+ *                         - type: array
+ *                           items:
+ *                             type: object
+ *                             properties:
+ *                               text:
+ *                                 type: string
+ *                               start:
+ *                                 type: number
+ *                               duration:
+ *                                 type: number
+ *                         - type: string
+ *                           description: Transcript as plain text
+ *                         - type: object
+ *                           additionalProperties:
+ *                             oneOf:
+ *                               - type: array
+ *                                 items:
+ *                                   type: object
+ *                                   properties:
+ *                                     text:
+ *                                       type: string
+ *                                     start:
+ *                                       type: number
+ *                                     duration:
+ *                                       type: number
+ *                               - type: string
+ *                             description: When mode=multi a map of language code -> transcript content
+ *       400:
+ *         description: Bad request - missing videoId
+ *       500:
+ *         description: Server error or helper script not available
+ */
+

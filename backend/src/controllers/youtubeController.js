@@ -97,8 +97,61 @@ const getVideoDetails = async (req, res) => {
   }
 };
 
+const getTranscript = async (req, res) => {
+  try {
+    const { videoId } = req.params;
+    const { format = 'raw', languages, mode = 'fallback' } = req.query;
+
+    if (!videoId || videoId.trim() === '') {
+      return res.status(400).json(
+        errorResponse('videoId is required', 400)
+      );
+    }
+
+    let languagesList;
+    if (languages) {
+      languagesList = languages
+        .split(',')
+        .map(lang => lang.trim())
+        .filter(Boolean);
+    }
+
+    const normalizedMode = mode === 'multi' ? 'multi' : 'fallback';
+
+    logger.info('YouTube transcript request', {
+      videoId,
+      format,
+      languages: languagesList,
+      mode: normalizedMode
+    });
+
+    const transcript = await YouTubeService.getTranscript(videoId.trim(), {
+      format: format === 'text' ? 'text' : 'raw',
+      languages: languagesList,
+      strategy: normalizedMode
+    });
+
+    return res.json(
+      successResponse('YouTube transcript retrieved', transcript)
+    );
+  } catch (error) {
+    logger.error('Error in getTranscript:', error);
+
+    if (error.message.includes('Video ID is required')) {
+      return res.status(400).json(
+        errorResponse(error.message, 400)
+      );
+    }
+
+    return res.status(500).json(
+      errorResponse('Failed to fetch YouTube transcript', 500, error.message)
+    );
+  }
+};
+
 module.exports = {
   searchVideos,
-  getVideoDetails
+  getVideoDetails,
+  getTranscript
 };
 
