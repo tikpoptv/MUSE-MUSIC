@@ -1,5 +1,7 @@
 const DatabaseService = require('./databaseService');
 const lyricsService = require('./lyricsService');
+const YouTubeService = require('./youtubeService');
+const { transcriptToLRC } = require('../utils/youtubeTranscriptUtils');
 const { logger } = require('../middleware/logger');
 
 const LANGUAGE_CODE_TO_NAME = {
@@ -61,24 +63,54 @@ class SongService {
       const songRaw = songResult.rows[0];
       
       let lyrics = songRaw.lyrics;
-      let syncedLyrics = null;
+      let syncedLyrics = songRaw.syncedlyrics || null;
       
-      if (!lyrics && songRaw.sourcestatus === 'from_lyrics_search' && songRaw.lyricssearchresultid) {
+      // Fetch lyrics from external API if needed (preview to full mapping)
+      if ((!lyrics || !syncedLyrics) && (songRaw.sourcestatus === 'from_lyrics_search' || songRaw.sourcestatus === 'external') && songRaw.lyricssearchresultid) {
         try {
-          const lyricsResultQuery = `SELECT externalid FROM lyricssearchresults WHERE lyricssearchresultid = $1 LIMIT 1`;
+          const lyricsResultQuery = `SELECT externalid, sourceapi FROM lyricssearchresults WHERE lyricssearchresultid = $1 LIMIT 1`;
           const lyricsResult = await DatabaseService.query(lyricsResultQuery, [songRaw.lyricssearchresultid]);
           
           if (lyricsResult.rows && lyricsResult.rows.length > 0) {
             const externalID = lyricsResult.rows[0].externalid;
-            const fetched = await lyricsService.getById(externalID);
-            lyrics = fetched?.plainLyrics || null;
-            syncedLyrics = fetched?.syncedLyrics || null;
-            logger.info(`Fetched lyrics and syncedLyrics from external API for song ${songID}`);
+            const sourceAPI = lyricsResult.rows[0].sourceapi;
+            
+            if (sourceAPI === 'youtube') {
+              // Fetch from YouTube transcript
+              try {
+                const transcript = await YouTubeService.getTranscript(externalID, {
+                  format: 'raw',
+                  strategy: 'fallback'
+                });
+                let transcriptSegments = [];
+                if (Array.isArray(transcript.transcript)) {
+                  transcriptSegments = transcript.transcript;
+                } else if (transcript.transcript && typeof transcript.transcript === 'object') {
+                  const firstArray = Object.values(transcript.transcript).find((value) => Array.isArray(value));
+                  transcriptSegments = firstArray || [];
+                }
+                
+                if (transcriptSegments.length > 0) {
+                  const { transcriptToPlainText, transcriptToLRC } = require('../utils/youtubeTranscriptUtils');
+                  lyrics = lyrics || transcriptToPlainText(transcriptSegments) || null;
+                  syncedLyrics = syncedLyrics || transcriptToLRC(transcriptSegments) || null;
+                  logger.info(`Fetched lyrics and syncedLyrics from YouTube transcript for song ${songID}`);
+                }
+              } catch (youtubeError) {
+                logger.warn(`Failed to fetch YouTube transcript for song ${songID}:`, youtubeError.message);
+              }
+            } else if (sourceAPI === 'lrclib') {
+              // Fetch from LRCLIB API
+              const fetched = await lyricsService.getById(externalID);
+              lyrics = lyrics || fetched?.plainLyrics || null;
+              syncedLyrics = syncedLyrics || fetched?.syncedLyrics || null;
+              logger.info(`Fetched lyrics and syncedLyrics from LRCLIB API for song ${songID}`);
+            }
           }
         } catch (error) {
           logger.warn(`Failed to fetch lyrics from external API for song ${songID}:`, error.message);
-          lyrics = null;
-          syncedLyrics = null;
+          lyrics = lyrics || null;
+          syncedLyrics = syncedLyrics || null;
         }
       }
       
@@ -114,7 +146,8 @@ class SongService {
           
           if (procRaw.songid === songID) {
             let mappedTranslation = procRaw.translation;
-            if (lyrics && procRaw.translation && songRaw.sourcestatus === 'from_lyrics_search') {
+            // Map preview to full for both LRCLIB (from_lyrics_search) and YouTube (external)
+            if (lyrics && procRaw.translation && (songRaw.sourcestatus === 'from_lyrics_search' || songRaw.sourcestatus === 'external')) {
               mappedTranslation = this.mapTranslationToFull(procRaw.translation, lyrics);
             }
             
@@ -174,6 +207,31 @@ class SongService {
               syncConfirmed: procRaw.syncconfirmed || false,
               songStartTime: procRaw.songstarttime ? parseFloat(procRaw.songstarttime) : null
             };
+
+            if (!syncedLyrics && procRaw.youtubevideoid) {
+              try {
+                const transcript = await YouTubeService.getTranscript(procRaw.youtubevideoid, {
+                  format: 'raw',
+                  strategy: 'fallback'
+                });
+                let transcriptSegments = [];
+                if (Array.isArray(transcript.transcript)) {
+                  transcriptSegments = transcript.transcript;
+                } else if (transcript.transcript && typeof transcript.transcript === 'object') {
+                  const firstArray = Object.values(transcript.transcript).find((value) => Array.isArray(value));
+                  transcriptSegments = firstArray || [];
+                }
+                if (transcriptSegments.length > 0) {
+                  syncedLyrics = transcriptToLRC(transcriptSegments);
+                }
+              } catch (error) {
+                logger.warn('Failed to fetch YouTube transcript for synced lyrics', {
+                  songID,
+                  videoId: procRaw.youtubevideoid,
+                  error: error.message
+                });
+              }
+            }
           }
         }
       }

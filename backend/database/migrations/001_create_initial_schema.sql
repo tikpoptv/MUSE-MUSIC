@@ -78,7 +78,7 @@ CREATE TABLE Customers (
 -- =========================
 CREATE TABLE LyricsSearchResults (
     lyricsSearchResultID UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    externalID INT NOT NULL UNIQUE, -- ID from external API (LRCLIB)
+    externalID VARCHAR(255) NOT NULL UNIQUE, -- ID from external API (LRCLIB, YouTube, etc.)
     trackName VARCHAR(200) NOT NULL,
     artistName VARCHAR(150) NOT NULL,
     albumName VARCHAR(200),
@@ -96,7 +96,7 @@ CREATE TABLE LyricsSearchResults (
     createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     
-    CONSTRAINT check_source_api CHECK (sourceAPI IN ('lrclib', 'other'))
+    CONSTRAINT check_source_api CHECK (sourceAPI IN ('lrclib', 'other', 'youtube'))
 );
 
 -- =========================
@@ -108,6 +108,7 @@ CREATE TABLE Songs (
     artistName VARCHAR(150),
     genre VARCHAR(100),
     lyrics TEXT,
+    syncedLyrics TEXT, -- optional synced lyrics (stored only for trusted/manual sources)
     duration INT, -- duration in seconds
     filePath VARCHAR(500), -- path to audio file
     isActive BOOLEAN DEFAULT TRUE,

@@ -17,6 +17,7 @@ try:
         YouTubeTranscriptApi,
     )
     from youtube_transcript_api.formatters import TextFormatter
+    from requests.exceptions import ConnectionError as RequestsConnectionError
 except ModuleNotFoundError as import_error:  # pragma: no cover
     print(json.dumps({
         "success": False,
@@ -101,8 +102,10 @@ class YouTubeTranscriptService:
             raise RuntimeError("Captions are disabled for this video.") from exc
         except NoTranscriptFound as exc:
             raise RuntimeError("No transcript found for the requested languages.") from exc
+        except RequestsConnectionError as exc:
+            raise RuntimeError("Unable to reach YouTube. Please check the server's internet connectivity or DNS resolution.") from exc
         except Exception as exc:  # pragma: no cover - unexpected edge cases
-            raise RuntimeError("Unexpected error while fetching transcript.") from exc
+            raise RuntimeError(f"Unexpected error while fetching transcript: {exc}") from exc
 
 
 def main() -> int:
