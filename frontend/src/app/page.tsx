@@ -13,7 +13,7 @@ import type { AnalysisRequest } from '@/types/analysis';
 import type { LyricsRecord } from '@/types/lyrics';
 import { LocalStorageManager } from '@/utils/localStorageManager';
 import { localStorageKeys } from '@/utils/localStorageKeys';
-import type { HomeResponse } from '@/types/home';
+import type { HomeResponse, HomeSection } from '@/types/home';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { TranslationLanguageModal } from '@/components/modals';
@@ -29,6 +29,9 @@ const NAVBAR_START_EVENT = 'muse-navbar-start-analysis';
 export default function Home() {
   const [data, setData] = useState<HomeResponse>({ hero: [], sections: [] });
   const [loading, setLoading] = useState<boolean>(true);
+  const [loadingMore, setLoadingMore] = useState<boolean>(false);
+  const [offset, setOffset] = useState<number>(0);
+  const [hasMore, setHasMore] = useState<boolean>(true);
   const [actions, setActions] = useState<{ translate: boolean; mood: boolean }>({ translate: false, mood: false });
   const [query, setQuery] = useState<string>('');
   const [searching, setSearching] = useState<boolean>(false);
@@ -234,13 +237,72 @@ export default function Home() {
 
   useEffect(() => {
     const run = async () => {
-      const res = await fetchHomeContent();
+      const res = await fetchHomeContent(100, 0);
       setData(res);
+      setOffset(100);
+      setHasMore(res.pagination?.hasMore ?? false);
       await new Promise((resolve) => setTimeout(resolve, 1500));
       setLoading(false);
     };
     run();
   }, []);
+
+  const loadMore = useCallback(async () => {
+    if (loadingMore || !hasMore) return;
+    
+    setLoadingMore(true);
+    try {
+      const res = await fetchHomeContent(100, offset);
+      
+      // Merge sections by language
+      const mergedSections: Record<string, HomeSection> = {};
+      
+      // Add existing sections
+      data.sections.forEach(section => {
+        mergedSections[section.title] = { ...section };
+      });
+      
+      // Add new sections
+      res.sections.forEach(section => {
+        if (mergedSections[section.title]) {
+          mergedSections[section.title].items.push(...section.items);
+        } else {
+          mergedSections[section.title] = { ...section };
+        }
+      });
+      
+      setData({
+        ...data,
+        sections: Object.values(mergedSections)
+      });
+      setOffset(offset + 100);
+      setHasMore(res.pagination?.hasMore ?? false);
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('Failed to load more content:', error);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [data, offset, hasMore, loadingMore]);
+
+  // Infinite scroll handler
+  useEffect(() => {
+    const handleScroll = () => {
+      if (loadingMore || !hasMore) return;
+      
+      const scrollTop = window.scrollY || document.documentElement.scrollTop;
+      const scrollHeight = document.documentElement.scrollHeight;
+      const clientHeight = document.documentElement.clientHeight;
+      
+      // Load more when user is 200px from bottom
+      if (scrollTop + clientHeight >= scrollHeight - 200) {
+        loadMore();
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [loadMore, loadingMore, hasMore]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -695,10 +757,14 @@ export default function Home() {
         {loading ? (
           <>
             <h2 className="text-[24px] font-bold text-black mb-3">Loading...</h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-5">
-              {Array.from({ length: 5 }).map((_, idx) => (
-                <SkeletonCard key={`skeleton-${idx}`} />
-              ))}
+            <div className="overflow-x-auto pb-4 -mx-4 px-4 scrollbar-hide">
+              <div className="flex gap-4 min-w-max">
+                {Array.from({ length: 5 }).map((_, idx) => (
+                  <div key={`skeleton-${idx}`} className="flex-shrink-0 w-[180px] sm:w-[200px]">
+                    <SkeletonCard />
+                  </div>
+                ))}
+              </div>
             </div>
           </>
         ) : data.sections.length > 0 ? (
@@ -706,17 +772,20 @@ export default function Home() {
             section.items.length > 0 && (
               <div key={`section-${sIdx}`} className={sIdx === 0 ? '' : 'mt-10'}>
                 <h2 className="text-[24px] font-bold text-black mb-3">{section.title}</h2>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-5">
-                  {section.items.map((a, idx) => (
-                    <MusicCard 
-                      key={`${section.title}-${idx}`} 
-                      image={a.image} 
-                      title={a.title} 
-                      artist={a.artist} 
-                      href={`/song/${a.id}?processingID=${a.processingID}`}
-                      mood={a.mood || null}
-                    />
-                  ))}
+                <div className="overflow-x-auto pb-4 -mx-4 px-4 scrollbar-hide">
+                  <div className="flex gap-4 min-w-max">
+                    {section.items.map((a, idx) => (
+                      <div key={`${section.title}-${idx}`} className="flex-shrink-0 w-[180px] sm:w-[200px]">
+                        <MusicCard 
+                          image={a.image} 
+                          title={a.title} 
+                          artist={a.artist} 
+                          href={`/song/${a.id}?processingID=${a.processingID}`}
+                          mood={a.mood || null}
+                        />
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             )
@@ -724,6 +793,14 @@ export default function Home() {
         ) : (
           <div className="text-center py-12">
             <p className="text-[18px] text-gray-600">No recommended songs available at this time</p>
+          </div>
+        )}
+        {loadingMore && (
+          <div className="text-center py-8">
+            <div className="inline-flex items-center gap-2 text-gray-600">
+              <RefreshCcw className="h-5 w-5 animate-spin" />
+              <span>Loading more...</span>
+            </div>
           </div>
         )}
       </section>

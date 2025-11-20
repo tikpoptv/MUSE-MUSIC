@@ -15,8 +15,16 @@ export interface HomeSection {
   items: HomeTrackItem[];
 }
 
+export interface HomePagination {
+  limit: number;
+  offset: number;
+  total: number;
+  hasMore: boolean;
+}
+
 export interface HomeResponse {
   hero: HomeTrackItem[];
   sections: HomeSection[];
+  pagination?: HomePagination;
 }
 

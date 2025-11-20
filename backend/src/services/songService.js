@@ -101,7 +101,7 @@ class SongService {
               }
             } else if (sourceAPI === 'lrclib') {
               // Fetch from LRCLIB API
-              const fetched = await lyricsService.getById(externalID);
+            const fetched = await lyricsService.getById(externalID);
               lyrics = lyrics || fetched?.plainLyrics || null;
               syncedLyrics = syncedLyrics || fetched?.syncedLyrics || null;
               logger.info(`Fetched lyrics and syncedLyrics from LRCLIB API for song ${songID}`);

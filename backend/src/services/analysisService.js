@@ -860,7 +860,7 @@ class AnalysisService {
     // For external sources (lrclib, youtube), don't store full lyrics or synced lyrics in Songs table
     const isExternalSource = lyricsResult.sourceAPI === 'youtube' || lyricsResult.sourceAPI === 'lrclib';
     const storeLyrics = isExternalSource ? null : (lyricsRecord.plainLyrics || lyricsRecord.lyrics || null);
-
+    
     const songInsertQuery = `
       INSERT INTO songs 
       (songname, artistname, genre, lyrics, duration, filepath, lyricssearchresultid, sourcestatus, createdby, syncedlyrics) 

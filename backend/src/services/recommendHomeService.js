@@ -2,7 +2,7 @@ const DatabaseService = require('./databaseService');
 const { logger } = require('../middleware/logger');
 
 class RecommendHomeService {
-  static async getRecommendedSongs(limit = 50, limitPerSection = 5) {
+  static async getRecommendedSongs(limit = 100, offset = 0) {
     try {
       const recommendedQuery = `
         WITH RankedProcessing AS (
@@ -58,11 +58,12 @@ class RecommendHomeService {
           totalratings DESC,
           averagerating DESC NULLS LAST,
           createdat DESC
-        LIMIT $1
+        LIMIT $1 OFFSET $2
       `;
 
-      const queryLimit = limit || 50;
-      const result = await DatabaseService.query(recommendedQuery, [queryLimit]);
+      const queryLimit = limit || 100;
+      const queryOffset = offset || 0;
+      const result = await DatabaseService.query(recommendedQuery, [queryLimit, queryOffset]);
 
       if (!result.rows || result.rows.length === 0) {
         logger.warn('No recommended songs found');
@@ -111,7 +112,7 @@ class RecommendHomeService {
         if (!sectionsByLanguage[language]) {
           sectionsByLanguage[language] = [];
         }
-        if (sectionsByLanguage[language].length < limitPerSection) {
+        // Remove limit per section - show all songs in each language section
         sectionsByLanguage[language].push({
           id: song.id,
           processingID: song.processingID,
@@ -120,7 +121,6 @@ class RecommendHomeService {
           image: song.image,
           mood: song.mood
         });
-        }
       });
 
       const languageNames = {
@@ -153,7 +153,7 @@ class RecommendHomeService {
       if (sections.length === 0 && songs.length > 0) {
         sections.push({
           title: 'Recommended',
-          items: songs.slice(0, limitPerSection).map(song => ({
+          items: songs.map(song => ({
             id: song.id,
             processingID: song.processingID,
             title: song.title,
@@ -164,11 +164,45 @@ class RecommendHomeService {
         });
       }
 
-      logger.info(`Retrieved ${sections.length} sections for home page`);
+      // Get total count for pagination
+      const countQuery = `
+        WITH RankedProcessing AS (
+          SELECT 
+            p.songid,
+            ROW_NUMBER() OVER (
+              PARTITION BY p.songid 
+              ORDER BY 
+                CASE WHEN p.totalratings > 0 THEN 0 ELSE 1 END,
+                p.totalratings DESC,
+                p.averagerating DESC NULLS LAST,
+                p.createdat DESC
+            ) as rn
+          FROM songaiprocessing p
+          INNER JOIN songs s ON p.songid = s.songid
+          WHERE 
+            p.sharestatus = 'public_approved'
+            AND p.approvalstatus = 'approved'
+            AND s.isactive = TRUE
+            AND p.originallanguage IS NOT NULL
+        )
+        SELECT COUNT(*) as total
+        FROM RankedProcessing
+        WHERE rn = 1
+      `;
+      const countResult = await DatabaseService.query(countQuery);
+      const total = countResult.rows[0]?.total || 0;
+
+      logger.info(`Retrieved ${sections.length} sections for home page (${songs.length} songs, total: ${total})`);
 
       return {
         hero: [],
-        sections
+        sections,
+        pagination: {
+          limit: queryLimit,
+          offset: queryOffset,
+          total: parseInt(total),
+          hasMore: (queryOffset + queryLimit) < total
+        }
       };
     } catch (error) {
       logger.error('Error in RecommendHomeService.getRecommendedSongs:', error);

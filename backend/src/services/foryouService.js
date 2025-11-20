@@ -44,12 +44,12 @@ function normalizeMainMood(name) {
 }
 
 class ForYouService {
-  static async getForYouContent(userID) {
+  static async getForYouContent(userID, limit = 100, offset = 0) {
     try {
       const moods = await this.getMoodStats(userID);
-      const recentlySearched = await this.getRecentlySearched(userID, 4);
-      const recommendations = await this.getRecommendations();
-      const topHits = await this.getTopHits(5);
+      const recentlySearched = await this.getRecentlySearched(userID, 20);
+      const recommendations = await this.getRecommendations(limit, offset);
+      const topHits = await this.getTopHits(20);
 
       return {
         moods,
@@ -199,8 +199,6 @@ class ForYouService {
           INNER JOIN songs s ON rh.songid = s.songid
           LEFT JOIN songaiprocessing p ON (
             p.songid = rh.songid
-            AND p.sharestatus = 'public_approved'
-            AND p.approvalstatus = 'approved'
             AND p.status = 'completed'
           )
         )
@@ -253,9 +251,9 @@ class ForYouService {
     }
   }
 
-  static async getRecommendations() {
+  static async getRecommendations(limit = 100, offset = 0) {
     try {
-      const homeContent = await RecommendHomeService.getRecommendedSongs(50, 5);
+      const homeContent = await RecommendHomeService.getRecommendedSongs(limit, offset);
       
       const subsections = homeContent.sections.map(section => ({
         title: section.title,
@@ -284,7 +282,7 @@ class ForYouService {
     }
   }
 
-  static async getTopHits(limit = 5) {
+  static async getTopHits(limit = 20, offset = 0) {
     try {
       const query = `
         WITH RankedProcessing AS (
@@ -326,10 +324,10 @@ class ForYouService {
           totalratings DESC,
           averagerating DESC NULLS LAST,
           createdat DESC
-        LIMIT $1
+        LIMIT $1 OFFSET $2
       `;
 
-      const result = await DatabaseService.query(query, [limit]);
+      const result = await DatabaseService.query(query, [limit, offset]);
 
       if (!result.rows || result.rows.length === 0) {
         return [];
@@ -365,7 +363,7 @@ class ForYouService {
     }
   }
 
-  static async getYourMood(userID, limit = 20) {
+  static async getYourMood(userID, limit = 100, offset = 0) {
     try {
       const query = `
         WITH user_analysis AS (
@@ -475,10 +473,10 @@ class ForYouService {
         FROM ranked_songs
         WHERE score > 0
         ORDER BY score DESC, last_analyzed_at DESC NULLS LAST
-        LIMIT $2
+        LIMIT $2 OFFSET $3
       `;
 
-      const result = await DatabaseService.query(query, [userID, limit]);
+      const result = await DatabaseService.query(query, [userID, limit, offset]);
 
       if (!result.rows || result.rows.length === 0) {
         return [];
