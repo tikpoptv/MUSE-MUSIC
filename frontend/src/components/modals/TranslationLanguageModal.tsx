@@ -13,6 +13,7 @@ interface TranslationLanguageModalProps {
 const languages = [
   { code: 'en', name: 'English' },
   { code: 'th', name: 'Thai' },
+  { code: 'lo', name: 'Lao' },
   { code: 'ja', name: 'Japanese' },
   { code: 'ko', name: 'Korean' },
   { code: 'zh', name: 'Chinese' },
