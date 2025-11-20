@@ -1,12 +1,14 @@
 'use client';
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { Search, Languages, RefreshCcw, AudioLines, Music } from 'lucide-react';
+import { Search, Languages, RefreshCcw, AudioLines, Music, Youtube as YoutubeIcon } from 'lucide-react';
 import MusicCard from '@/components/MusicCard';
 import SkeletonCard from '@/components/SkeletonCard';
 import { fetchHomeContent } from '@/services/homeService';
 import { lyricsService } from '@/services/lyricsService';
 import { analysisService } from '@/services/analysisService';
 import { songService } from '@/services/songService';
+import { youtubeService } from '@/services/youtubeService';
+import type { YouTubeTranscriptResponse, YouTubeVideoDetailsResponse } from '@/types/youtube';
 import type { AnalysisRequest } from '@/types/analysis';
 import type { LyricsRecord } from '@/types/lyrics';
 import { LocalStorageManager } from '@/utils/localStorageManager';
@@ -43,9 +45,109 @@ export default function Home() {
   const [showDropdown, setShowDropdown] = useState<boolean>(false);
   const searchWrapRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const [youtubeVideoId, setYoutubeVideoId] = useState<string | null>(null);
+  const [fetchingYouTubeTranscript, setFetchingYouTubeTranscript] = useState<boolean>(false);
+  const [youtubeTranscriptText, setYoutubeTranscriptText] = useState<string>('');
+  const [youtubeTranscriptMeta, setYoutubeTranscriptMeta] = useState<{ languages: string[]; strategy: 'fallback' | 'multi' } | null>(null);
+  const [youtubeVideoDetails, setYoutubeVideoDetails] = useState<YouTubeVideoDetailsResponse | null>(null);
   const router = useRouter();
 
+  const clearYouTubeState = useCallback(() => {
+    setYoutubeVideoId(null);
+    setYoutubeTranscriptText('');
+    setYoutubeTranscriptMeta(null);
+    setYoutubeVideoDetails(null);
+  }, []);
+
+  const extractYouTubeVideoId = useCallback((value: string): string | null => {
+    if (!value) return null;
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    const patterns = [
+      /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\s?#]+)/i,
+      /(?:youtube\.com\/shorts\/)([^&\s?#]+)/i,
+      /^([a-zA-Z0-9_-]{11})$/
+    ];
+    for (const pattern of patterns) {
+      const match = trimmed.match(pattern);
+      if (match && match[1]) {
+        return match[1];
+      }
+    }
+    return null;
+  }, []);
+
+  const normalizeTranscriptText = useCallback((transcript: YouTubeTranscriptResponse['transcript']): string => {
+    if (typeof transcript === 'string') {
+      return transcript.trim();
+    }
+
+    if (Array.isArray(transcript)) {
+      return transcript
+        .map((entry) => entry?.text ?? '')
+        .filter((line) => Boolean(line && line.trim()))
+        .join('\n')
+        .trim();
+    }
+
+    if (transcript && typeof transcript === 'object') {
+      return Object.entries(transcript)
+        .map(([language, value]) => {
+          let block = '';
+          if (Array.isArray(value)) {
+            block = value
+              .map((entry) => entry?.text ?? '')
+              .filter((line) => Boolean(line && line.trim()))
+              .join('\n')
+              .trim();
+          } else if (typeof value === 'string') {
+            block = value.trim();
+          }
+          if (!block) return '';
+          return `[${language}]${block ? `\n${block}` : ''}`;
+        })
+        .filter(Boolean)
+        .join('\n\n')
+        .trim();
+    }
+
+    return '';
+  }, []);
+
+  const handleFetchYouTubeTranscript = useCallback(async () => {
+    if (!youtubeVideoId) return;
+    try {
+      setFetchingYouTubeTranscript(true);
+      toast.loading('Fetching YouTube transcript...', { id: 'youtube-transcript' });
+      const response = await youtubeService.getTranscript(youtubeVideoId, { format: 'raw', mode: 'fallback' });
+      const normalized = normalizeTranscriptText(response.transcript);
+      if (!normalized) {
+        throw new Error('Transcript is empty');
+      }
+      setYoutubeTranscriptText(normalized);
+      setYoutubeTranscriptMeta({
+        languages: response.languages,
+        strategy: response.strategy
+      });
+      setYoutubeVideoDetails(response.videoDetails ?? null);
+      toast.success('YouTube transcript ready', { id: 'youtube-transcript' });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to fetch YouTube transcript';
+      toast.error(message, { id: 'youtube-transcript' });
+      setYoutubeTranscriptText('');
+      setYoutubeTranscriptMeta(null);
+      setYoutubeVideoDetails(null);
+    } finally {
+      setFetchingYouTubeTranscript(false);
+    }
+  }, [normalizeTranscriptText, youtubeVideoId]);
+
+  const handleClearYouTubeTranscript = useCallback(() => {
+    clearYouTubeState();
+  }, [clearYouTubeState]);
+
   const selectLyricsRecord = useCallback((record: LyricsRecord) => {
+    clearYouTubeState();
     setSelected(record);
     skipNextSearchRef.current = true;
     setQuery(`${record.trackName} - ${record.artistName}`);
@@ -53,7 +155,7 @@ export default function Home() {
     setShowDropdown(false);
     if (inputRef.current) inputRef.current.blur();
     LocalStorageManager.set<number>(localStorageKeys.SELECTED_LRCLIB_ID, record.id);
-  }, []);
+  }, [clearYouTubeState]);
   const formatDuration = (secs: number): string => {
     const total = Math.max(0, Math.round(secs));
     const m = Math.floor(total / 60);
@@ -64,6 +166,15 @@ export default function Home() {
   const runImmediateLyricsSearch = useCallback(async (rawQuery: string) => {
     const trimmedQuery = rawQuery.trim();
     if (!trimmedQuery) return;
+    const maybeYoutubeId = extractYouTubeVideoId(trimmedQuery);
+    if (maybeYoutubeId) {
+      setQuery(trimmedQuery);
+      setYoutubeVideoId(maybeYoutubeId);
+      setSelected(null);
+      setResults([]);
+      setShowDropdown(false);
+      return;
+    }
     setQuery(trimmedQuery);
     skipNextSearchRef.current = true;
     try {
@@ -82,12 +193,13 @@ export default function Home() {
     } finally {
       setSearching(false);
     }
-  }, [selectLyricsRecord]);
+  }, [extractYouTubeVideoId, selectLyricsRecord]);
 
   const handleSongPrefetch = useCallback(async (rawSongID: string) => {
     const trimmedSongID = rawSongID.trim();
     if (!trimmedSongID) return;
     try {
+      clearYouTubeState();
       setSearching(true);
       setRateLimited(false);
       const detail = await songService.getSongDetail(trimmedSongID);
@@ -118,7 +230,7 @@ export default function Home() {
     } finally {
       setSearching(false);
     }
-  }, []);
+  }, [clearYouTubeState]);
 
   useEffect(() => {
     const run = async () => {
@@ -194,8 +306,21 @@ export default function Home() {
       return () => { active = false; };
     }
     const handler = setTimeout(async () => {
-      if (!query.trim()) {
+      const trimmedQuery = query.trim();
+      if (!trimmedQuery) {
         if (active) {
+          setResults([]);
+          setRateLimited(false);
+          setShowDropdown(false);
+          clearYouTubeState();
+        }
+        return;
+      }
+      const maybeYoutubeId = extractYouTubeVideoId(trimmedQuery);
+      if (maybeYoutubeId) {
+        if (active) {
+          setYoutubeVideoId(maybeYoutubeId);
+          setSelected(null);
           setResults([]);
           setRateLimited(false);
           setShowDropdown(false);
@@ -205,7 +330,7 @@ export default function Home() {
       try {
         setSearching(true);
         setRateLimited(false);
-        const data = await lyricsService.search({ q: query.trim() });
+        const data = await lyricsService.search({ q: trimmedQuery });
         if (active) {
           setResults(data);
           setShowDropdown(true);
@@ -225,7 +350,7 @@ export default function Home() {
       active = false;
       clearTimeout(handler);
     };
-  }, [query]);
+  }, [query, clearYouTubeState, extractYouTubeVideoId]);
 
   // click outside to close dropdown
   useEffect(() => {
@@ -241,6 +366,15 @@ export default function Home() {
   }, [showDropdown]);
 
   const handleStartAnalysis = async () => {
+    if (youtubeVideoId && !selected) {
+      if (!actions.translate && !actions.mood) {
+        toast.error('Please select at least one action (Translate or Mood)');
+        return;
+      }
+      setShowLanguageModal(true);
+      return;
+    }
+
     if (!selected) {
       toast.error('Please select a song first');
       return;
@@ -258,8 +392,56 @@ export default function Home() {
     }
   };
 
+  const startYoutubeAnalysisFlow = useCallback(async (originalLanguage: string, targetLanguage: string, shareRequest: boolean) => {
+    if (!youtubeVideoId) return;
+    try {
+      setAnalyzing(true);
+      toast.loading('Starting analysis...', { id: 'analysis' });
+
+      const result = await youtubeService.analyzeVideo({
+        videoId: youtubeVideoId,
+        actions,
+        translationConfig: {
+          originalLanguage,
+          targetLanguage
+        },
+        shareRequest
+      });
+
+      if (!result || !result.songID || result.songID === 'undefined') {
+        toast.error('Invalid song ID returned from server', { id: 'analysis' });
+        return;
+      }
+
+      if (!result.processingID || result.processingID === 'undefined') {
+        toast.error('Invalid processing ID returned from server', { id: 'analysis' });
+        return;
+      }
+
+      if (result.alreadyExists) {
+        toast.success('Song already exists in system', { id: 'analysis' });
+        router.push(`/song/${result.songID}?processingID=${result.processingID}`);
+        return;
+      }
+
+      toast.success('Analysis completed!', { id: 'analysis' });
+      router.push(`/song/${result.songID}/analysis/${result.processingID}`);
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('YouTube analysis error:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to start YouTube analysis', { id: 'analysis' });
+    } finally {
+      setAnalyzing(false);
+    }
+  }, [actions, router, youtubeVideoId]);
+
   const handleLanguageConfirm = async (originalLanguage: string, targetLanguage: string, shareRequest: boolean) => {
     setTranslationConfig({ originalLanguage, targetLanguage });
+    
+    if (!selected && youtubeVideoId) {
+      await startYoutubeAnalysisFlow(originalLanguage, targetLanguage, shareRequest);
+      return;
+    }
     
     if (!selected) return;
 
@@ -325,14 +507,34 @@ export default function Home() {
               aria-label="Search song or paste link"
               value={query}
               onChange={(e) => {
-                setQuery(e.target.value);
+                const nextValue = e.target.value;
+                setQuery(nextValue);
+                const maybeYoutubeId = extractYouTubeVideoId(nextValue);
+                if (maybeYoutubeId) {
+                  setYoutubeVideoId(maybeYoutubeId);
+                  setSelected(null);
+                  setShowDropdown(false);
+                } else if (youtubeVideoId) {
+                  clearYouTubeState();
+                }
                 setShowDropdown(true);
               }}
               onFocus={() => {
                 if (results.length > 0) setShowDropdown(true);
               }}
             />
-            <Search className="h-4 w-4 text-gray-400" />
+            {youtubeVideoId && (
+              <button
+                type="button"
+                onClick={handleFetchYouTubeTranscript}
+                disabled={fetchingYouTubeTranscript}
+                className="flex items-center gap-1 rounded-lg bg-red-500/90 px-3 py-1 text-xs font-medium text-white transition hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <YoutubeIcon className="h-3.5 w-3.5" />
+                {fetchingYouTubeTranscript ? 'Fetching...' : 'Fetch YouTube'}
+              </button>
+            )}
+            <Search className="h-4 w-4 text-gray-400 ml-2" />
             {/* Dropdown panel */}
             {showDropdown && query && (
               <div
@@ -396,6 +598,48 @@ export default function Home() {
             )}
           </div>
 
+          {youtubeVideoId && !youtubeTranscriptText && (
+            <p className="text-xs text-gray-600 text-center max-w-2xl">
+              Detected a YouTube link. Fetch the transcript to analyze lyrics directly from the video.
+            </p>
+          )}
+
+          {youtubeTranscriptText && (
+            <div className="w-full md:w-[640px] rounded-xl border border-purple-200 bg-purple-50 px-4 py-3 text-sm text-gray-900">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                <div className="flex flex-col">
+                  <span className="font-semibold text-purple-900">YouTube transcript ready</span>
+                  <span className="text-xs text-purple-700">
+                    Languages: {youtubeTranscriptMeta?.languages?.join(', ') || 'Unknown'} • Strategy: {youtubeTranscriptMeta?.strategy || 'fallback'}
+                  </span>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={handleClearYouTubeTranscript}
+                    className="rounded-lg border border-transparent px-3 py-1 text-xs font-medium text-purple-900/70 hover:bg-purple-100"
+                  >
+                    Clear
+                  </button>
+                </div>
+              </div>
+              {youtubeVideoDetails && (
+                <div className="mt-3 rounded-lg border border-purple-100 bg-white/70 p-3 text-sm text-gray-900 flex flex-col gap-1">
+                  <div className="font-semibold text-gray-900">{youtubeVideoDetails.title}</div>
+                  <div className="text-xs text-gray-600">
+                    {youtubeVideoDetails.channelTitle} • {new Date(youtubeVideoDetails.publishedAt).toLocaleDateString()} • {formatDuration(youtubeVideoDetails.duration || 0)}
+                  </div>
+                  <div className="text-xs text-gray-500 line-clamp-3">
+                    {youtubeVideoDetails.description || 'No description provided.'}
+                  </div>
+                </div>
+              )}
+              <div className="mt-3 max-h-60 overflow-auto rounded-lg bg-white/70 p-3 text-sm text-gray-900 whitespace-pre-wrap">
+                {youtubeTranscriptText}
+              </div>
+            </div>
+          )}
+
 
           <div className="flex flex-col md:flex-row gap-3 md:gap-8 w-full max-w-4xl justify-center">
             <button
@@ -429,7 +673,7 @@ export default function Home() {
           <button
             type="button"
             onClick={handleStartAnalysis}
-            disabled={analyzing || !selected}
+            disabled={analyzing || (!selected && !youtubeVideoId)}
             className={`mt-2 mx-auto flex items-center justify-center gap-[11px] rounded-full bg-[#7B61FF] w-full md:w-[249px] h-[70px] px-[19px] py-[14px] text-white shadow hover:opacity-90 shrink-0 max-w-md disabled:opacity-50 disabled:cursor-not-allowed`}
           >
             {analyzing ? (

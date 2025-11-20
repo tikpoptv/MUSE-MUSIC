@@ -135,6 +135,11 @@ class AnalysisService {
         status: processingRaw.status,
         createdBy: processingRaw.createdby
       };
+
+      await this.applyProcessingMetadata(processing.processingID, {
+        coverImage: lyricsRecord.coverImage,
+        youtubeVideoId: lyricsRecord.youtubeVideoId
+      });
       
       if (!processing.processingID) {
         throw new Error('Failed to create processing record: processingID is missing');
@@ -151,7 +156,8 @@ class AnalysisService {
       if (actions.translate || actions.mood) {
         fullLyrics = await this.fetchFullLyrics(
           lyricsRecord.plainLyrics || lyricsRecord.lyrics,
-          lyricsResult.externalID
+          lyricsResult.externalID,
+          { source: lyricsRecord.source || lyricsRecord.sourceAPI || lyricsResult.sourceAPI }
         );
       }
       
@@ -308,6 +314,11 @@ class AnalysisService {
         status: processingRaw.status,
         createdBy: processingRaw.createdby
       };
+
+      await this.applyProcessingMetadata(processing.processingID, {
+        coverImage: lyricsRecord.coverImage,
+        youtubeVideoId: lyricsRecord.youtubeVideoId
+      });
       
       if (!processing.processingID) {
         throw new Error('Failed to create processing record: processingID is missing');
@@ -324,7 +335,8 @@ class AnalysisService {
       if (actions.translate || actions.mood) {
         fullLyrics = await this.fetchFullLyrics(
           lyricsRecord.plainLyrics || lyricsRecord.lyrics,
-          lyricsResult.externalID
+          lyricsResult.externalID,
+          { source: lyricsRecord.source || lyricsRecord.sourceAPI || lyricsResult.sourceAPI }
         );
       }
       
@@ -510,7 +522,8 @@ class AnalysisService {
       if (actions.translate || actions.mood) {
         fullLyrics = await this.fetchFullLyrics(
           lyricsRecord.plainLyrics || lyricsRecord.lyrics,
-          lyricsResult.externalID
+          lyricsResult.externalID,
+          { source: lyricsRecord.source || lyricsRecord.sourceAPI || lyricsResult.sourceAPI }
         );
       }
 
@@ -688,10 +701,12 @@ class AnalysisService {
       return normalizeResult(lyricsResult.rows[0]);
     }
     
-    const externalID = parseInt(String(lyricsRecord.id), 10);
-    if (isNaN(externalID)) {
-      throw new Error(`Invalid externalID: ${lyricsRecord.id}`);
+    const externalID = (lyricsRecord.id ?? '').toString().trim();
+    if (!externalID) {
+      throw new Error('Lyrics record must have an id or songID');
     }
+
+    const sourceAPI = lyricsRecord.source || lyricsRecord.sourceAPI || 'lrclib';
     
     const findQuery = `SELECT * FROM lyricssearchresults WHERE externalid = $1 LIMIT 1`;
     const findResult = await DatabaseService.query(findQuery, [externalID]);
@@ -710,7 +725,7 @@ class AnalysisService {
     }
     
     const fullLyricsText = lyricsRecord.plainLyrics || lyricsRecord.lyrics || '';
-    const lyricsPreview = fullLyricsText
+    const lyricsPreview = lyricsRecord.lyricsPreview || fullLyricsText
       .split('\n')[0]
       .substring(0, 500)
       .trim();
@@ -729,7 +744,7 @@ class AnalysisService {
       duration,
       lyricsRecord.instrumental || false,
       lyricsPreview,
-      'lrclib'
+      sourceAPI
     ];
     const insertResult = await DatabaseService.query(insertQuery, insertValues);
     const newResult = insertResult.rows[0];
@@ -755,13 +770,24 @@ class AnalysisService {
     return normalizedResult;
   }
   
-  static async fetchFullLyrics(lyricsFromRecord, externalID) {
+  static async fetchFullLyrics(lyricsFromRecord, externalID, options = {}) {
+    const source = options.source || null;
+    
     if (lyricsFromRecord && lyricsFromRecord.trim()) {
       return lyricsFromRecord;
     }
     
     if (!externalID) {
+      if (source === 'youtube') {
+        logger.warn('Missing lyrics text for YouTube source; returning empty lyrics.');
+        return '';
+      }
       throw new Error('Cannot fetch lyrics: externalID is missing');
+    }
+    
+    if (source === 'youtube') {
+      logger.info('Skipping external lyrics fetch for YouTube source', { externalID });
+      return '';
     }
     
     try {
@@ -793,12 +819,14 @@ class AnalysisService {
     const existingSong = songResult.rows[0] || null;
     
     if (existingSong) {
+      // Do not store synced lyrics from external sources; fetch on demand instead
       return {
         songID: existingSong.songid,
         songName: existingSong.songname,
         artistName: existingSong.artistname,
         genre: existingSong.genre,
-        lyrics: existingSong.lyrics,
+        lyrics: existingSong.lyrics, // Will be null for external sources, fetched on demand
+        syncedLyrics: existingSong.syncedlyrics,
         duration: existingSong.duration,
         filePath: existingSong.filepath,
         isActive: existingSong.isactive,
@@ -826,22 +854,30 @@ class AnalysisService {
       }
     }
     
+    const sourceStatus = lyricsRecord.sourceStatus
+      || (lyricsResult.sourceAPI === 'youtube' ? 'external' : 'from_lyrics_search');
+
+    // For external sources (lrclib, youtube), don't store full lyrics or synced lyrics in Songs table
+    const isExternalSource = lyricsResult.sourceAPI === 'youtube' || lyricsResult.sourceAPI === 'lrclib';
+    const storeLyrics = isExternalSource ? null : (lyricsRecord.plainLyrics || lyricsRecord.lyrics || null);
+
     const songInsertQuery = `
       INSERT INTO songs 
-      (songname, artistname, genre, lyrics, duration, filepath, lyricssearchresultid, sourcestatus, createdby) 
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) 
+      (songname, artistname, genre, lyrics, duration, filepath, lyricssearchresultid, sourcestatus, createdby, syncedlyrics) 
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) 
       RETURNING *
     `;
     const songInsertValues = [
       lyricsRecord.trackName || lyricsRecord.songName || '',
       lyricsRecord.artistName || '',
       null,
-      null,
+      storeLyrics,
       songDuration,
       null,
       lyricsResult.lyricsSearchResultID,
-      'from_lyrics_search',
-      validUserId
+      sourceStatus,
+      validUserId,
+      null
     ];
     const songInsertResult = await DatabaseService.query(songInsertQuery, songInsertValues);
     const newSong = songInsertResult.rows[0];
@@ -861,6 +897,7 @@ class AnalysisService {
       popularity: newSong.popularity,
       lyricsSearchResultID: newSong.lyricssearchresultid,
       sourceStatus: newSong.sourcestatus,
+      syncedLyrics: newSong.syncedlyrics,
       createdBy: newSong.createdby,
       updatedBy: newSong.updatedby,
       createdAt: newSong.createdat,
@@ -1091,6 +1128,34 @@ class AnalysisService {
       summary: translated.summary || null,
       mood: moodResult
     };
+  }
+
+  static async applyProcessingMetadata(processingID, metadata = {}) {
+    if (!processingID) return;
+    const updateFields = [];
+    const values = [];
+
+    if (metadata.coverImage) {
+      updateFields.push(`coverimage = $${values.length + 1}`);
+      values.push(metadata.coverImage);
+    }
+
+    if (metadata.youtubeVideoId) {
+      updateFields.push(`youtubevideoid = $${values.length + 1}`);
+      values.push(metadata.youtubeVideoId);
+    }
+
+    if (updateFields.length === 0) {
+      return;
+    }
+
+    values.push(processingID);
+    const query = `
+      UPDATE songaiprocessing
+      SET ${updateFields.join(', ')}, updatedat = CURRENT_TIMESTAMP
+      WHERE processingid = $${values.length}
+    `;
+    await DatabaseService.query(query, values);
   }
 }
 

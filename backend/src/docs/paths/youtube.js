@@ -197,6 +197,30 @@
  *                       type: array
  *                       items:
  *                         type: string
+ *                     videoDetails:
+ *                       type: object
+ *                       nullable: true
+ *                       properties:
+ *                         videoId:
+ *                           type: string
+ *                         title:
+ *                           type: string
+ *                         description:
+ *                           type: string
+ *                         thumbnail:
+ *                           type: string
+ *                         channelTitle:
+ *                           type: string
+ *                         publishedAt:
+ *                           type: string
+ *                           format: date-time
+ *                         duration:
+ *                           type: integer
+ *                           description: Duration in seconds
+ *                         viewCount:
+ *                           type: integer
+ *                         likeCount:
+ *                           type: integer
  *                     transcript:
  *                       oneOf:
  *                         - type: array
@@ -230,5 +254,97 @@
  *         description: Bad request - missing videoId
  *       500:
  *         description: Server error or helper script not available
+ */
+
+/**
+ * @swagger
+ * /api/youtube/analyze:
+ *   post:
+ *     summary: Trigger analysis workflow using a YouTube video
+ *     description: Fetch transcript/metadata from YouTube, normalize them into lyrics, and run the standard analysis pipeline.
+ *     tags: [YouTube]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - videoId
+ *               - actions
+ *               - translationConfig
+ *             properties:
+ *               videoId:
+ *                 type: string
+ *                 description: YouTube video ID
+ *                 example: dQw4w9WgXcQ
+ *               actions:
+ *                 type: object
+ *                 properties:
+ *                   translate:
+ *                     type: boolean
+ *                     example: true
+ *                   mood:
+ *                     type: boolean
+ *                     example: false
+ *               translationConfig:
+ *                 type: object
+ *                 properties:
+ *                   originalLanguage:
+ *                     type: string
+ *                     example: en
+ *                   targetLanguage:
+ *                     type: string
+ *                     example: th
+ *               shareRequest:
+ *                 type: boolean
+ *                 default: false
+ *     responses:
+ *       200:
+ *         description: Analysis completed successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     processingID:
+ *                       type: string
+ *                     songID:
+ *                       type: string
+ *                     status:
+ *                       type: string
+ *                     translation:
+ *                       type: object
+ *                       nullable: true
+ *                     mood:
+ *                       type: object
+ *                       nullable: true
+ *                     videoDetails:
+ *                       $ref: '#/components/schemas/YouTubeVideo'
+ *                     syncedLyrics:
+ *                       type: string
+ *                       description: LRC formatted transcript
+ *                     transcript:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           text:
+ *                             type: string
+ *                           start:
+ *                             type: number
+ *                           duration:
+ *                             type: number
+ *       400:
+ *         description: Invalid request payload
+ *       500:
+ *         description: Server error while processing analysis
  */
 

@@ -227,8 +227,7 @@ export default function SongDetailPage() {
           
           setProcessingData(processing);
           if (processing.coverImage) {
-            const coverImageUrl = processing.coverImage;
-            setCoverImage(coverImageUrl.startsWith('http') ? new URL(coverImageUrl).pathname : coverImageUrl);
+            setCoverImage(processing.coverImage);
           }
           if (processing.targetLanguage) {
             setSelectedLanguage(processing.targetLanguage);
@@ -682,8 +681,7 @@ export default function SongDetailPage() {
           if (data.processing) {
             setProcessingData(data.processing);
             if (data.processing.coverImage) {
-              const coverImageUrl = data.processing.coverImage;
-              setCoverImage(coverImageUrl.startsWith('http') ? new URL(coverImageUrl).pathname : coverImageUrl);
+              setCoverImage(data.processing.coverImage);
             }
             if (pendingLanguageChange) {
               setSelectedLanguage(pendingLanguageChange);
