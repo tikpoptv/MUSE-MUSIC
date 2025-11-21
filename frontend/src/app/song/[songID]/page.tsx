@@ -65,7 +65,16 @@ export default function SongDetailPage() {
   const [durationMatch, setDurationMatch] = useState<boolean | null>(null);
   const [seekToTime, setSeekToTime] = useState<number | undefined>(undefined);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [volume, setVolume] = useState(100);
+  const [isMuted, setIsMuted] = useState(false);
   const playerPlayPauseRef = useRef<(() => void) | null>(null);
+  const playerVolumeRef = useRef<{
+    setVolume: (volume: number) => void;
+    getVolume: () => number;
+    mute: () => void;
+    unmute: () => void;
+    isMuted: () => boolean;
+  } | null>(null);
   const [isReAnalyzeModalOpen, setIsReAnalyzeModalOpen] = useState(false);
   const [isReAnalyzing, setIsReAnalyzing] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState<string>(DEFAULT_TARGET_LANGUAGE);
@@ -1375,6 +1384,30 @@ export default function SongDetailPage() {
                 onSelectedLanguageChange={setSelectedLanguage}
                 onPlayPause={() => playerPlayPauseRef.current?.()}
                 isPlaying={isPlaying}
+                onVolumeChange={(vol) => {
+                  if (playerVolumeRef.current) {
+                    playerVolumeRef.current.setVolume(vol);
+                    setVolume(vol);
+                    if (vol === 0) {
+                      setIsMuted(true);
+                    } else if (isMuted) {
+                      setIsMuted(false);
+                    }
+                  }
+                }}
+                onMuteToggle={() => {
+                  if (playerVolumeRef.current) {
+                    if (isMuted) {
+                      playerVolumeRef.current.unmute();
+                      setIsMuted(false);
+                    } else {
+                      playerVolumeRef.current.mute();
+                      setIsMuted(true);
+                    }
+                  }
+                }}
+                volume={volume}
+                isMuted={isMuted}
                 syncConfirmed={processingData?.syncConfirmed || false}
                 songStartTime={processingData?.songStartTime || null}
                 onSave={handleSaveTranslation}
@@ -1398,6 +1431,9 @@ export default function SongDetailPage() {
                   onIsPlayingChange={handleIsPlayingChange}
                   onPlayPauseRequest={(api) => {
                     playerPlayPauseRef.current = api.playPause;
+                  }}
+                  onVolumeRequest={(api) => {
+                    playerVolumeRef.current = api;
                   }}
                   seekToTime={seekToTime}
                   readonly={!isAnalysisRoute}

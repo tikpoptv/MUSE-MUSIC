@@ -7,6 +7,7 @@ import { DEFAULT_TARGET_LANGUAGE, getLanguageNames } from '@/utils/languageUtils
 
 import type { SyncedLyricsLine } from './SyncedLyricsPlayer';
 import LyricsTranslationViewerFullscreen from './LyricsTranslationViewerFullscreen';
+import { buildLineTimeCache, getLineTime as getLineTimeUtil } from '@/utils/lyricsMappingUtils';
 
 interface LyricsTranslationViewerProps {
   translation?: string;
@@ -31,6 +32,10 @@ interface LyricsTranslationViewerProps {
   syncConfirmed?: boolean; // Whether sync is confirmed as correct
   songStartTime?: number | null; // Time offset in seconds where the song actually starts
   youtubeVideoId?: string | null; // YouTube video ID for background video
+  onVolumeChange?: (volume: number) => void;
+  onMuteToggle?: () => void;
+  volume?: number;
+  isMuted?: boolean;
 }
 
 export default function LyricsTranslationViewer({
@@ -55,7 +60,11 @@ export default function LyricsTranslationViewer({
   isPlaying = false,
   syncConfirmed = false,
   songStartTime = null,
-  youtubeVideoId = null
+  youtubeVideoId = null,
+  onVolumeChange,
+  onMuteToggle,
+  volume = 100,
+  isMuted = false
 }: LyricsTranslationViewerProps) {
   const [selectedLanguage, setSelectedLanguage] = useState<string>(targetLanguage || defaultLanguage);
   const [isShaking, setIsShaking] = useState(false);
@@ -177,41 +186,6 @@ export default function LyricsTranslationViewer({
     return pairs;
   };
 
-  const getLineTime = (pairIndex: number, pairs: Array<{ original: string; translation: string }>): number | null => {
-    if (syncedLyricsLines.length === 0) return null;
-    
-    const pair = pairs[pairIndex];
-    if (!pair || !pair.original.trim()) return null;
-    
-    const originalTrimmed = pair.original.trim();
-    let baseTime: number | null = null;
-    
-    if (pairIndex < syncedLyricsLines.length) {
-      const syncedLine = syncedLyricsLines[pairIndex];
-      const syncedText = syncedLine.text.trim();
-      
-      if (syncedText === originalTrimmed) {
-        baseTime = syncedLine.time;
-      }
-    }
-    
-    if (baseTime === null) {
-      const match = syncedLyricsLines.find(syncedLine => {
-        return syncedLine.text.trim() === originalTrimmed;
-      });
-      
-      if (match) {
-        baseTime = match.time;
-      } else if (pairIndex < syncedLyricsLines.length) {
-        baseTime = syncedLyricsLines[pairIndex].time;
-      }
-    }
-    
-    if (baseTime === null) return null;
-    
-    return baseTime;
-  };
-
   const pairs = parseTranslationPairs();
   const isSyncMode = currentTime > 0 && syncedLyricsLines.length > 0;
   
@@ -219,11 +193,23 @@ export default function LyricsTranslationViewer({
     ? currentTime - songStartTime 
     : currentTime;
   
+  // Cache for line times to avoid recursive calls
+  const lineTimeCache = useRef<Map<number, number | null>>(new Map());
+  
+  // Build cache for all pairs using utility function
+  useEffect(() => {
+    lineTimeCache.current = buildLineTimeCache(pairs, syncedLyricsLines);
+  }, [pairs, syncedLyricsLines]);
+  
+  const getLineTime = (pairIndex: number): number | null => {
+    return getLineTimeUtil(pairIndex, lineTimeCache.current);
+  };
+  
   let activeIndex = -1;
   let lastLyricsTime = 0;
   if (isSyncMode && pairs.length > 0) {
     for (let i = pairs.length - 1; i >= 0; i--) {
-      const lineTime = getLineTime(i, pairs);
+      const lineTime = getLineTime(i);
       if (lineTime !== null) {
         lastLyricsTime = Math.max(lastLyricsTime, lineTime);
         if (adjustedCurrentTime >= lineTime) {
@@ -274,7 +260,7 @@ export default function LyricsTranslationViewer({
             return <div key={index} className="h-2" />;
           }
 
-          const lineTime = getLineTime(index, pairs);
+          const lineTime = getLineTime(index);
           const isActive = isSyncMode 
             ? (lineTime !== null && adjustedCurrentTime >= lineTime)
             : true;
@@ -483,6 +469,10 @@ export default function LyricsTranslationViewer({
           isPlaying={isPlaying}
           songStartTime={songStartTime}
           youtubeVideoId={youtubeVideoId}
+          onVolumeChange={onVolumeChange}
+          onMuteToggle={onMuteToggle}
+          volume={volume}
+          isMuted={isMuted}
         />
       )}
     </div>

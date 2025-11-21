@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { X, Maximize2, Minimize2, Play, Pause, SkipBack, SkipForward, Sun, Moon } from 'lucide-react';
+import { X, Maximize2, Minimize2, Play, Pause, SkipBack, SkipForward, Sun, Moon, Volume2, VolumeX, Volume1 } from 'lucide-react';
 import type { SyncedLyricsLine } from './SyncedLyricsPlayer';
 import { loadYouTubeIframeAPI } from '@/utils/youtubeLoader';
+import { buildLineTimeCache, getLineTime as getLineTimeUtil } from '@/utils/lyricsMappingUtils';
 
 interface LyricsTranslationViewerFullscreenProps {
   translation?: string;
@@ -18,6 +19,10 @@ interface LyricsTranslationViewerFullscreenProps {
   isPlaying?: boolean;
   songStartTime?: number | null;
   youtubeVideoId?: string | null;
+  onVolumeChange?: (volume: number) => void;
+  onMuteToggle?: () => void;
+  volume?: number;
+  isMuted?: boolean;
 }
 
 type YouTubePlayer = {
@@ -43,7 +48,11 @@ export default function LyricsTranslationViewerFullscreen({
   onPlayPause,
   isPlaying = false,
   songStartTime = null,
-  youtubeVideoId = null
+  youtubeVideoId = null,
+  onVolumeChange,
+  onMuteToggle,
+  volume = 100,
+  isMuted = false
 }: LyricsTranslationViewerFullscreenProps) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [backgroundOpacity, setBackgroundOpacity] = useState(0.3); // 0-1 range for overlay darkness
@@ -126,41 +135,6 @@ export default function LyricsTranslationViewerFullscreen({
     return pairs;
   };
 
-  const getLineTime = (pairIndex: number, pairs: Array<{ original: string; translation: string }>): number | null => {
-    if (syncedLyricsLines.length === 0) return null;
-    
-    const pair = pairs[pairIndex];
-    if (!pair || !pair.original.trim()) return null;
-    
-    const originalTrimmed = pair.original.trim();
-    let baseTime: number | null = null;
-    
-    if (pairIndex < syncedLyricsLines.length) {
-      const syncedLine = syncedLyricsLines[pairIndex];
-      const syncedText = syncedLine.text.trim();
-      
-      if (syncedText === originalTrimmed) {
-        baseTime = syncedLine.time;
-      }
-    }
-    
-    if (baseTime === null) {
-      const match = syncedLyricsLines.find(syncedLine => {
-        return syncedLine.text.trim() === originalTrimmed;
-      });
-      
-      if (match) {
-        baseTime = match.time;
-      } else if (pairIndex < syncedLyricsLines.length) {
-        baseTime = syncedLyricsLines[pairIndex].time;
-      }
-    }
-    
-    if (baseTime === null) return null;
-    
-    return baseTime;
-  };
-
   const pairs = parseTranslationPairs();
   const isSyncMode = currentTime > 0 && syncedLyricsLines.length > 0;
   
@@ -168,10 +142,22 @@ export default function LyricsTranslationViewerFullscreen({
     ? currentTime - songStartTime 
     : currentTime;
   
+  // Cache for line times to avoid recursive calls
+  const lineTimeCache = useRef<Map<number, number | null>>(new Map());
+  
+  // Build cache for all pairs using utility function
+  useEffect(() => {
+    lineTimeCache.current = buildLineTimeCache(pairs, syncedLyricsLines);
+  }, [pairs, syncedLyricsLines]);
+  
+  const getLineTime = (pairIndex: number): number | null => {
+    return getLineTimeUtil(pairIndex, lineTimeCache.current);
+  };
+  
   let activeIndex = -1;
   if (isSyncMode && pairs.length > 0) {
     for (let i = pairs.length - 1; i >= 0; i--) {
-      const lineTime = getLineTime(i, pairs);
+      const lineTime = getLineTime(i);
       if (lineTime !== null && adjustedCurrentTime >= lineTime) {
         activeIndex = i;
         break;
@@ -566,6 +552,47 @@ export default function LyricsTranslationViewerFullscreen({
               {formatTime(currentTime)} / {formatTime(songDuration)}
             </div>
           )}
+          {/* Volume Controls */}
+          {onVolumeChange && (
+            <div className="flex items-center gap-2 bg-black/40 rounded-lg px-3 py-1.5">
+              <button
+                onClick={onMuteToggle}
+                className="p-1 text-white hover:bg-white/20 rounded transition-colors flex-shrink-0"
+                aria-label={isMuted ? 'Unmute' : 'Mute'}
+              >
+                {isMuted || volume === 0 ? (
+                  <VolumeX className="h-4 w-4" />
+                ) : volume < 50 ? (
+                  <Volume1 className="h-4 w-4" />
+                ) : (
+                  <Volume2 className="h-4 w-4" />
+                )}
+              </button>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                step="1"
+                value={isMuted ? 0 : volume}
+                onChange={(e) => {
+                  const newVolume = parseInt(e.target.value);
+                  if (onVolumeChange) {
+                    onVolumeChange(newVolume);
+                  }
+                  if (newVolume === 0 && !isMuted && onMuteToggle) {
+                    onMuteToggle();
+                  } else if (newVolume > 0 && isMuted && onMuteToggle) {
+                    onMuteToggle();
+                  }
+                }}
+                className="w-20 sm:w-24 h-1 bg-white/20 rounded-lg appearance-none cursor-pointer accent-white/80"
+                style={{
+                  background: `linear-gradient(to right, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0.3) ${isMuted ? 0 : volume}%, rgba(255,255,255,0.1) ${isMuted ? 0 : volume}%, rgba(255,255,255,0.1) 100%)`
+                }}
+                aria-label="Volume control"
+              />
+            </div>
+          )}
           {/* Background Darkness Control - Hidden on mobile */}
           {youtubeVideoId && (
             <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-black/40 rounded-lg">
@@ -610,7 +637,7 @@ export default function LyricsTranslationViewerFullscreen({
       >
         <div className="max-w-4xl w-full mx-auto space-y-4 sm:space-y-8">
           {pairs.map((pair, index) => {
-            const lineTime = getLineTime(index, pairs);
+            const lineTime = getLineTime(index);
             const isActive = isSyncMode
               ? (lineTime !== null && adjustedCurrentTime >= lineTime)
               : true;
