@@ -35,11 +35,52 @@ class SongService {
             const sourceAPI = lyricsResult.rows[0].sourceapi;
             
             if (sourceAPI === 'youtube') {
-              // Fetch from YouTube transcript
               try {
+                const { getLanguageCodeByName, isValidLanguageCode } = require('../utils/languageUtils');
+                let transcriptLanguages = null;
+                
+                if (processingID && processingID !== 'undefined') {
+                  const processingQuery = `SELECT originallanguage FROM songaiprocessing WHERE processingid = $1 AND songid = $2 LIMIT 1`;
+                  const processingResult = await DatabaseService.query(processingQuery, [processingID, songID]);
+                  
+                  if (processingResult.rows && processingResult.rows.length > 0 && processingResult.rows[0].originallanguage) {
+                    const lang = processingResult.rows[0].originallanguage.trim();
+                    if (isValidLanguageCode(lang)) {
+                      transcriptLanguages = [lang.toLowerCase()];
+                    } else {
+                      const languageCode = getLanguageCodeByName(lang);
+                      if (languageCode) {
+                        transcriptLanguages = [languageCode];
+                      }
+                    }
+                  }
+                }
+                
+                if (!transcriptLanguages || transcriptLanguages.length === 0) {
+                  const fallbackQuery = `SELECT originallanguage FROM songaiprocessing WHERE songid = $1 AND originallanguage IS NOT NULL ORDER BY createdat DESC LIMIT 1`;
+                  const fallbackResult = await DatabaseService.query(fallbackQuery, [songID]);
+                  
+                  if (fallbackResult.rows && fallbackResult.rows.length > 0 && fallbackResult.rows[0].originallanguage) {
+                    const lang = fallbackResult.rows[0].originallanguage.trim();
+                    if (isValidLanguageCode(lang)) {
+                      transcriptLanguages = [lang.toLowerCase()];
+                    } else {
+                      const languageCode = getLanguageCodeByName(lang);
+                      if (languageCode) {
+                        transcriptLanguages = [languageCode];
+                      }
+                    }
+                  }
+                }
+                
+                if (!transcriptLanguages || transcriptLanguages.length === 0) {
+                  throw new Error('No originalLanguage found for this song');
+                }
+                
                 const transcript = await YouTubeService.getTranscript(externalID, {
                   format: 'raw',
-                  strategy: 'fallback'
+                  strategy: 'fallback',
+                  languages: transcriptLanguages
                 });
                 let transcriptSegments = [];
                 if (Array.isArray(transcript.transcript)) {
@@ -169,9 +210,29 @@ class SongService {
 
             if (!syncedLyrics && procRaw.youtubevideoid) {
               try {
+                const { getLanguageCodeByName, isValidLanguageCode } = require('../utils/languageUtils');
+                let transcriptLanguages = null;
+                
+                if (procRaw.originallanguage) {
+                  const lang = procRaw.originallanguage.trim();
+                  if (isValidLanguageCode(lang)) {
+                    transcriptLanguages = [lang.toLowerCase()];
+                  } else {
+                    const languageCode = getLanguageCodeByName(lang);
+                    if (languageCode) {
+                      transcriptLanguages = [languageCode];
+                    }
+                  }
+                }
+                
+                if (!transcriptLanguages || transcriptLanguages.length === 0) {
+                  throw new Error('No originalLanguage found for this processing');
+                }
+                
                 const transcript = await YouTubeService.getTranscript(procRaw.youtubevideoid, {
                   format: 'raw',
-                  strategy: 'fallback'
+                  strategy: 'fallback',
+                  languages: transcriptLanguages
                 });
                 let transcriptSegments = [];
                 if (Array.isArray(transcript.transcript)) {

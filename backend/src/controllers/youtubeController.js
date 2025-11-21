@@ -214,15 +214,38 @@ const startYoutubeAnalysis = async (req, res) => {
 
     const normalizedVideoId = videoId.trim();
 
+    const { getLanguageCodeByName, DEFAULT_TRANSCRIPT_LANGUAGE_CODE, isValidLanguageCode } = require('../utils/languageUtils');
+    let transcriptLanguages = null;
+    
+    if (translationConfig?.originalLanguage) {
+      const originalLang = translationConfig.originalLanguage.trim();
+      
+      if (isValidLanguageCode(originalLang)) {
+        transcriptLanguages = [originalLang.toLowerCase()];
+      } else {
+        const languageCode = getLanguageCodeByName(originalLang);
+        if (languageCode) {
+          transcriptLanguages = [languageCode];
+        }
+      }
+    }
+    
+    if (!transcriptLanguages || transcriptLanguages.length === 0) {
+      transcriptLanguages = [DEFAULT_TRANSCRIPT_LANGUAGE_CODE];
+    }
+
     logger.info('Starting YouTube analysis request', {
       videoId: normalizedVideoId,
       hasTranslate: actions.translate,
-      hasMood: actions.mood
+      hasMood: actions.mood,
+      transcriptLanguages,
+      originalLanguage: translationConfig?.originalLanguage
     });
 
     const transcriptResponse = await YouTubeService.getTranscript(normalizedVideoId, {
       format: 'raw',
-      strategy: 'fallback'
+      strategy: 'fallback',
+      languages: transcriptLanguages
     });
     const videoDetails = await YouTubeService.getVideoDetails(normalizedVideoId);
 

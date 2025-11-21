@@ -232,7 +232,7 @@ export default function SyncedLyricsPlayer({
 
     lines.forEach(line => {
       const trimmed = line.trim();
-      
+
       // Check for timestamp pattern [MM:SS:CC] or [MM:SS]
       const match = trimmed.match(/^\[(\d{2}):(\d{2})[:.](\d{2})\]\s*(.*)$/);
       if (match) {
@@ -324,19 +324,19 @@ export default function SyncedLyricsPlayer({
       await loadYouTubeIframeAPI();
       if (!isMounted || !playerContainerRef.current) return;
 
-      if (playerRef.current) {
-        stopSync();
-        playerRef.current.destroy();
-        playerRef.current = null;
-      }
+    if (playerRef.current) {
+      stopSync();
+      playerRef.current.destroy();
+      playerRef.current = null;
+    }
 
-      setVideoDuration(null);
-      setDurationMatch(null);
+    setVideoDuration(null);
+    setDurationMatch(null);
 
-      playerIdRef.current = `youtube-player-${videoId}-${Date.now()}`;
+    playerIdRef.current = `youtube-player-${videoId}-${Date.now()}`;
       playerContainerRef.current.id = playerIdRef.current;
 
-      const initializePlayer = () => {
+    const initializePlayer = () => {
         if (!playerIdRef.current) return;
 
         try {
@@ -345,45 +345,17 @@ export default function SyncedLyricsPlayer({
             events: {
               onReady: () => {
                 if (!playerRef.current) return;
-                setTimeout(() => {
+                  setTimeout(() => {
                   if (!playerRef.current) return;
-                  try {
-                    const duration = playerRef.current.getDuration();
-                    setVideoDuration(duration);
-
-                    if (songDuration) {
-                      const difference = Math.abs(duration - songDuration);
-                      const matches = difference <= 2;
-                      setDurationMatch(matches);
-
-                      if (matches) {
-                        toast.success(`✓ Duration matches! (${Math.round(duration)}s)`);
-                      } else {
-                        if (syncConfirmed) {
-                          toast.success(`✓ Sync confirmed as correct (Video: ${Math.round(duration)}s, Song: ${songDuration}s)`, {
-                            duration: 4000
-                          });
-                        } else {
-                          toast.error(`⚠ Duration mismatch: Video (${Math.round(duration)}s) vs Song (${songDuration}s)`);
-                        }
-                      }
-
-                      onDurationMatchChange?.(matches);
-                    } else {
-                      toast.success('Video player ready!');
-                    }
-                  } catch {
-                    setTimeout(() => {
-                      if (!playerRef.current) return;
                       try {
                         const duration = playerRef.current.getDuration();
                         setVideoDuration(duration);
-
+                        
                         if (songDuration) {
                           const difference = Math.abs(duration - songDuration);
                           const matches = difference <= 2;
                           setDurationMatch(matches);
-
+                          
                           if (matches) {
                             toast.success(`✓ Duration matches! (${Math.round(duration)}s)`);
                           } else {
@@ -395,15 +367,43 @@ export default function SyncedLyricsPlayer({
                               toast.error(`⚠ Duration mismatch: Video (${Math.round(duration)}s) vs Song (${songDuration}s)`);
                             }
                           }
-
-                          onDurationMatchChange?.(matches);
+                          
+                      onDurationMatchChange?.(matches);
+                        } else {
+                          toast.success('Video player ready!');
                         }
                       } catch {
-                        // Ignore
-                      }
-                    }, 1000);
-                  }
-                }, 500);
+                        setTimeout(() => {
+                      if (!playerRef.current) return;
+                            try {
+                              const duration = playerRef.current.getDuration();
+                              setVideoDuration(duration);
+                              
+                              if (songDuration) {
+                                const difference = Math.abs(duration - songDuration);
+                                const matches = difference <= 2;
+                                setDurationMatch(matches);
+                                
+                                if (matches) {
+                                  toast.success(`✓ Duration matches! (${Math.round(duration)}s)`);
+                                } else {
+                                  if (syncConfirmed) {
+                                    toast.success(`✓ Sync confirmed as correct (Video: ${Math.round(duration)}s, Song: ${songDuration}s)`, {
+                                      duration: 4000
+                                    });
+                                  } else {
+                                    toast.error(`⚠ Duration mismatch: Video (${Math.round(duration)}s) vs Song (${songDuration}s)`);
+                                  }
+                                }
+                                
+                          onDurationMatchChange?.(matches);
+                              }
+                            } catch {
+                              // Ignore
+                          }
+                        }, 1000);
+                    }
+                  }, 500);
               },
               onStateChange: (event: { data: number }) => {
                 const playing = event.data === 1;
@@ -423,11 +423,11 @@ export default function SyncedLyricsPlayer({
           });
         } catch {
           setTimeout(initializePlayer, 1000);
-        }
-      };
-
-      initializePlayer();
+      }
     };
+
+        initializePlayer();
+      };
 
     setupPlayer();
 
