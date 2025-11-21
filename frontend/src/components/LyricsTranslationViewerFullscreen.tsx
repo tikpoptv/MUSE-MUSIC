@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { X, Maximize2, Minimize2, Play, Pause, SkipBack, SkipForward } from 'lucide-react';
+import { X, Maximize2, Minimize2, Play, Pause, SkipBack, SkipForward, Sun, Moon } from 'lucide-react';
 import type { SyncedLyricsLine } from './SyncedLyricsPlayer';
+import { loadYouTubeIframeAPI } from '@/utils/youtubeLoader';
 
 interface LyricsTranslationViewerFullscreenProps {
   translation?: string;
@@ -16,7 +17,19 @@ interface LyricsTranslationViewerFullscreenProps {
   onPlayPause?: () => void;
   isPlaying?: boolean;
   songStartTime?: number | null;
+  youtubeVideoId?: string | null;
 }
+
+type YouTubePlayer = {
+  getCurrentTime: () => number;
+  getDuration: () => number;
+  playVideo: () => void;
+  pauseVideo: () => void;
+  seekTo: (seconds: number) => void;
+  mute?: () => void;
+  destroy: () => void;
+};
+
 
 export default function LyricsTranslationViewerFullscreen({
   translation,
@@ -29,12 +42,27 @@ export default function LyricsTranslationViewerFullscreen({
   onClose,
   onPlayPause,
   isPlaying = false,
-  songStartTime = null
+  songStartTime = null,
+  youtubeVideoId = null
 }: LyricsTranslationViewerFullscreenProps) {
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [backgroundOpacity, setBackgroundOpacity] = useState(0.3); // 0-1 range for overlay darkness
   const containerRef = useRef<HTMLDivElement>(null);
   const lyricsContainerRef = useRef<HTMLDivElement>(null);
   const lineRefs = useRef<Map<number, HTMLDivElement>>(new Map());
+  const videoContainerRef = useRef<HTMLDivElement>(null);
+  const fullscreenPlayerRef = useRef<YouTubePlayer | null>(null);
+  const [isFullscreenPlayerReady, setIsFullscreenPlayerReady] = useState(false);
+  const currentTimeRef = useRef(currentTime);
+  const isPlayingRef = useRef(isPlaying);
+
+  useEffect(() => {
+    currentTimeRef.current = currentTime;
+  }, [currentTime]);
+
+  useEffect(() => {
+    isPlayingRef.current = isPlaying;
+  }, [isPlaying]);
 
   // Handle fullscreen API
   useEffect(() => {
@@ -45,6 +73,7 @@ export default function LyricsTranslationViewerFullscreen({
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, []);
+
 
   const toggleFullscreen = async () => {
     if (!containerRef.current) return;
@@ -150,6 +179,24 @@ export default function LyricsTranslationViewerFullscreen({
     }
   }
 
+  // Calculate song progress based on currentTime and songDuration
+  const songProgress = songDuration && songDuration > 0 
+    ? (currentTime / songDuration) * 100 
+    : 0;
+
+  // Handle click on progress bar to seek
+  const handleProgressBarClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!songDuration || !onSeekToTime) return;
+    
+    const progressBar = e.currentTarget;
+    const rect = progressBar.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const percentage = clickX / rect.width;
+    const seekTime = percentage * songDuration;
+    
+    onSeekToTime(seekTime);
+  };
+
   useEffect(() => {
     if (isSyncMode && activeIndex >= 0 && lyricsContainerRef.current) {
       const container = lyricsContainerRef.current;
@@ -196,6 +243,176 @@ export default function LyricsTranslationViewerFullscreen({
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
+  // Create separate YouTube player for fullscreen (muted, synced with main player)
+  useEffect(() => {
+    if (!youtubeVideoId) return;
+    let isMounted = true;
+    const containerElement = videoContainerRef.current;
+
+    const setupPlayer = async () => {
+      await loadYouTubeIframeAPI();
+      if (!isMounted || !containerElement) return;
+
+      if (fullscreenPlayerRef.current) {
+        try {
+          fullscreenPlayerRef.current.destroy();
+        } catch {
+          // ignore
+        }
+        fullscreenPlayerRef.current = null;
+      }
+
+      const playerId = `youtube-fullscreen-${youtubeVideoId}-${Date.now()}`;
+      containerElement.id = playerId;
+
+      try {
+        fullscreenPlayerRef.current = new window.YT.Player(playerId, {
+          videoId: youtubeVideoId,
+          playerVars: {
+            enablejsapi: 1,
+            origin: window.location.origin,
+            autoplay: 0,
+            controls: 0,
+            loop: 0,
+            modestbranding: 1,
+            rel: 0,
+            showinfo: 0,
+            mute: 1,
+            playsinline: 1
+          } as Record<string, number | string>,
+          events: {
+            onReady: (event: { target: YouTubePlayer }) => {
+              fullscreenPlayerRef.current = event.target;
+              setIsFullscreenPlayerReady(true);
+
+              setTimeout(() => {
+                if (!fullscreenPlayerRef.current) return;
+                try {
+                  if (fullscreenPlayerRef.current.mute) {
+                    fullscreenPlayerRef.current.mute();
+                  }
+                  const initialTime = currentTimeRef.current;
+                  if (initialTime > 0 && typeof fullscreenPlayerRef.current.seekTo === 'function') {
+                    fullscreenPlayerRef.current.seekTo(initialTime);
+                  }
+                  if (isPlayingRef.current && typeof fullscreenPlayerRef.current.playVideo === 'function') {
+                    fullscreenPlayerRef.current.playVideo();
+                  }
+                } catch {
+                  // Ignore initialization errors
+                }
+              }, 300);
+            }
+          }
+        });
+      } catch {
+        setTimeout(setupPlayer, 200);
+      }
+    };
+
+    setupPlayer();
+
+    return () => {
+      isMounted = false;
+      if (fullscreenPlayerRef.current) {
+        try {
+          fullscreenPlayerRef.current.destroy();
+        } catch {
+          // Ignore
+        }
+        fullscreenPlayerRef.current = null;
+      }
+      if (containerElement) {
+        containerElement.id = '';
+      }
+      setIsFullscreenPlayerReady(false);
+    };
+  }, [youtubeVideoId]);
+
+  // Sync fullscreen player with main player's currentTime
+  useEffect(() => {
+    if (!youtubeVideoId || !fullscreenPlayerRef.current || !isFullscreenPlayerReady) return;
+
+    const syncTime = () => {
+      if (!fullscreenPlayerRef.current) return;
+
+      try {
+        if (typeof fullscreenPlayerRef.current.getCurrentTime !== 'function' ||
+            typeof fullscreenPlayerRef.current.seekTo !== 'function') {
+          return;
+        }
+
+        const playerTime = fullscreenPlayerRef.current.getCurrentTime();
+        if (Math.abs(playerTime - currentTimeRef.current) > 0.5) {
+          fullscreenPlayerRef.current.seekTo(currentTimeRef.current);
+        }
+      } catch {
+        // Ignore
+      }
+    };
+
+    if (!isPlayingRef.current) {
+      // Align once when paused to avoid looping
+      syncTime();
+      return;
+    }
+
+    syncTime();
+    const intervalId = setInterval(syncTime, 500);
+    return () => clearInterval(intervalId);
+  }, [youtubeVideoId, isFullscreenPlayerReady, isPlaying]);
+
+  // Sync fullscreen player with main player's isPlaying
+  useEffect(() => {
+    if (!youtubeVideoId || !fullscreenPlayerRef.current || !isFullscreenPlayerReady) return;
+
+    const syncPlayState = () => {
+      if (!fullscreenPlayerRef.current) return;
+
+      try {
+        if (isPlayingRef.current) {
+          if (typeof fullscreenPlayerRef.current.playVideo === 'function') {
+            fullscreenPlayerRef.current.playVideo();
+          }
+        } else {
+          if (typeof fullscreenPlayerRef.current.pauseVideo === 'function') {
+            fullscreenPlayerRef.current.pauseVideo();
+          }
+        }
+        if (fullscreenPlayerRef.current.mute && typeof fullscreenPlayerRef.current.mute === 'function') {
+          fullscreenPlayerRef.current.mute();
+        }
+      } catch {
+        // Ignore
+      }
+    };
+
+    syncPlayState();
+  }, [youtubeVideoId, isFullscreenPlayerReady, isPlaying]);
+
+  // When fullscreen player becomes ready, immediately sync with main player state
+  useEffect(() => {
+    if (!isFullscreenPlayerReady || !fullscreenPlayerRef.current) return;
+
+    try {
+      if (fullscreenPlayerRef.current.mute && typeof fullscreenPlayerRef.current.mute === 'function') {
+        fullscreenPlayerRef.current.mute();
+      }
+
+      if (typeof fullscreenPlayerRef.current.seekTo === 'function') {
+        fullscreenPlayerRef.current.seekTo(currentTimeRef.current);
+      }
+
+      if (isPlayingRef.current && typeof fullscreenPlayerRef.current.playVideo === 'function') {
+        fullscreenPlayerRef.current.playVideo();
+      } else if (!isPlayingRef.current && typeof fullscreenPlayerRef.current.pauseVideo === 'function') {
+        fullscreenPlayerRef.current.pauseVideo();
+      }
+    } catch {
+      // Ignore errors
+    }
+  }, [isFullscreenPlayerReady]);
+
   useEffect(() => {
     const style = document.createElement('style');
     style.textContent = `
@@ -212,6 +429,31 @@ export default function LyricsTranslationViewerFullscreen({
         background-size: 400% 400%;
         animation: gradientShift 15s ease infinite;
       }
+      .youtube-background {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 0;
+        pointer-events: none;
+        overflow: hidden;
+      }
+      .youtube-background iframe {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 100vw;
+        height: 56.25vw;
+        min-height: 100vh;
+        min-width: 177.77vh;
+        transform: translate(-50%, -50%);
+        object-fit: cover;
+      }
+      .fullscreen-content {
+        position: relative;
+        z-index: 1;
+      }
     `;
     document.head.appendChild(style);
     return () => {
@@ -219,19 +461,50 @@ export default function LyricsTranslationViewerFullscreen({
     };
   }, []);
 
+  if (!translation) return null;
+
   return (
     <div
       ref={containerRef}
-      className="fixed inset-0 z-50 flex flex-col overflow-hidden fullscreen-gradient"
-      style={{ display: 'flex' }}
+      className={`fixed inset-0 z-[9999] flex flex-col overflow-hidden ${youtubeVideoId ? 'bg-black' : 'fullscreen-gradient'}`}
+      style={{ 
+        display: 'flex', 
+        position: 'fixed', 
+        top: 0, 
+        left: 0, 
+        right: 0, 
+        bottom: 0,
+        width: '100vw',
+        height: '100vh'
+      }}
     >
+      {youtubeVideoId && (
+        <>
+          <div
+            ref={videoContainerRef}
+            className="youtube-background"
+            style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 0 }}
+          />
+          {/* Background Overlay for darkness control */}
+          <div
+            className="absolute inset-0 bg-black transition-opacity duration-200"
+            style={{
+              zIndex: 0.5,
+              opacity: backgroundOpacity,
+              pointerEvents: 'none'
+            }}
+          />
+        </>
+      )}
+      <div className="fullscreen-content flex flex-col flex-1" style={{ position: 'relative', zIndex: 1, width: '100%', height: '100%' }}>
       <div 
-        className="flex items-center justify-between px-8 py-4 bg-black/20 backdrop-blur-sm"
+        className="flex flex-col bg-black/60 backdrop-blur-md"
         style={{
-          backdropFilter: 'blur(10px)',
-          boxShadow: '0 2px 10px rgba(0, 0, 0, 0.2)'
+          backdropFilter: 'blur(12px)',
+          boxShadow: '0 2px 10px rgba(0, 0, 0, 0.4)'
         }}
       >
+        <div className="flex items-center justify-between px-8 py-4">
         <div className="flex items-center gap-4">
           <button
             onClick={onClose}
@@ -255,6 +528,26 @@ export default function LyricsTranslationViewerFullscreen({
               {formatTime(currentTime)} / {formatTime(songDuration)}
             </div>
           )}
+          {/* Background Darkness Control */}
+          {youtubeVideoId && (
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-black/40 rounded-lg">
+              <Sun className="h-4 w-4 text-white/80" />
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.1"
+                value={backgroundOpacity}
+                onChange={(e) => setBackgroundOpacity(parseFloat(e.target.value))}
+                className="w-20 h-1 bg-white/20 rounded-lg appearance-none cursor-pointer accent-white/80"
+                style={{
+                  background: `linear-gradient(to right, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0.3) ${backgroundOpacity * 100}%, rgba(255,255,255,0.1) ${backgroundOpacity * 100}%, rgba(255,255,255,0.1) 100%)`
+                }}
+                aria-label="Adjust background darkness"
+              />
+              <Moon className="h-4 w-4 text-white/80" />
+            </div>
+          )}
           <button
             onClick={toggleFullscreen}
             className="p-2 hover:bg-white/20 rounded-lg transition-all duration-300 hover:scale-110 active:scale-95"
@@ -266,6 +559,7 @@ export default function LyricsTranslationViewerFullscreen({
               <Maximize2 className="h-6 w-6 text-white" />
             )}
           </button>
+        </div>
         </div>
       </div>
 
@@ -363,52 +657,74 @@ export default function LyricsTranslationViewerFullscreen({
         </div>
       </div>
 
-      {onPlayPause && (
-        <div className="bg-black/30 backdrop-blur-sm px-8 py-6">
-          <div className="max-w-4xl mx-auto flex items-center justify-center gap-6">
-            <button
-              onClick={handleSeekBack}
-              className="p-3 hover:bg-white/20 rounded-full transition-all duration-300 hover:scale-110 active:scale-95"
-              aria-label="Seek back 5 seconds"
-              style={{
-                backdropFilter: 'blur(10px)',
-                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)'
-              }}
+        {onPlayPause && (
+          <div className="flex flex-col bg-black/60 backdrop-blur-md">
+            {/* Song Progress Bar - อยู่ด้านบนของ control bar */}
+            <div 
+              className="w-full h-1.5 bg-black/50 relative cursor-pointer group"
+              onClick={handleProgressBarClick}
             >
-              <SkipBack className="h-6 w-6 text-white" />
-            </button>
-            <button
-              onClick={onPlayPause}
-              className="p-4 bg-white/20 hover:bg-white/30 rounded-full transition-all duration-300 hover:scale-110 active:scale-95"
-              aria-label={isPlaying ? 'Pause' : 'Play'}
-              style={{
-                backdropFilter: 'blur(10px)',
-                boxShadow: isPlaying 
-                  ? '0 0 20px rgba(255, 255, 255, 0.4), 0 4px 12px rgba(0, 0, 0, 0.3)'
-                  : '0 4px 12px rgba(0, 0, 0, 0.2)',
-                animation: isPlaying ? 'pulse 2s ease-in-out infinite' : 'none'
-              }}
-            >
-              {isPlaying ? (
-                <Pause className="h-8 w-8 text-white" />
-              ) : (
-                <Play className="h-8 w-8 text-white" />
-              )}
-            </button>
-            <button
-              onClick={handleSeekForward}
-              className="p-3 hover:bg-white/20 rounded-full transition-all duration-300 hover:scale-110 active:scale-95"
-              aria-label="Seek forward 5 seconds"
-              style={{
-                backdropFilter: 'blur(10px)',
-                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)'
-              }}
-            >
-              <SkipForward className="h-6 w-6 text-white" />
-            </button>
+              <div 
+                className="h-full bg-white/80 transition-all duration-150 ease-out"
+                style={{
+                  width: `${Math.max(0, Math.min(100, songProgress))}%`
+                }}
+              />
+              {/* Hover indicator */}
+              <div 
+                className="absolute top-0 left-0 h-full bg-white/40 opacity-0 group-hover:opacity-100 transition-opacity"
+                style={{
+                  width: `${Math.max(0, Math.min(100, songProgress))}%`
+                }}
+              />
+            </div>
+            <div className="px-8 py-6">
+              <div className="max-w-4xl mx-auto flex items-center justify-center gap-6">
+                <button
+                  onClick={handleSeekBack}
+                  className="p-3 hover:bg-white/20 rounded-full transition-all duration-300 hover:scale-110 active:scale-95"
+                  aria-label="Seek back 5 seconds"
+                  style={{
+                    backdropFilter: 'blur(10px)',
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)'
+                  }}
+                >
+                  <SkipBack className="h-6 w-6 text-white" />
+                </button>
+                <button
+                  onClick={onPlayPause}
+                  className="p-4 bg-white/20 hover:bg-white/30 rounded-full transition-all duration-300 hover:scale-110 active:scale-95"
+                  aria-label={isPlaying ? 'Pause' : 'Play'}
+                  style={{
+                    backdropFilter: 'blur(10px)',
+                    boxShadow: isPlaying 
+                      ? '0 0 20px rgba(255, 255, 255, 0.4), 0 4px 12px rgba(0, 0, 0, 0.3)'
+                      : '0 4px 12px rgba(0, 0, 0, 0.2)',
+                    animation: isPlaying ? 'pulse 2s ease-in-out infinite' : 'none'
+                  }}
+                >
+                  {isPlaying ? (
+                    <Pause className="h-8 w-8 text-white" />
+                  ) : (
+                    <Play className="h-8 w-8 text-white" />
+                  )}
+                </button>
+                <button
+                  onClick={handleSeekForward}
+                  className="p-3 hover:bg-white/20 rounded-full transition-all duration-300 hover:scale-110 active:scale-95"
+                  aria-label="Seek forward 5 seconds"
+                  style={{
+                    backdropFilter: 'blur(10px)',
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)'
+                  }}
+                >
+                  <SkipForward className="h-6 w-6 text-white" />
+                </button>
+              </div>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

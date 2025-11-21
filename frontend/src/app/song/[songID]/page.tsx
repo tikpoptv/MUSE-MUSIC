@@ -425,15 +425,15 @@ export default function SongDetailPage() {
           languageCode = codeFromName;
         } else {
           // Check if it's already a code
-          const langLower = originalLang.toLowerCase();
-          if (languageCodeToName[langLower]) {
-            languageCode = langLower;
-          } else {
+        const langLower = originalLang.toLowerCase();
+        if (languageCodeToName[langLower]) {
+          languageCode = langLower;
+        } else {
             // Try to find by matching name
-            const matchedKey = Object.keys(languageCodeToName).find(key => 
-              languageCodeToName[key] === originalLang || key.toLowerCase() === langLower
-            );
-            languageCode = matchedKey || null;
+          const matchedKey = Object.keys(languageCodeToName).find(key => 
+            languageCodeToName[key] === originalLang || key.toLowerCase() === langLower
+          );
+          languageCode = matchedKey || null;
           }
         }
 
@@ -1378,6 +1378,7 @@ export default function SongDetailPage() {
                 syncConfirmed={processingData?.syncConfirmed || false}
                 songStartTime={processingData?.songStartTime || null}
                 onSave={handleSaveTranslation}
+                youtubeVideoId={processingData?.youtubeVideoId || null}
               />
             </div>
 

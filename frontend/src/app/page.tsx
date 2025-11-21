@@ -632,15 +632,15 @@ export default function Home() {
                     </option>
                   ))}
                 </select>
-                <button
-                  type="button"
-                  onClick={handleFetchYouTubeTranscript}
-                  disabled={fetchingYouTubeTranscript}
+              <button
+                type="button"
+                onClick={handleFetchYouTubeTranscript}
+                disabled={fetchingYouTubeTranscript}
                   className="flex items-center gap-1 rounded-lg bg-red-500/90 px-2 md:px-3 py-1 text-xs font-medium text-white transition hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-                >
+              >
                   <YoutubeIcon className="h-3 md:h-3.5 w-3 md:w-3.5" />
                   <span className="hidden md:inline">{fetchingYouTubeTranscript ? 'Fetching...' : 'Fetch YouTube'}</span>
-                </button>
+              </button>
               </div>
             )}
             {!youtubeVideoId && <Search className="h-4 w-4 text-gray-400 flex-shrink-0 ml-1 md:ml-2" />}

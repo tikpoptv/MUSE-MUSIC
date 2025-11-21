@@ -30,6 +30,7 @@ interface LyricsTranslationViewerProps {
   isPlaying?: boolean; // Whether video is currently playing
   syncConfirmed?: boolean; // Whether sync is confirmed as correct
   songStartTime?: number | null; // Time offset in seconds where the song actually starts
+  youtubeVideoId?: string | null; // YouTube video ID for background video
 }
 
 export default function LyricsTranslationViewer({
@@ -53,7 +54,8 @@ export default function LyricsTranslationViewer({
   onPlayPause,
   isPlaying = false,
   syncConfirmed = false,
-  songStartTime = null
+  songStartTime = null,
+  youtubeVideoId = null
 }: LyricsTranslationViewerProps) {
   const [selectedLanguage, setSelectedLanguage] = useState<string>(targetLanguage || defaultLanguage);
   const [isShaking, setIsShaking] = useState(false);
@@ -480,6 +482,7 @@ export default function LyricsTranslationViewer({
           onPlayPause={onPlayPause}
           isPlaying={isPlaying}
           songStartTime={songStartTime}
+          youtubeVideoId={youtubeVideoId}
         />
       )}
     </div>
