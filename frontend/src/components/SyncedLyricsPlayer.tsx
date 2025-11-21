@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 import { songService } from '@/services/songService';
 import { youtubeService } from '@/services/youtubeService';
 import type { YouTubeVideo } from '@/types/youtube';
+import { loadYouTubeIframeAPI } from '@/utils/youtubeLoader';
 
 export interface SyncedLyricsLine {
   time: number; // in seconds
@@ -24,6 +25,13 @@ interface SyncedLyricsPlayerProps {
   onDurationMatchChange?: (matches: boolean | null) => void;
   onIsPlayingChange?: (isPlaying: boolean) => void;
   onPlayPauseRequest?: (api: { playPause: () => void }) => void;
+  onVolumeRequest?: (api: { 
+    setVolume: (volume: number) => void;
+    getVolume: () => number;
+    mute: () => void;
+    unmute: () => void;
+    isMuted: () => boolean;
+  }) => void;
   seekToTime?: number;
   readonly?: boolean;
   initialSyncConfirmed?: boolean;
@@ -72,6 +80,7 @@ export default function SyncedLyricsPlayer({
   onDurationMatchChange,
   onIsPlayingChange,
   onPlayPauseRequest,
+  onVolumeRequest,
   seekToTime,
   readonly = false,
   initialSyncConfirmed = false,
@@ -218,28 +227,59 @@ export default function SyncedLyricsPlayer({
 
     const lines = syncedLyrics.split('\n');
     const parsed: SyncedLyricsLine[] = [];
+    let currentTime: number | null = null;
+    let currentText: string[] = [];
 
     lines.forEach(line => {
       const trimmed = line.trim();
-      if (!trimmed) return;
-
-      const match = trimmed.match(/^\[(\d{2}):(\d{2})[:.](\d{2})\]\s*(.+)$/);
+      
+      // Check for timestamp pattern [MM:SS:CC] or [MM:SS]
+      const match = trimmed.match(/^\[(\d{2}):(\d{2})[:.](\d{2})\]\s*(.*)$/);
       if (match) {
+        // Save previous entry if exists
+        if (currentTime !== null && currentText.length > 0) {
+          parsed.push({ 
+            time: currentTime, 
+            text: currentText.join(' ').trim() 
+          });
+        }
+        
+        // Start new entry
         const minutes = parseInt(match[1], 10);
         const seconds = parseInt(match[2], 10);
         const centiseconds = parseInt(match[3], 10);
-        const time = minutes * 60 + seconds + centiseconds / 100;
-        parsed.push({ time, text: match[4] });
+        currentTime = minutes * 60 + seconds + centiseconds / 100;
+        currentText = match[4] ? [match[4]] : [];
       } else {
-        const match2 = trimmed.match(/^\[(\d{2}):(\d{2})\]\s*(.+)$/);
+        const match2 = trimmed.match(/^\[(\d{2}):(\d{2})\]\s*(.*)$/);
         if (match2) {
+          // Save previous entry if exists
+          if (currentTime !== null && currentText.length > 0) {
+            parsed.push({ 
+              time: currentTime, 
+              text: currentText.join(' ').trim() 
+            });
+          }
+          
+          // Start new entry
           const minutes = parseInt(match2[1], 10);
           const seconds = parseInt(match2[2], 10);
-          const time = minutes * 60 + seconds;
-          parsed.push({ time, text: match2[3] });
+          currentTime = minutes * 60 + seconds;
+          currentText = match2[3] ? [match2[3]] : [];
+        } else if (trimmed && currentTime !== null) {
+          // If line has content but no timestamp, append to current text
+          currentText.push(trimmed);
         }
       }
     });
+
+    // Save last entry if exists
+    if (currentTime !== null && currentText.length > 0) {
+      parsed.push({ 
+        time: currentTime, 
+        text: currentText.join(' ').trim() 
+      });
+    }
 
     const sorted = parsed.sort((a, b) => a.time - b.time);
     if (onSyncedLyricsParsed) {
@@ -248,12 +288,7 @@ export default function SyncedLyricsPlayer({
   }, [syncedLyrics, onSyncedLyricsParsed]);
 
   useEffect(() => {
-    if (!window.YT) {
-      const tag = document.createElement('script');
-      tag.src = 'https://www.youtube.com/iframe_api';
-      const firstScriptTag = document.getElementsByTagName('script')[0];
-      firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
-    }
+    loadYouTubeIframeAPI();
   }, []);
 
   const startSync = useCallback(() => {
@@ -283,40 +318,72 @@ export default function SyncedLyricsPlayer({
 
   useEffect(() => {
     if (!videoId || !playerContainerRef.current) return;
+    let isMounted = true;
 
-    if (playerRef.current) {
-      stopSync();
-      playerRef.current.destroy();
-      playerRef.current = null;
-    }
+    const setupPlayer = async () => {
+      await loadYouTubeIframeAPI();
+      if (!isMounted || !playerContainerRef.current) return;
 
-    setVideoDuration(null);
-    setDurationMatch(null);
+      if (playerRef.current) {
+        stopSync();
+        playerRef.current.destroy();
+        playerRef.current = null;
+      }
 
-    playerIdRef.current = `youtube-player-${videoId}-${Date.now()}`;
-    if (playerContainerRef.current) {
+      setVideoDuration(null);
+      setDurationMatch(null);
+
+      playerIdRef.current = `youtube-player-${videoId}-${Date.now()}`;
       playerContainerRef.current.id = playerIdRef.current;
-    }
 
-    const initializePlayer = () => {
-      if (window.YT && window.YT.Player && playerIdRef.current) {
+      const initializePlayer = () => {
+        if (!playerIdRef.current) return;
+
         try {
           playerRef.current = new window.YT.Player(playerIdRef.current, {
-            videoId: videoId,
+            videoId,
             events: {
               onReady: () => {
-                if (playerRef.current) {
-                  setTimeout(() => {
-                    if (playerRef.current) {
+                if (!playerRef.current) return;
+                setTimeout(() => {
+                  if (!playerRef.current) return;
+                  try {
+                    const duration = playerRef.current.getDuration();
+                    setVideoDuration(duration);
+
+                    if (songDuration) {
+                      const difference = Math.abs(duration - songDuration);
+                      const matches = difference <= 2;
+                      setDurationMatch(matches);
+
+                      if (matches) {
+                        toast.success(`✓ Duration matches! (${Math.round(duration)}s)`);
+                      } else {
+                        if (syncConfirmed) {
+                          toast.success(`✓ Sync confirmed as correct (Video: ${Math.round(duration)}s, Song: ${songDuration}s)`, {
+                            duration: 4000
+                          });
+                        } else {
+                          toast.error(`⚠ Duration mismatch: Video (${Math.round(duration)}s) vs Song (${songDuration}s)`);
+                        }
+                      }
+
+                      onDurationMatchChange?.(matches);
+                    } else {
+                      toast.success('Video player ready!');
+                    }
+                  } catch {
+                    setTimeout(() => {
+                      if (!playerRef.current) return;
                       try {
                         const duration = playerRef.current.getDuration();
                         setVideoDuration(duration);
-                        
+
                         if (songDuration) {
                           const difference = Math.abs(duration - songDuration);
                           const matches = difference <= 2;
                           setDurationMatch(matches);
-                          
+
                           if (matches) {
                             toast.success(`✓ Duration matches! (${Math.round(duration)}s)`);
                           } else {
@@ -328,57 +395,20 @@ export default function SyncedLyricsPlayer({
                               toast.error(`⚠ Duration mismatch: Video (${Math.round(duration)}s) vs Song (${songDuration}s)`);
                             }
                           }
-                          
-                          if (onDurationMatchChange) {
-                            onDurationMatchChange(matches);
-                          }
-                        } else {
-                          toast.success('Video player ready!');
+
+                          onDurationMatchChange?.(matches);
                         }
                       } catch {
-                        setTimeout(() => {
-                          if (playerRef.current) {
-                            try {
-                              const duration = playerRef.current.getDuration();
-                              setVideoDuration(duration);
-                              
-                              if (songDuration) {
-                                const difference = Math.abs(duration - songDuration);
-                                const matches = difference <= 2;
-                                setDurationMatch(matches);
-                                
-                                if (matches) {
-                                  toast.success(`✓ Duration matches! (${Math.round(duration)}s)`);
-                                } else {
-                                  if (syncConfirmed) {
-                                    toast.success(`✓ Sync confirmed as correct (Video: ${Math.round(duration)}s, Song: ${songDuration}s)`, {
-                                      duration: 4000
-                                    });
-                                  } else {
-                                    toast.error(`⚠ Duration mismatch: Video (${Math.round(duration)}s) vs Song (${songDuration}s)`);
-                                  }
-                                }
-                                
-                                if (onDurationMatchChange) {
-                                  onDurationMatchChange(matches);
-                                }
-                              }
-                            } catch {
-                              // Ignore
-                            }
-                          }
-                        }, 1000);
+                        // Ignore
                       }
-                    }
-                  }, 500);
-                }
+                    }, 1000);
+                  }
+                }, 500);
               },
               onStateChange: (event: { data: number }) => {
                 const playing = event.data === 1;
                 setIsPlaying(playing);
-                if (onIsPlayingChange) {
-                  onIsPlayingChange(playing);
-                }
+                onIsPlayingChange?.(playing);
                 if (playing) {
                   startSync();
                 } else {
@@ -394,20 +424,15 @@ export default function SyncedLyricsPlayer({
         } catch {
           setTimeout(initializePlayer, 1000);
         }
-      } else {
-        setTimeout(initializePlayer, 500);
-      }
+      };
+
+      initializePlayer();
     };
 
-    if (window.YT && window.YT.Player) {
-      initializePlayer();
-    } else {
-      window.onYouTubeIframeAPIReady = () => {
-        initializePlayer();
-      };
-    }
+    setupPlayer();
 
     return () => {
+      isMounted = false;
       stopSync();
       if (playerRef.current) {
         playerRef.current.destroy();
@@ -450,6 +475,51 @@ export default function SyncedLyricsPlayer({
       onPlayPauseRequest(api);
     }
   }, [handlePlayPause, onPlayPauseRequest]);
+
+  useEffect(() => {
+    if (onVolumeRequest && playerRef.current) {
+      // Expose volume control functions to parent
+      const api = {
+        setVolume: (vol: number) => {
+          const player = playerRef.current as YouTubePlayer & {
+            setVolume?: (volume: number) => void;
+          };
+          if (player?.setVolume) {
+            player.setVolume(Math.max(0, Math.min(100, vol)));
+          }
+        },
+        getVolume: () => {
+          const player = playerRef.current as YouTubePlayer & {
+            getVolume?: () => number;
+          };
+          return player?.getVolume?.() ?? 100;
+        },
+        mute: () => {
+          const player = playerRef.current as YouTubePlayer & {
+            mute?: () => void;
+          };
+          if (player?.mute) {
+            player.mute();
+          }
+        },
+        unmute: () => {
+          const player = playerRef.current as YouTubePlayer & {
+            unMute?: () => void;
+          };
+          if (player?.unMute) {
+            player.unMute();
+          }
+        },
+        isMuted: () => {
+          const player = playerRef.current as YouTubePlayer & {
+            isMuted?: () => boolean;
+          };
+          return player?.isMuted?.() ?? false;
+        }
+      };
+      onVolumeRequest(api);
+    }
+  }, [onVolumeRequest]);
 
   return (
     <div className="w-full space-y-4">

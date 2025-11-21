@@ -5,7 +5,9 @@ const { logger } = require('../middleware/logger');
 const getForYouContent = async (req, res) => {
   try {
     const userID = req.user.userID;
-    const content = await ForYouService.getForYouContent(userID);
+    const limit = parseInt(req.query.limit) || 100;
+    const offset = parseInt(req.query.offset) || 0;
+    const content = await ForYouService.getForYouContent(userID, limit, offset);
 
     return res.status(200).json(
       successResponse('For You content retrieved successfully', content, 200)
@@ -21,15 +23,16 @@ const getForYouContent = async (req, res) => {
 const getYourMood = async (req, res) => {
   try {
     const userID = req.user.userID;
-    const limit = parseInt(req.query.limit) || 20;
+    const limit = parseInt(req.query.limit) || 100;
+    const offset = parseInt(req.query.offset) || 0;
 
-    if (limit < 1 || limit > 100) {
+    if (limit < 1 || limit > 200) {
       return res.status(400).json(
-        errorResponse('limit must be between 1 and 100', 400)
+        errorResponse('limit must be between 1 and 200', 400)
       );
     }
 
-    const songs = await ForYouService.getYourMood(userID, limit);
+    const songs = await ForYouService.getYourMood(userID, limit, offset);
 
     return res.status(200).json(
       successResponse('Your Mood songs retrieved successfully', { songs }, 200)

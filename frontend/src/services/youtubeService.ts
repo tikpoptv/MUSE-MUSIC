@@ -111,7 +111,7 @@ export const youtubeService = {
     if (!backendResponse.data) {
       throw new Error('Missing analysis data');
     }
-
+    
     return backendResponse.data;
   }
 };

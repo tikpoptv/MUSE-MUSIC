@@ -3,48 +3,7 @@ const lyricsService = require('./lyricsService');
 const YouTubeService = require('./youtubeService');
 const { transcriptToLRC } = require('../utils/youtubeTranscriptUtils');
 const { logger } = require('../middleware/logger');
-
-const LANGUAGE_CODE_TO_NAME = {
-  en: 'English',
-  th: 'Thai',
-  lo: 'Lao',
-  ko: 'Korean',
-  ja: 'Japanese',
-  zh: 'Chinese',
-  es: 'Spanish',
-  fr: 'French',
-  de: 'German',
-  it: 'Italian',
-  pt: 'Portuguese',
-  ru: 'Russian',
-  vi: 'Vietnamese',
-  id: 'Indonesian',
-  ms: 'Malay',
-  hi: 'Hindi'
-};
-
-const normalizeLanguageInput = (language) => {
-  if (!language || typeof language !== 'string') {
-    return null;
-  }
-
-  const trimmed = language.trim();
-  if (!trimmed) {
-    return null;
-  }
-
-  const lower = trimmed.toLowerCase();
-
-  if (LANGUAGE_CODE_TO_NAME[lower]) {
-    return LANGUAGE_CODE_TO_NAME[lower];
-  }
-
-  const matchedName = Object.values(LANGUAGE_CODE_TO_NAME).find(
-    (name) => name.toLowerCase() === lower
-  );
-
-  return matchedName || trimmed;
-};
+const { normalizeLanguageInput } = require('../utils/languageUtils');
 
 class SongService {
   static async getSongDetail(songID, processingID = null) {
@@ -101,7 +60,7 @@ class SongService {
               }
             } else if (sourceAPI === 'lrclib') {
               // Fetch from LRCLIB API
-              const fetched = await lyricsService.getById(externalID);
+            const fetched = await lyricsService.getById(externalID);
               lyrics = lyrics || fetched?.plainLyrics || null;
               syncedLyrics = syncedLyrics || fetched?.syncedLyrics || null;
               logger.info(`Fetched lyrics and syncedLyrics from LRCLIB API for song ${songID}`);

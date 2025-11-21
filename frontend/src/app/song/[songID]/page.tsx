@@ -27,24 +27,7 @@ import NavigateAwayConfirmModal from '@/components/modals/NavigateAwayConfirmMod
 import SocialShareModal from '@/components/SocialShareModal';
 import ApproveRejectModal from '@/components/modals/ApproveRejectModal';
 import toast from 'react-hot-toast';
-
-const languageNameToCode: Record<string, string> = {
-  'Thai': 'th',
-  'English': 'en',
-  'Japanese': 'ja',
-  'Korean': 'ko'
-};
-
-const languageCodeToName: Record<string, string> = {
-  'th': 'Thai',
-  'en': 'English',
-  'ja': 'Japanese',
-  'ko': 'Korean',
-  'English': 'English',
-  'Thai': 'Thai',
-  'Japanese': 'Japanese',
-  'Korean': 'Korean'
-};
+import { languageNameToCode, languageCodeToName, DEFAULT_TARGET_LANGUAGE, getLanguageNames, getLanguageCodeByName, getLanguageNameByCode } from '@/utils/languageUtils';
 
 export default function SongDetailPage() {
   const params = useParams();
@@ -82,10 +65,19 @@ export default function SongDetailPage() {
   const [durationMatch, setDurationMatch] = useState<boolean | null>(null);
   const [seekToTime, setSeekToTime] = useState<number | undefined>(undefined);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [volume, setVolume] = useState(100);
+  const [isMuted, setIsMuted] = useState(false);
   const playerPlayPauseRef = useRef<(() => void) | null>(null);
+  const playerVolumeRef = useRef<{
+    setVolume: (volume: number) => void;
+    getVolume: () => number;
+    mute: () => void;
+    unmute: () => void;
+    isMuted: () => boolean;
+  } | null>(null);
   const [isReAnalyzeModalOpen, setIsReAnalyzeModalOpen] = useState(false);
   const [isReAnalyzing, setIsReAnalyzing] = useState(false);
-  const [selectedLanguage, setSelectedLanguage] = useState<string>('Thai');
+  const [selectedLanguage, setSelectedLanguage] = useState<string>(DEFAULT_TARGET_LANGUAGE);
   const [isNavigateAwayModalOpen, setIsNavigateAwayModalOpen] = useState(false);
   const [pendingLanguageChange, setPendingLanguageChange] = useState<string | null>(null);
   const [pendingProcessingID, setPendingProcessingID] = useState<string | null>(null);
@@ -436,16 +428,22 @@ export default function SongDetailPage() {
         const originalLang = processingData.originalLanguage;
         let languageCode: string | null = null;
 
+        // Try to get language code from name
+        const codeFromName = getLanguageCodeByName(originalLang);
+        if (codeFromName && codeFromName !== originalLang.toLowerCase().substring(0, 2)) {
+          languageCode = codeFromName;
+        } else {
+          // Check if it's already a code
         const langLower = originalLang.toLowerCase();
         if (languageCodeToName[langLower]) {
           languageCode = langLower;
-        } else if (languageCodeToName[originalLang]) {
-          languageCode = originalLang;
         } else {
+            // Try to find by matching name
           const matchedKey = Object.keys(languageCodeToName).find(key => 
             languageCodeToName[key] === originalLang || key.toLowerCase() === langLower
           );
           languageCode = matchedKey || null;
+          }
         }
 
         if (languageCode) {
@@ -516,7 +514,7 @@ export default function SongDetailPage() {
   const handleLanguageChange = async (language: string) => {
     if (!songID || songID === 'undefined') return;
     
-    const languageCode = languageNameToCode[language];
+    const languageCode = getLanguageCodeByName(language) || languageNameToCode[language];
     if (!languageCode) {
       toast.error('Invalid language selected');
       return;
@@ -607,10 +605,10 @@ export default function SongDetailPage() {
     const rawTarget = pendingLanguageChange 
       ? pendingLanguageChange 
       : processingData.targetLanguage || selectedLanguage;
-    const targetLanguage = languageCodeToName[rawTarget as keyof typeof languageCodeToName] || rawTarget;
+    const targetLanguage = getLanguageNameByCode(rawTarget) || languageCodeToName[rawTarget as keyof typeof languageCodeToName] || rawTarget;
 
     const rawOriginal = processingData.originalLanguage;
-    const originalLanguage = rawOriginal ? (languageCodeToName[rawOriginal as keyof typeof languageCodeToName] || rawOriginal) : undefined;
+    const originalLanguage = rawOriginal ? (getLanguageNameByCode(rawOriginal) || languageCodeToName[rawOriginal as keyof typeof languageCodeToName] || rawOriginal) : undefined;
 
     if (!targetLanguage) {
       toast.error('Target language is required');
@@ -1010,7 +1008,7 @@ export default function SongDetailPage() {
         .slice(0, 4),
     }),
     ...(processingData.translation && {
-      description: `Lyrics translation of ${songData.songName} by ${songData.artistName} to ${processingData.targetLanguage || 'Thai'}`,
+      description: `Lyrics translation of ${songData.songName} by ${songData.artistName} to ${processingData.targetLanguage || DEFAULT_TARGET_LANGUAGE}`,
     }),
     ...(coverImage && {
       image: coverImage.startsWith('http') ? coverImage : `${process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://musemusic.phitik.com'}${coverImage}`,
@@ -1370,8 +1368,8 @@ export default function SongDetailPage() {
               <LyricsTranslationViewer
                 translation={processingData?.translation}
                 originalLyrics={songData?.lyrics}
-                defaultLanguage={processingData?.targetLanguage || 'Thai'}
-                availableLanguages={['Thai', 'English', 'Japanese', 'Korean']}
+                defaultLanguage={processingData?.targetLanguage || DEFAULT_TARGET_LANGUAGE}
+                availableLanguages={getLanguageNames()}
                 hasRating={hasSubmittedRating}
                 onShakeFeedback={() => feedbackSectionRef.current?.shake()}
                 songName={songData?.songName}
@@ -1386,9 +1384,34 @@ export default function SongDetailPage() {
                 onSelectedLanguageChange={setSelectedLanguage}
                 onPlayPause={() => playerPlayPauseRef.current?.()}
                 isPlaying={isPlaying}
+                onVolumeChange={(vol) => {
+                  if (playerVolumeRef.current) {
+                    playerVolumeRef.current.setVolume(vol);
+                    setVolume(vol);
+                    if (vol === 0) {
+                      setIsMuted(true);
+                    } else if (isMuted) {
+                      setIsMuted(false);
+                    }
+                  }
+                }}
+                onMuteToggle={() => {
+                  if (playerVolumeRef.current) {
+                    if (isMuted) {
+                      playerVolumeRef.current.unmute();
+                      setIsMuted(false);
+                    } else {
+                      playerVolumeRef.current.mute();
+                      setIsMuted(true);
+                    }
+                  }
+                }}
+                volume={volume}
+                isMuted={isMuted}
                 syncConfirmed={processingData?.syncConfirmed || false}
                 songStartTime={processingData?.songStartTime || null}
                 onSave={handleSaveTranslation}
+                youtubeVideoId={processingData?.youtubeVideoId || null}
               />
             </div>
 
@@ -1408,6 +1431,9 @@ export default function SongDetailPage() {
                   onIsPlayingChange={handleIsPlayingChange}
                   onPlayPauseRequest={(api) => {
                     playerPlayPauseRef.current = api.playPause;
+                  }}
+                  onVolumeRequest={(api) => {
+                    playerVolumeRef.current = api;
                   }}
                   seekToTime={seekToTime}
                   readonly={!isAnalysisRoute}

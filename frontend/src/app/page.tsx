@@ -13,10 +13,17 @@ import type { AnalysisRequest } from '@/types/analysis';
 import type { LyricsRecord } from '@/types/lyrics';
 import { LocalStorageManager } from '@/utils/localStorageManager';
 import { localStorageKeys } from '@/utils/localStorageKeys';
-import type { HomeResponse } from '@/types/home';
+import type { HomeResponse, HomeSection } from '@/types/home';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { TranslationLanguageModal } from '@/components/modals';
+import {
+  languages,
+  DEFAULT_ORIGINAL_LANGUAGE,
+  DEFAULT_TARGET_LANGUAGE,
+  DEFAULT_TRANSCRIPT_LANGUAGE_CODE,
+  getLanguageNameByCode
+} from '@/utils/languageUtils';
 
 type SelectedRecord = AnalysisRequest['lyricsRecord'];
 type NavbarStartDetail = {
@@ -29,6 +36,9 @@ const NAVBAR_START_EVENT = 'muse-navbar-start-analysis';
 export default function Home() {
   const [data, setData] = useState<HomeResponse>({ hero: [], sections: [] });
   const [loading, setLoading] = useState<boolean>(true);
+  const [loadingMore, setLoadingMore] = useState<boolean>(false);
+  const [offset, setOffset] = useState<number>(0);
+  const [hasMore, setHasMore] = useState<boolean>(true);
   const [actions, setActions] = useState<{ translate: boolean; mood: boolean }>({ translate: false, mood: false });
   const [query, setQuery] = useState<string>('');
   const [searching, setSearching] = useState<boolean>(false);
@@ -38,8 +48,8 @@ export default function Home() {
   const [analyzing, setAnalyzing] = useState<boolean>(false);
   const [showLanguageModal, setShowLanguageModal] = useState<boolean>(false);
   const [translationConfig, setTranslationConfig] = useState<{ originalLanguage: string; targetLanguage: string }>({
-    originalLanguage: 'English',
-    targetLanguage: 'Thai'
+    originalLanguage: DEFAULT_ORIGINAL_LANGUAGE,
+    targetLanguage: DEFAULT_TARGET_LANGUAGE
   });
   const skipNextSearchRef = useRef<boolean>(false);
   const [showDropdown, setShowDropdown] = useState<boolean>(false);
@@ -50,6 +60,8 @@ export default function Home() {
   const [youtubeTranscriptText, setYoutubeTranscriptText] = useState<string>('');
   const [youtubeTranscriptMeta, setYoutubeTranscriptMeta] = useState<{ languages: string[]; strategy: 'fallback' | 'multi' } | null>(null);
   const [youtubeVideoDetails, setYoutubeVideoDetails] = useState<YouTubeVideoDetailsResponse | null>(null);
+  const [detectedOriginalLanguage, setDetectedOriginalLanguage] = useState<string | null>(null);
+  const [selectedTranscriptLanguage, setSelectedTranscriptLanguage] = useState<string>(DEFAULT_TRANSCRIPT_LANGUAGE_CODE);
   const router = useRouter();
 
   const clearYouTubeState = useCallback(() => {
@@ -57,6 +69,8 @@ export default function Home() {
     setYoutubeTranscriptText('');
     setYoutubeTranscriptMeta(null);
     setYoutubeVideoDetails(null);
+    setSelectedTranscriptLanguage(DEFAULT_TRANSCRIPT_LANGUAGE_CODE);
+    setDetectedOriginalLanguage(null);
   }, []);
 
   const extractYouTubeVideoId = useCallback((value: string): string | null => {
@@ -119,7 +133,11 @@ export default function Home() {
     try {
       setFetchingYouTubeTranscript(true);
       toast.loading('Fetching YouTube transcript...', { id: 'youtube-transcript' });
-      const response = await youtubeService.getTranscript(youtubeVideoId, { format: 'raw', mode: 'fallback' });
+      const response = await youtubeService.getTranscript(youtubeVideoId, { 
+        format: 'raw', 
+        mode: 'fallback',
+        languages: selectedTranscriptLanguage ? [selectedTranscriptLanguage] : undefined
+      });
       const normalized = normalizeTranscriptText(response.transcript);
       if (!normalized) {
         throw new Error('Transcript is empty');
@@ -129,6 +147,16 @@ export default function Home() {
         languages: response.languages,
         strategy: response.strategy
       });
+      if (response.languages && response.languages.length > 0) {
+        const firstLanguage = response.languages[0];
+        const normalizedLanguageName =
+          getLanguageNameByCode(firstLanguage) ||
+          languages.find((lang) => lang.name.toLowerCase() === firstLanguage.toLowerCase())?.name ||
+          firstLanguage;
+        setDetectedOriginalLanguage(normalizedLanguageName);
+      } else {
+        setDetectedOriginalLanguage(null);
+      }
       setYoutubeVideoDetails(response.videoDetails ?? null);
       toast.success('YouTube transcript ready', { id: 'youtube-transcript' });
     } catch (error) {
@@ -140,7 +168,7 @@ export default function Home() {
     } finally {
       setFetchingYouTubeTranscript(false);
     }
-  }, [normalizeTranscriptText, youtubeVideoId]);
+  }, [normalizeTranscriptText, youtubeVideoId, selectedTranscriptLanguage]);
 
   const handleClearYouTubeTranscript = useCallback(() => {
     clearYouTubeState();
@@ -234,13 +262,72 @@ export default function Home() {
 
   useEffect(() => {
     const run = async () => {
-      const res = await fetchHomeContent();
+      const res = await fetchHomeContent(100, 0);
       setData(res);
+      setOffset(100);
+      setHasMore(res.pagination?.hasMore ?? false);
       await new Promise((resolve) => setTimeout(resolve, 1500));
       setLoading(false);
     };
     run();
   }, []);
+
+  const loadMore = useCallback(async () => {
+    if (loadingMore || !hasMore) return;
+    
+    setLoadingMore(true);
+    try {
+      const res = await fetchHomeContent(100, offset);
+      
+      // Merge sections by language
+      const mergedSections: Record<string, HomeSection> = {};
+      
+      // Add existing sections
+      data.sections.forEach(section => {
+        mergedSections[section.title] = { ...section };
+      });
+      
+      // Add new sections
+      res.sections.forEach(section => {
+        if (mergedSections[section.title]) {
+          mergedSections[section.title].items.push(...section.items);
+        } else {
+          mergedSections[section.title] = { ...section };
+        }
+      });
+      
+      setData({
+        ...data,
+        sections: Object.values(mergedSections)
+      });
+      setOffset(offset + 100);
+      setHasMore(res.pagination?.hasMore ?? false);
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('Failed to load more content:', error);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [data, offset, hasMore, loadingMore]);
+
+  // Infinite scroll handler
+  useEffect(() => {
+    const handleScroll = () => {
+      if (loadingMore || !hasMore) return;
+      
+      const scrollTop = window.scrollY || document.documentElement.scrollTop;
+      const scrollHeight = document.documentElement.scrollHeight;
+      const clientHeight = document.documentElement.clientHeight;
+      
+      // Load more when user is 200px from bottom
+      if (scrollTop + clientHeight >= scrollHeight - 200) {
+        loadMore();
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [loadMore, loadingMore, hasMore]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -499,10 +586,10 @@ export default function Home() {
         </p>
 
         <div className="mt-6 flex flex-col items-center gap-4">
-          <div ref={searchWrapRef} className="relative flex items-center justify-between gap-[20px] rounded-xl border border-gray-200 shadow-sm w-full h-[48px] px-3 md:w-[640px] md:h-[59px] md:px-[10px]">
+          <div ref={searchWrapRef} className="relative flex items-center justify-between gap-2 md:gap-[20px] rounded-xl border border-gray-200 shadow-sm w-full max-w-full md:w-[640px] h-[48px] md:h-[59px] px-3 md:px-[10px]">
             <input
               ref={inputRef}
-              className="flex-1 outline-none text-sm px-3"
+              className="flex-1 outline-none text-sm md:text-base px-2 md:px-3 min-w-0"
               placeholder="Find song or paste YouTube link to..."
               aria-label="Search song or paste link"
               value={query}
@@ -524,17 +611,39 @@ export default function Home() {
               }}
             />
             {youtubeVideoId && (
+              <div className="flex items-center gap-1 md:gap-2 flex-shrink-0">
+                <select
+                  value={selectedTranscriptLanguage}
+                  onChange={(e) => setSelectedTranscriptLanguage(e.target.value)}
+                  disabled={fetchingYouTubeTranscript}
+                  className="rounded-lg border border-gray-300 bg-white px-1.5 md:px-2 py-1 text-xs font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#7B61FF] disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{
+                    paddingRight: '24px',
+                    appearance: 'none',
+                    backgroundImage: 'url("/icons/dropdown-arrow.svg")',
+                    backgroundRepeat: 'no-repeat',
+                    backgroundPosition: 'right 6px center',
+                    backgroundSize: '10px'
+                  }}
+                >
+                  {languages.map((lang) => (
+                    <option key={lang.code} value={lang.code}>
+                      {lang.name}
+                    </option>
+                  ))}
+                </select>
               <button
                 type="button"
                 onClick={handleFetchYouTubeTranscript}
                 disabled={fetchingYouTubeTranscript}
-                className="flex items-center gap-1 rounded-lg bg-red-500/90 px-3 py-1 text-xs font-medium text-white transition hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex items-center gap-1 rounded-lg bg-red-500/90 px-2 md:px-3 py-1 text-xs font-medium text-white transition hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
               >
-                <YoutubeIcon className="h-3.5 w-3.5" />
-                {fetchingYouTubeTranscript ? 'Fetching...' : 'Fetch YouTube'}
+                  <YoutubeIcon className="h-3 md:h-3.5 w-3 md:w-3.5" />
+                  <span className="hidden md:inline">{fetchingYouTubeTranscript ? 'Fetching...' : 'Fetch YouTube'}</span>
               </button>
+              </div>
             )}
-            <Search className="h-4 w-4 text-gray-400 ml-2" />
+            {!youtubeVideoId && <Search className="h-4 w-4 text-gray-400 flex-shrink-0 ml-1 md:ml-2" />}
             {/* Dropdown panel */}
             {showDropdown && query && (
               <div
@@ -695,10 +804,14 @@ export default function Home() {
         {loading ? (
           <>
             <h2 className="text-[24px] font-bold text-black mb-3">Loading...</h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-5">
-              {Array.from({ length: 5 }).map((_, idx) => (
-                <SkeletonCard key={`skeleton-${idx}`} />
-              ))}
+            <div className="overflow-x-auto pb-4 -mx-4 px-4 scrollbar-hide">
+              <div className="flex gap-4 min-w-max">
+                {Array.from({ length: 5 }).map((_, idx) => (
+                  <div key={`skeleton-${idx}`} className="flex-shrink-0 w-[180px] sm:w-[200px]">
+                    <SkeletonCard />
+                  </div>
+                ))}
+              </div>
             </div>
           </>
         ) : data.sections.length > 0 ? (
@@ -706,17 +819,20 @@ export default function Home() {
             section.items.length > 0 && (
               <div key={`section-${sIdx}`} className={sIdx === 0 ? '' : 'mt-10'}>
                 <h2 className="text-[24px] font-bold text-black mb-3">{section.title}</h2>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-5">
-                  {section.items.map((a, idx) => (
-                    <MusicCard 
-                      key={`${section.title}-${idx}`} 
-                      image={a.image} 
-                      title={a.title} 
-                      artist={a.artist} 
-                      href={`/song/${a.id}?processingID=${a.processingID}`}
-                      mood={a.mood || null}
-                    />
-                  ))}
+                <div className="overflow-x-auto pb-4 -mx-4 px-4 scrollbar-hide">
+                  <div className="flex gap-4 min-w-max">
+                    {section.items.map((a, idx) => (
+                      <div key={`${section.title}-${idx}`} className="flex-shrink-0 w-[180px] sm:w-[200px]">
+                        <MusicCard 
+                          image={a.image} 
+                          title={a.title} 
+                          artist={a.artist} 
+                          href={`/song/${a.id}?processingID=${a.processingID}`}
+                          mood={a.mood || null}
+                        />
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             )
@@ -724,6 +840,14 @@ export default function Home() {
         ) : (
           <div className="text-center py-12">
             <p className="text-[18px] text-gray-600">No recommended songs available at this time</p>
+          </div>
+        )}
+        {loadingMore && (
+          <div className="text-center py-8">
+            <div className="inline-flex items-center gap-2 text-gray-600">
+              <RefreshCcw className="h-5 w-5 animate-spin" />
+              <span>Loading more...</span>
+            </div>
           </div>
         )}
       </section>
@@ -734,7 +858,7 @@ export default function Home() {
         isOpen={showLanguageModal}
         onClose={() => setShowLanguageModal(false)}
         onConfirm={handleLanguageConfirm}
-        defaultOriginalLanguage={translationConfig.originalLanguage}
+        defaultOriginalLanguage={detectedOriginalLanguage ?? translationConfig.originalLanguage}
         defaultTargetLanguage={translationConfig.targetLanguage}
       />
     </main>

@@ -4,10 +4,10 @@ const { logger } = require('../middleware/logger');
 
 const getRecommendHomeContent = async (req, res) => {
   try {
-    const limit = parseInt(req.query.limit) || 50;
-    const limitPerSection = parseInt(req.query.limitPerSection) || 5;
+    const limit = parseInt(req.query.limit) || 100;
+    const offset = parseInt(req.query.offset) || 0;
 
-    const homeContent = await RecommendHomeService.getRecommendedSongs(limit, limitPerSection);
+    const homeContent = await RecommendHomeService.getRecommendedSongs(limit, offset);
 
     const hasSections = homeContent.sections && homeContent.sections.length > 0;
 
