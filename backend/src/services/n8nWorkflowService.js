@@ -1,5 +1,6 @@
 const { logger } = require('../middleware/logger');
 const { config } = require('../config/env');
+const { DEFAULT_ORIGINAL_LANGUAGE, DEFAULT_TARGET_LANGUAGE } = require('../utils/languageUtils');
 
 class N8NWorkflowService {
   static async getWorkflowInfo() {
@@ -109,8 +110,8 @@ class N8NWorkflowService {
 
     try {
       const requestBody = {
-        language1: language1 || 'English',
-        language2: language2 || 'Thai',
+        language1: language1 || DEFAULT_ORIGINAL_LANGUAGE,
+        language2: language2 || DEFAULT_TARGET_LANGUAGE,
         lyrics: lyrics
       };
 

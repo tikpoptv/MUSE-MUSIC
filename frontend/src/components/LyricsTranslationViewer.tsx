@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Languages as LanguagesIcon, Save, AlertTriangle, Maximize2 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { DEFAULT_TARGET_LANGUAGE, getLanguageNames } from '@/utils/languageUtils';
 
 import type { SyncedLyricsLine } from './SyncedLyricsPlayer';
 import LyricsTranslationViewerFullscreen from './LyricsTranslationViewerFullscreen';
@@ -34,8 +35,8 @@ interface LyricsTranslationViewerProps {
 export default function LyricsTranslationViewer({
   translation,
   originalLyrics,
-  defaultLanguage = 'Thai',
-  availableLanguages = ['Thai', 'English', 'Japanese', 'Korean'],
+  defaultLanguage = DEFAULT_TARGET_LANGUAGE,
+  availableLanguages = getLanguageNames(),
   onLanguageChange,
   onSave,
   hasRating = false,

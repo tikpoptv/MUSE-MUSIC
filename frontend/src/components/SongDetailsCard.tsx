@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import type { SongDetail, ProcessingDetail } from '@/services/songService';
+import { getLanguageNames } from '@/utils/languageUtils';
 
 // Map language to country code
 const languageToCountry: Record<string, string> = {
@@ -149,11 +150,11 @@ export default function SongDetailsCard({
             disabled
           >
             <option value="">Select language.</option>
-            <option value="English">English</option>
-            <option value="Thai">Thai</option>
-            <option value="Lao">Lao</option>
-            <option value="Japanese">Japanese</option>
-            <option value="Korean">Korean</option>
+            {getLanguageNames().map((lang) => (
+              <option key={lang} value={lang}>
+                {lang}
+              </option>
+            ))}
           </select>
         </div>
       </div>

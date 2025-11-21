@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { languages, DEFAULT_ORIGINAL_LANGUAGE, DEFAULT_TARGET_LANGUAGE } from '@/utils/languageUtils';
 
 interface TranslationLanguageModalProps {
   isOpen: boolean;
@@ -10,30 +11,14 @@ interface TranslationLanguageModalProps {
   defaultTargetLanguage?: string;
 }
 
-const languages = [
-  { code: 'en', name: 'English' },
-  { code: 'th', name: 'Thai' },
-  { code: 'lo', name: 'Lao' },
-  { code: 'ja', name: 'Japanese' },
-  { code: 'ko', name: 'Korean' },
-  { code: 'zh', name: 'Chinese' },
-  { code: 'es', name: 'Spanish' },
-  { code: 'fr', name: 'French' },
-  { code: 'de', name: 'German' },
-  { code: 'it', name: 'Italian' },
-  { code: 'pt', name: 'Portuguese' },
-  { code: 'ru', name: 'Russian' },
-  { code: 'vi', name: 'Vietnamese' }
-];
-
 const targetLanguages = languages;
 
 export default function TranslationLanguageModal({
   isOpen,
   onClose,
   onConfirm,
-  defaultOriginalLanguage = 'English',
-  defaultTargetLanguage = 'Thai'
+  defaultOriginalLanguage = DEFAULT_ORIGINAL_LANGUAGE,
+  defaultTargetLanguage = DEFAULT_TARGET_LANGUAGE
 }: TranslationLanguageModalProps) {
   const [originalLanguage, setOriginalLanguage] = useState<string>(defaultOriginalLanguage);
   const [targetLanguage, setTargetLanguage] = useState<string>(defaultTargetLanguage);

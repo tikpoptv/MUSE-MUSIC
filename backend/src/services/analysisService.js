@@ -58,26 +58,9 @@ class AnalysisService {
       const targetLanguage = translationConfig?.targetLanguage || null;
       
       if (targetLanguage && actions.translate) {
-        const languageCodeToName = {
-          'en': 'English',
-          'th': 'Thai',
-          'lo': 'Lao',
-          'ko': 'Korean',
-          'ja': 'Japanese',
-          'zh': 'Chinese',
-          'es': 'Spanish',
-          'fr': 'French',
-          'de': 'German',
-          'it': 'Italian',
-          'pt': 'Portuguese',
-          'ru': 'Russian',
-          'vi': 'Vietnamese',
-          'id': 'Indonesian',
-          'ms': 'Malay',
-          'hi': 'Hindi'
-        };
+        const { getLanguageNameByCode } = require('../utils/languageUtils');
 
-        const languageName = languageCodeToName[targetLanguage] || targetLanguage;
+        const languageName = getLanguageNameByCode(targetLanguage) || targetLanguage;
 
         const existingProcessingQuery = `
           SELECT processingid, songid, status, approvalstatus, sharestatus, targetlanguage

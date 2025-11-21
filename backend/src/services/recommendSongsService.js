@@ -4,24 +4,6 @@ const { logger } = require('../middleware/logger');
 class RecommendSongsService {
   static async getRecommendedSongsByLanguageAndMood(language, mood, limit = 10, excludeSongID = null) {
     try {
-      const languageCodeToName = {
-        'en': 'English',
-        'th': 'Thai',
-        'lo': 'Lao',
-        'ko': 'Korean',
-        'ja': 'Japanese',
-        'zh': 'Chinese',
-        'es': 'Spanish',
-        'fr': 'French',
-        'de': 'German',
-        'it': 'Italian',
-        'pt': 'Portuguese',
-        'ru': 'Russian',
-        'vi': 'Vietnamese',
-        'id': 'Indonesian',
-        'ms': 'Malay',
-        'hi': 'Hindi'
-      };
 
       const queryParams = [];
       const conditions = [];
@@ -31,7 +13,8 @@ class RecommendSongsService {
       conditions.push(`s.isactive = TRUE`);
 
       if (language) {
-        const languageName = languageCodeToName[language] || language;
+        const { getLanguageNameByCode } = require('../utils/languageUtils');
+        const languageName = getLanguageNameByCode(language) || language;
         conditions.push(`p.originallanguage = $${queryParams.length + 1}`);
         queryParams.push(languageName);
       }

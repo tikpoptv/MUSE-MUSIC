@@ -123,22 +123,9 @@ class RecommendHomeService {
         });
       });
 
+      const { LANGUAGE_CODE_TO_NAME } = require('../utils/languageUtils');
       const languageNames = {
-        'en': 'English',
-        'th': 'Thai',
-        'ko': 'Korean',
-        'ja': 'Japanese',
-        'zh': 'Chinese',
-        'es': 'Spanish',
-        'fr': 'French',
-        'de': 'German',
-        'it': 'Italian',
-        'pt': 'Portuguese',
-        'ru': 'Russian',
-        'vi': 'Vietnamese',
-        'id': 'Indonesian',
-        'ms': 'Malay',
-        'hi': 'Hindi',
+        ...LANGUAGE_CODE_TO_NAME,
         'auto': 'Auto Detect',
         'Unknown': 'Unknown'
       };

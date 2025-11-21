@@ -17,6 +17,7 @@ import type { HomeResponse, HomeSection } from '@/types/home';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { TranslationLanguageModal } from '@/components/modals';
+import { languages, DEFAULT_ORIGINAL_LANGUAGE, DEFAULT_TARGET_LANGUAGE, DEFAULT_TRANSCRIPT_LANGUAGE_CODE } from '@/utils/languageUtils';
 
 type SelectedRecord = AnalysisRequest['lyricsRecord'];
 type NavbarStartDetail = {
@@ -41,8 +42,8 @@ export default function Home() {
   const [analyzing, setAnalyzing] = useState<boolean>(false);
   const [showLanguageModal, setShowLanguageModal] = useState<boolean>(false);
   const [translationConfig, setTranslationConfig] = useState<{ originalLanguage: string; targetLanguage: string }>({
-    originalLanguage: 'English',
-    targetLanguage: 'Thai'
+    originalLanguage: DEFAULT_ORIGINAL_LANGUAGE,
+    targetLanguage: DEFAULT_TARGET_LANGUAGE
   });
   const skipNextSearchRef = useRef<boolean>(false);
   const [showDropdown, setShowDropdown] = useState<boolean>(false);
@@ -53,6 +54,7 @@ export default function Home() {
   const [youtubeTranscriptText, setYoutubeTranscriptText] = useState<string>('');
   const [youtubeTranscriptMeta, setYoutubeTranscriptMeta] = useState<{ languages: string[]; strategy: 'fallback' | 'multi' } | null>(null);
   const [youtubeVideoDetails, setYoutubeVideoDetails] = useState<YouTubeVideoDetailsResponse | null>(null);
+  const [selectedTranscriptLanguage, setSelectedTranscriptLanguage] = useState<string>(DEFAULT_TRANSCRIPT_LANGUAGE_CODE);
   const router = useRouter();
 
   const clearYouTubeState = useCallback(() => {
@@ -60,6 +62,7 @@ export default function Home() {
     setYoutubeTranscriptText('');
     setYoutubeTranscriptMeta(null);
     setYoutubeVideoDetails(null);
+    setSelectedTranscriptLanguage(DEFAULT_TRANSCRIPT_LANGUAGE_CODE);
   }, []);
 
   const extractYouTubeVideoId = useCallback((value: string): string | null => {
@@ -122,7 +125,11 @@ export default function Home() {
     try {
       setFetchingYouTubeTranscript(true);
       toast.loading('Fetching YouTube transcript...', { id: 'youtube-transcript' });
-      const response = await youtubeService.getTranscript(youtubeVideoId, { format: 'raw', mode: 'fallback' });
+      const response = await youtubeService.getTranscript(youtubeVideoId, { 
+        format: 'raw', 
+        mode: 'fallback',
+        languages: selectedTranscriptLanguage ? [selectedTranscriptLanguage] : undefined
+      });
       const normalized = normalizeTranscriptText(response.transcript);
       if (!normalized) {
         throw new Error('Transcript is empty');
@@ -143,7 +150,7 @@ export default function Home() {
     } finally {
       setFetchingYouTubeTranscript(false);
     }
-  }, [normalizeTranscriptText, youtubeVideoId]);
+  }, [normalizeTranscriptText, youtubeVideoId, selectedTranscriptLanguage]);
 
   const handleClearYouTubeTranscript = useCallback(() => {
     clearYouTubeState();
@@ -586,15 +593,37 @@ export default function Home() {
               }}
             />
             {youtubeVideoId && (
-              <button
-                type="button"
-                onClick={handleFetchYouTubeTranscript}
-                disabled={fetchingYouTubeTranscript}
-                className="flex items-center gap-1 rounded-lg bg-red-500/90 px-3 py-1 text-xs font-medium text-white transition hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <YoutubeIcon className="h-3.5 w-3.5" />
-                {fetchingYouTubeTranscript ? 'Fetching...' : 'Fetch YouTube'}
-              </button>
+              <div className="flex items-center gap-2">
+                <select
+                  value={selectedTranscriptLanguage}
+                  onChange={(e) => setSelectedTranscriptLanguage(e.target.value)}
+                  disabled={fetchingYouTubeTranscript}
+                  className="rounded-lg border border-gray-300 bg-white px-2 py-1 text-xs font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#7B61FF] disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{
+                    paddingRight: '28px',
+                    appearance: 'none',
+                    backgroundImage: 'url("/icons/dropdown-arrow.svg")',
+                    backgroundRepeat: 'no-repeat',
+                    backgroundPosition: 'right 8px center',
+                    backgroundSize: '12px'
+                  }}
+                >
+                  {languages.map((lang) => (
+                    <option key={lang.code} value={lang.code}>
+                      {lang.name}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={handleFetchYouTubeTranscript}
+                  disabled={fetchingYouTubeTranscript}
+                  className="flex items-center gap-1 rounded-lg bg-red-500/90 px-3 py-1 text-xs font-medium text-white transition hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <YoutubeIcon className="h-3.5 w-3.5" />
+                  {fetchingYouTubeTranscript ? 'Fetching...' : 'Fetch YouTube'}
+                </button>
+              </div>
             )}
             <Search className="h-4 w-4 text-gray-400 ml-2" />
             {/* Dropdown panel */}

@@ -12,6 +12,7 @@ import { promptTestService, type PromptTestResponse } from "@/services/promptTes
 import { promptService } from "@/services/promptService";
 import type { LyricsRecord } from "@/types/lyrics";
 import toast from "react-hot-toast";
+import { languages, DEFAULT_ORIGINAL_LANGUAGE, DEFAULT_TARGET_LANGUAGE } from "@/utils/languageUtils";
 import {
   Select,
   SelectContent,
@@ -42,29 +43,13 @@ export default function EditPromptPanel() {
   const [searchResults, setSearchResults] = useState<LyricsRecord[]>([]);
   const [showDropdown, setShowDropdown] = useState<boolean>(false);
   const searchWrapRef = useRef<HTMLDivElement | null>(null);
-  const [sourceLanguage, setSourceLanguage] = useState<string>("English");
-  const [targetLanguage, setTargetLanguage] = useState<string>("Thai");
+  const [sourceLanguage, setSourceLanguage] = useState<string>(DEFAULT_ORIGINAL_LANGUAGE);
+  const [targetLanguage, setTargetLanguage] = useState<string>(DEFAULT_TARGET_LANGUAGE);
   const [moodEnabled, setMoodEnabled] = useState<boolean>(true);
   const [moodTopK, setMoodTopK] = useState<number>(4);
   const [selectedSongLyrics, setSelectedSongLyrics] = useState<string>("");
   const [testResults, setTestResults] = useState<PromptTestResponse | null>(null);
   const testResultsRef = useRef<HTMLDivElement | null>(null);
-
-  const languages = [
-    { code: 'en', name: 'English' },
-    { code: 'th', name: 'Thai' },
-    { code: 'lo', name: 'Lao' },
-    { code: 'ja', name: 'Japanese' },
-    { code: 'ko', name: 'Korean' },
-    { code: 'zh', name: 'Chinese' },
-    { code: 'es', name: 'Spanish' },
-    { code: 'fr', name: 'French' },
-    { code: 'de', name: 'German' },
-    { code: 'it', name: 'Italian' },
-    { code: 'pt', name: 'Portuguese' },
-    { code: 'ru', name: 'Russian' },
-    { code: 'vi', name: 'Vietnamese' }
-  ];
 
   const fetchSongLyrics = useCallback(async () => {
     if (!selectedSongID) return;
