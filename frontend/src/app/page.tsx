@@ -17,7 +17,13 @@ import type { HomeResponse, HomeSection } from '@/types/home';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { TranslationLanguageModal } from '@/components/modals';
-import { languages, DEFAULT_ORIGINAL_LANGUAGE, DEFAULT_TARGET_LANGUAGE, DEFAULT_TRANSCRIPT_LANGUAGE_CODE } from '@/utils/languageUtils';
+import {
+  languages,
+  DEFAULT_ORIGINAL_LANGUAGE,
+  DEFAULT_TARGET_LANGUAGE,
+  DEFAULT_TRANSCRIPT_LANGUAGE_CODE,
+  getLanguageNameByCode
+} from '@/utils/languageUtils';
 
 type SelectedRecord = AnalysisRequest['lyricsRecord'];
 type NavbarStartDetail = {
@@ -54,6 +60,7 @@ export default function Home() {
   const [youtubeTranscriptText, setYoutubeTranscriptText] = useState<string>('');
   const [youtubeTranscriptMeta, setYoutubeTranscriptMeta] = useState<{ languages: string[]; strategy: 'fallback' | 'multi' } | null>(null);
   const [youtubeVideoDetails, setYoutubeVideoDetails] = useState<YouTubeVideoDetailsResponse | null>(null);
+  const [detectedOriginalLanguage, setDetectedOriginalLanguage] = useState<string | null>(null);
   const [selectedTranscriptLanguage, setSelectedTranscriptLanguage] = useState<string>(DEFAULT_TRANSCRIPT_LANGUAGE_CODE);
   const router = useRouter();
 
@@ -63,6 +70,7 @@ export default function Home() {
     setYoutubeTranscriptMeta(null);
     setYoutubeVideoDetails(null);
     setSelectedTranscriptLanguage(DEFAULT_TRANSCRIPT_LANGUAGE_CODE);
+    setDetectedOriginalLanguage(null);
   }, []);
 
   const extractYouTubeVideoId = useCallback((value: string): string | null => {
@@ -139,6 +147,16 @@ export default function Home() {
         languages: response.languages,
         strategy: response.strategy
       });
+      if (response.languages && response.languages.length > 0) {
+        const firstLanguage = response.languages[0];
+        const normalizedLanguageName =
+          getLanguageNameByCode(firstLanguage) ||
+          languages.find((lang) => lang.name.toLowerCase() === firstLanguage.toLowerCase())?.name ||
+          firstLanguage;
+        setDetectedOriginalLanguage(normalizedLanguageName);
+      } else {
+        setDetectedOriginalLanguage(null);
+      }
       setYoutubeVideoDetails(response.videoDetails ?? null);
       toast.success('YouTube transcript ready', { id: 'youtube-transcript' });
     } catch (error) {
@@ -568,10 +586,10 @@ export default function Home() {
         </p>
 
         <div className="mt-6 flex flex-col items-center gap-4">
-          <div ref={searchWrapRef} className="relative flex items-center justify-between gap-[20px] rounded-xl border border-gray-200 shadow-sm w-full h-[48px] px-3 md:w-[640px] md:h-[59px] md:px-[10px]">
+          <div ref={searchWrapRef} className="relative flex items-center justify-between gap-2 md:gap-[20px] rounded-xl border border-gray-200 shadow-sm w-full max-w-full md:w-[640px] h-[48px] md:h-[59px] px-3 md:px-[10px]">
             <input
               ref={inputRef}
-              className="flex-1 outline-none text-sm px-3"
+              className="flex-1 outline-none text-sm md:text-base px-2 md:px-3 min-w-0"
               placeholder="Find song or paste YouTube link to..."
               aria-label="Search song or paste link"
               value={query}
@@ -593,19 +611,19 @@ export default function Home() {
               }}
             />
             {youtubeVideoId && (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1 md:gap-2 flex-shrink-0">
                 <select
                   value={selectedTranscriptLanguage}
                   onChange={(e) => setSelectedTranscriptLanguage(e.target.value)}
                   disabled={fetchingYouTubeTranscript}
-                  className="rounded-lg border border-gray-300 bg-white px-2 py-1 text-xs font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#7B61FF] disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="rounded-lg border border-gray-300 bg-white px-1.5 md:px-2 py-1 text-xs font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#7B61FF] disabled:opacity-50 disabled:cursor-not-allowed"
                   style={{
-                    paddingRight: '28px',
+                    paddingRight: '24px',
                     appearance: 'none',
                     backgroundImage: 'url("/icons/dropdown-arrow.svg")',
                     backgroundRepeat: 'no-repeat',
-                    backgroundPosition: 'right 8px center',
-                    backgroundSize: '12px'
+                    backgroundPosition: 'right 6px center',
+                    backgroundSize: '10px'
                   }}
                 >
                   {languages.map((lang) => (
@@ -618,14 +636,14 @@ export default function Home() {
                   type="button"
                   onClick={handleFetchYouTubeTranscript}
                   disabled={fetchingYouTubeTranscript}
-                  className="flex items-center gap-1 rounded-lg bg-red-500/90 px-3 py-1 text-xs font-medium text-white transition hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex items-center gap-1 rounded-lg bg-red-500/90 px-2 md:px-3 py-1 text-xs font-medium text-white transition hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
                 >
-                  <YoutubeIcon className="h-3.5 w-3.5" />
-                  {fetchingYouTubeTranscript ? 'Fetching...' : 'Fetch YouTube'}
+                  <YoutubeIcon className="h-3 md:h-3.5 w-3 md:w-3.5" />
+                  <span className="hidden md:inline">{fetchingYouTubeTranscript ? 'Fetching...' : 'Fetch YouTube'}</span>
                 </button>
               </div>
             )}
-            <Search className="h-4 w-4 text-gray-400 ml-2" />
+            {!youtubeVideoId && <Search className="h-4 w-4 text-gray-400 flex-shrink-0 ml-1 md:ml-2" />}
             {/* Dropdown panel */}
             {showDropdown && query && (
               <div
@@ -840,7 +858,7 @@ export default function Home() {
         isOpen={showLanguageModal}
         onClose={() => setShowLanguageModal(false)}
         onConfirm={handleLanguageConfirm}
-        defaultOriginalLanguage={translationConfig.originalLanguage}
+        defaultOriginalLanguage={detectedOriginalLanguage ?? translationConfig.originalLanguage}
         defaultTargetLanguage={translationConfig.targetLanguage}
       />
     </main>
