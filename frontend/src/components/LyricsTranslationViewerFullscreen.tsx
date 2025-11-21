@@ -414,6 +414,13 @@ export default function LyricsTranslationViewerFullscreen({
   }, [isFullscreenPlayerReady]);
 
   useEffect(() => {
+    // Prevent zoom on mobile
+    const viewport = document.querySelector('meta[name="viewport"]');
+    const originalContent = viewport?.getAttribute('content') || '';
+    if (viewport) {
+      viewport.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover');
+    }
+
     const style = document.createElement('style');
     style.textContent = `
       @keyframes gradientShift {
@@ -444,11 +451,35 @@ export default function LyricsTranslationViewerFullscreen({
         top: 50%;
         left: 50%;
         width: 100vw;
-        height: 56.25vw;
+        height: 100vh;
+        min-width: 100vw;
         min-height: 100vh;
-        min-width: 177.77vh;
-        transform: translate(-50%, -50%);
+        max-width: 100vw;
+        max-height: 100vh;
+        transform: translate(-50%, -50%) scale(1.1);
         object-fit: cover;
+      }
+      @media (max-width: 640px) {
+        .youtube-background iframe {
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          width: 177.78vh;
+          height: 100vh;
+          min-width: 100vw;
+          min-height: 56.25vw;
+          transform: translate(-50%, -50%);
+          object-fit: cover;
+        }
+        @media (orientation: portrait) {
+          .youtube-background iframe {
+            width: 177.78vh;
+            height: 100vh;
+            min-width: 100vw;
+            min-height: 56.25vw;
+            transform: translate(-50%, -50%) scale(1.5);
+          }
+        }
       }
       .fullscreen-content {
         position: relative;
@@ -458,6 +489,10 @@ export default function LyricsTranslationViewerFullscreen({
     document.head.appendChild(style);
     return () => {
       document.head.removeChild(style);
+      // Restore original viewport
+      if (viewport && originalContent) {
+        viewport.setAttribute('content', originalContent);
+      }
     };
   }, []);
 
@@ -475,7 +510,10 @@ export default function LyricsTranslationViewerFullscreen({
         right: 0, 
         bottom: 0,
         width: '100vw',
-        height: '100vh'
+        height: '100vh',
+        maxWidth: '100vw',
+        maxHeight: '100vh',
+        touchAction: 'pan-y pinch-zoom'
       }}
     >
       {youtubeVideoId && (
@@ -504,33 +542,33 @@ export default function LyricsTranslationViewerFullscreen({
           boxShadow: '0 2px 10px rgba(0, 0, 0, 0.4)'
         }}
       >
-        <div className="flex items-center justify-between px-8 py-4">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center justify-between px-4 sm:px-8 py-3 sm:py-4">
+        <div className="flex items-center gap-2 sm:gap-4 flex-1 min-w-0">
           <button
             onClick={onClose}
-            className="p-2 hover:bg-white/20 rounded-lg transition-all duration-300 hover:scale-110 active:scale-95"
+            className="p-2 sm:p-2 hover:bg-white/20 rounded-lg transition-all duration-300 hover:scale-110 active:scale-95 flex-shrink-0"
             aria-label="Close"
           >
-            <X className="h-6 w-6 text-white" />
+            <X className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
           </button>
-          <div className="flex flex-col">
+          <div className="flex flex-col min-w-0 flex-1">
             {songName && (
-              <h2 className="text-white text-xl font-bold">{songName}</h2>
+              <h2 className="text-white text-base sm:text-xl font-bold truncate">{songName}</h2>
             )}
             {artistName && (
-              <p className="text-white/80 text-sm">{artistName}</p>
+              <p className="text-white/80 text-xs sm:text-sm truncate">{artistName}</p>
             )}
           </div>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
           {songDuration && (
-            <div className="text-white text-sm font-medium">
+            <div className="text-white text-xs sm:text-sm font-medium hidden sm:block">
               {formatTime(currentTime)} / {formatTime(songDuration)}
             </div>
           )}
-          {/* Background Darkness Control */}
+          {/* Background Darkness Control - Hidden on mobile */}
           {youtubeVideoId && (
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-black/40 rounded-lg">
+            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-black/40 rounded-lg">
               <Sun className="h-4 w-4 text-white/80" />
               <input
                 type="range"
@@ -550,13 +588,13 @@ export default function LyricsTranslationViewerFullscreen({
           )}
           <button
             onClick={toggleFullscreen}
-            className="p-2 hover:bg-white/20 rounded-lg transition-all duration-300 hover:scale-110 active:scale-95"
+            className="p-2 sm:p-2 hover:bg-white/20 rounded-lg transition-all duration-300 hover:scale-110 active:scale-95 flex-shrink-0"
             aria-label="Toggle fullscreen"
           >
             {isFullscreen ? (
-              <Minimize2 className="h-6 w-6 text-white" />
+              <Minimize2 className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
             ) : (
-              <Maximize2 className="h-6 w-6 text-white" />
+              <Maximize2 className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
             )}
           </button>
         </div>
@@ -565,12 +603,12 @@ export default function LyricsTranslationViewerFullscreen({
 
       <div
         ref={lyricsContainerRef}
-        className="flex-1 overflow-y-auto px-8 py-12"
+        className="flex-1 overflow-y-auto px-4 sm:px-8 py-6 sm:py-12"
         style={{
           scrollBehavior: 'smooth'
         }}
       >
-        <div className="max-w-4xl w-full mx-auto space-y-8">
+        <div className="max-w-4xl w-full mx-auto space-y-4 sm:space-y-8">
           {pairs.map((pair, index) => {
             const lineTime = getLineTime(index, pairs);
             const isActive = isSyncMode
@@ -609,7 +647,7 @@ export default function LyricsTranslationViewerFullscreen({
               >
                 {pair.original.trim() && (
                   <p
-                    className={`font-bold mb-2 text-3xl ${
+                    className={`font-bold mb-1 sm:mb-2 text-xl sm:text-3xl ${
                       isCurrentLine ? 'text-white' : isActive ? 'text-white/90' : 'text-white/40'
                     }`}
                     style={{
@@ -627,7 +665,7 @@ export default function LyricsTranslationViewerFullscreen({
                 )}
                 {pair.translation.trim() && (
                   <p
-                    className={`text-2xl ${
+                    className={`text-lg sm:text-2xl ${
                       isCurrentLine ? 'text-white/95' : isActive ? 'text-white/80' : 'text-white/30'
                     }`}
                     style={{
@@ -648,8 +686,8 @@ export default function LyricsTranslationViewerFullscreen({
           })}
           {/* Disclaimer */}
           {translation && pairs.length > 0 && (
-            <div className="mt-12 pt-8 border-t border-white/20 flex justify-center w-full">
-              <p className="text-xs text-white/60 text-center">
+            <div className="mt-6 sm:mt-12 pt-4 sm:pt-8 border-t border-white/20 flex justify-center w-full">
+              <p className="text-xs text-white/60 text-center px-4">
                 All data is generated using LLM OSS 120B. Results are AI predictions and may not be accurate.
               </p>
             </div>
@@ -661,7 +699,7 @@ export default function LyricsTranslationViewerFullscreen({
           <div className="flex flex-col bg-black/60 backdrop-blur-md">
             {/* Song Progress Bar - อยู่ด้านบนของ control bar */}
             <div 
-              className="w-full h-1.5 bg-black/50 relative cursor-pointer group"
+              className="w-full h-2 sm:h-1.5 bg-black/50 relative cursor-pointer group touch-none"
               onClick={handleProgressBarClick}
             >
               <div 
@@ -678,47 +716,53 @@ export default function LyricsTranslationViewerFullscreen({
                 }}
               />
             </div>
-            <div className="px-8 py-6">
-              <div className="max-w-4xl mx-auto flex items-center justify-center gap-6">
+            <div className="px-4 sm:px-8 py-4 sm:py-6">
+              <div className="max-w-4xl mx-auto flex items-center justify-center gap-4 sm:gap-6">
                 <button
                   onClick={handleSeekBack}
-                  className="p-3 hover:bg-white/20 rounded-full transition-all duration-300 hover:scale-110 active:scale-95"
+                  className="p-3 sm:p-3 hover:bg-white/20 rounded-full transition-all duration-300 hover:scale-110 active:scale-95 touch-manipulation"
                   aria-label="Seek back 5 seconds"
                   style={{
                     backdropFilter: 'blur(10px)',
-                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)'
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
+                    minWidth: '44px',
+                    minHeight: '44px'
                   }}
                 >
-                  <SkipBack className="h-6 w-6 text-white" />
+                  <SkipBack className="h-6 w-6 sm:h-6 sm:w-6 text-white" />
                 </button>
                 <button
                   onClick={onPlayPause}
-                  className="p-4 bg-white/20 hover:bg-white/30 rounded-full transition-all duration-300 hover:scale-110 active:scale-95"
+                  className="p-4 sm:p-4 bg-white/20 hover:bg-white/30 rounded-full transition-all duration-300 hover:scale-110 active:scale-95 touch-manipulation"
                   aria-label={isPlaying ? 'Pause' : 'Play'}
                   style={{
                     backdropFilter: 'blur(10px)',
                     boxShadow: isPlaying 
                       ? '0 0 20px rgba(255, 255, 255, 0.4), 0 4px 12px rgba(0, 0, 0, 0.3)'
                       : '0 4px 12px rgba(0, 0, 0, 0.2)',
-                    animation: isPlaying ? 'pulse 2s ease-in-out infinite' : 'none'
+                    animation: isPlaying ? 'pulse 2s ease-in-out infinite' : 'none',
+                    minWidth: '64px',
+                    minHeight: '64px'
                   }}
                 >
                   {isPlaying ? (
-                    <Pause className="h-8 w-8 text-white" />
+                    <Pause className="h-8 w-8 sm:h-8 sm:w-8 text-white" />
                   ) : (
-                    <Play className="h-8 w-8 text-white" />
+                    <Play className="h-8 w-8 sm:h-8 sm:w-8 text-white" />
                   )}
                 </button>
                 <button
                   onClick={handleSeekForward}
-                  className="p-3 hover:bg-white/20 rounded-full transition-all duration-300 hover:scale-110 active:scale-95"
+                  className="p-3 sm:p-3 hover:bg-white/20 rounded-full transition-all duration-300 hover:scale-110 active:scale-95 touch-manipulation"
                   aria-label="Seek forward 5 seconds"
                   style={{
                     backdropFilter: 'blur(10px)',
-                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)'
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
+                    minWidth: '44px',
+                    minHeight: '44px'
                   }}
                 >
-                  <SkipForward className="h-6 w-6 text-white" />
+                  <SkipForward className="h-6 w-6 sm:h-6 sm:w-6 text-white" />
                 </button>
               </div>
             </div>
