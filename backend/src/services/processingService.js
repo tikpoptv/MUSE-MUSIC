@@ -51,10 +51,30 @@ class ProcessingService {
    * @param {string|null} userId - User ID (optional, for tracking who updated)
    * @returns {Promise<Object>} Updated processing data
    */
-  static async updateCoverImage(processingID, coverImageUrl, userId = null) {
+  static async updateCoverImage(processingID, coverImageUrl, userId = null, isAdmin = false) {
     try {
       if (!processingID || processingID === 'undefined') {
         throw new Error('processingID is required');
+      }
+
+      // ตรวจสอบ approval status ก่อนอัปเดต
+      const checkQuery = `
+        SELECT approvalstatus, sharestatus
+        FROM songaiprocessing
+        WHERE processingid = $1
+      `;
+      const checkResult = await DatabaseService.query(checkQuery, [processingID]);
+
+      if (!checkResult.rows || checkResult.rows.length === 0) {
+        throw new Error('Processing not found');
+      }
+
+      const processing = checkResult.rows[0];
+      const isApproved = processing.approvalstatus === 'approved' && processing.sharestatus === 'public_approved';
+
+      // เพิ่มกฎ: เพลงต้องไม่ได้รับการอนุมัติ หรือผู้ใช้ต้องเป็นแอดมิน
+      if (isApproved && !isAdmin) {
+        throw new Error('Cannot edit cover image: This processing has been approved. Only admin can edit approved songs.');
       }
 
       const updateQuery = `
@@ -86,7 +106,7 @@ class ProcessingService {
     }
   }
 
-  static async updateSyncSettings(processingID, syncConfirmed, songStartTime = null, userId = null) {
+  static async updateSyncSettings(processingID, syncConfirmed, songStartTime = null, userId = null, isAdmin = false) {
     try {
       if (!processingID || processingID === 'undefined') {
         throw new Error('processingID is required');
@@ -98,6 +118,26 @@ class ProcessingService {
 
       if (songStartTime !== null && (typeof songStartTime !== 'number' || isNaN(songStartTime))) {
         throw new Error('songStartTime must be a number or null');
+      }
+
+      // ตรวจสอบ approval status ก่อนอัปเดต
+      const checkQuery = `
+        SELECT approvalstatus, sharestatus
+        FROM songaiprocessing
+        WHERE processingid = $1
+      `;
+      const checkResult = await DatabaseService.query(checkQuery, [processingID]);
+
+      if (!checkResult.rows || checkResult.rows.length === 0) {
+        throw new Error('Processing not found');
+      }
+
+      const processing = checkResult.rows[0];
+      const isApproved = processing.approvalstatus === 'approved' && processing.sharestatus === 'public_approved';
+
+      // เพิ่มกฎ: เพลงต้องไม่ได้รับการอนุมัติ หรือผู้ใช้ต้องเป็นแอดมิน
+      if (isApproved && !isAdmin) {
+        throw new Error('Cannot edit sync settings: This processing has been approved. Only admin can edit approved songs.');
       }
 
       const updateQuery = `

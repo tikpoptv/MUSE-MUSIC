@@ -2,6 +2,7 @@ const ProcessingService = require('../services/processingService');
 const { successResponse, errorResponse } = require('../utils/response');
 const { logger } = require('../middleware/logger');
 const JWTService = require('../services/jwtService');
+const UserService = require('../services/userService');
 
 const updateYouTubeVideoId = async (req, res) => {
   try {
@@ -66,6 +67,7 @@ const updateYouTubeVideoId = async (req, res) => {
 const updateCoverImage = async (req, res) => {
   try {
     let userId = null;
+    let isAdmin = false;
     const authHeader = req.headers.authorization;
     if (authHeader) {
       const token = JWTService.extractTokenFromHeader(authHeader);
@@ -73,6 +75,17 @@ const updateCoverImage = async (req, res) => {
         const decoded = JWTService.verifyAccessToken(token);
         if (decoded && decoded.userID) {
           userId = decoded.userID;
+          // ตรวจสอบว่า user เป็น admin หรือไม่
+          try {
+            const user = await UserService.findByID(userId);
+            if (user) {
+              const userRole = user.role?.toLowerCase();
+              isAdmin = userRole === 'admin' || userRole === 'super_admin';
+            }
+          } catch (err) {
+            // ถ้าไม่สามารถตรวจสอบได้ ให้ isAdmin = false
+            logger.warn('Failed to check admin status:', err);
+          }
         }
       }
     }
@@ -95,13 +108,15 @@ const updateCoverImage = async (req, res) => {
     logger.info('Updating cover image', {
       processingID,
       userId,
+      isAdmin,
       hasCoverImage: !!coverImageUrl
     });
 
     const result = await ProcessingService.updateCoverImage(
       processingID,
       coverImageUrl || null,
-      userId
+      userId,
+      isAdmin
     );
 
     return res.json(
@@ -110,6 +125,12 @@ const updateCoverImage = async (req, res) => {
 
   } catch (error) {
     logger.error('Error in updateCoverImage:', error);
+
+    if (error.message.includes('Cannot edit')) {
+      return res.status(403).json(
+        errorResponse(error.message, 403)
+      );
+    }
 
     if (error.message.includes('required') || error.message.includes('not found')) {
       return res.status(400).json(
@@ -126,6 +147,7 @@ const updateCoverImage = async (req, res) => {
 const updateSyncSettings = async (req, res) => {
   try {
     let userId = null;
+    let isAdmin = false;
     const authHeader = req.headers.authorization;
     if (authHeader) {
       const token = JWTService.extractTokenFromHeader(authHeader);
@@ -133,6 +155,17 @@ const updateSyncSettings = async (req, res) => {
         const decoded = JWTService.verifyAccessToken(token);
         if (decoded && decoded.userID) {
           userId = decoded.userID;
+          // ตรวจสอบว่า user เป็น admin หรือไม่
+          try {
+            const user = await UserService.findByID(userId);
+            if (user) {
+              const userRole = user.role?.toLowerCase();
+              isAdmin = userRole === 'admin' || userRole === 'super_admin';
+            }
+          } catch (err) {
+            // ถ้าไม่สามารถตรวจสอบได้ ให้ isAdmin = false
+            logger.warn('Failed to check admin status:', err);
+          }
         }
       }
     }
@@ -161,6 +194,7 @@ const updateSyncSettings = async (req, res) => {
     logger.info('Updating sync settings', {
       processingID,
       userId,
+      isAdmin,
       syncConfirmed,
       songStartTime
     });
@@ -169,7 +203,8 @@ const updateSyncSettings = async (req, res) => {
       processingID,
       syncConfirmed,
       songStartTime || null,
-      userId
+      userId,
+      isAdmin
     );
 
     return res.json(
@@ -178,6 +213,12 @@ const updateSyncSettings = async (req, res) => {
 
   } catch (error) {
     logger.error('Error in updateSyncSettings:', error);
+
+    if (error.message.includes('Cannot edit')) {
+      return res.status(403).json(
+        errorResponse(error.message, 403)
+      );
+    }
 
     if (error.message.includes('required') || error.message.includes('not found') || error.message.includes('must be')) {
       return res.status(400).json(

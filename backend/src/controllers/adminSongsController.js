@@ -125,6 +125,8 @@ const updateLyrics = async (req, res) => {
     const { processingID } = req.params;
     const { lyrics } = req.body;
     const userID = req.user.userID;
+    const userRole = req.user.role?.toLowerCase();
+    const isAdmin = userRole === 'admin' || userRole === 'super_admin';
 
     if (!processingID) {
       return res.status(400).json(errorResponse('Processing ID is required', 400));
@@ -134,11 +136,16 @@ const updateLyrics = async (req, res) => {
       return res.status(400).json(errorResponse('Lyrics must be a non-empty string', 400));
     }
 
-    const result = await AdminSongsService.updateSongLyrics(processingID, lyrics, userID);
+    const result = await AdminSongsService.updateSongLyrics(processingID, lyrics, userID, isAdmin);
 
     return res.json(successResponse('Lyrics updated successfully', result));
   } catch (error) {
     logger.error('Error in updateLyrics:', error);
+    
+    if (error.message.includes('Cannot edit lyrics')) {
+      return res.status(403).json(errorResponse(error.message, 403));
+    }
+    
     return res.status(500).json(errorResponse('Failed to update lyrics', 500, error.message));
   }
 };

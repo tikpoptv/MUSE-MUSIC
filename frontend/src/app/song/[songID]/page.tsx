@@ -774,6 +774,13 @@ export default function SongDetailPage() {
   const handleCoverImageChange = async (imageUrl: string | null) => {
     if (!isAnalysisRoute) return;
     
+    // ตรวจสอบว่าเพลงได้รับการอนุมัติหรือไม่ และผู้ใช้เป็นแอดมินหรือไม่
+    const isApproved = processingData?.approvalStatus === 'approved' && processingData?.shareStatus === 'public_approved';
+    if (isApproved && !isAdmin) {
+      toast.error('Cannot edit cover image: This processing has been approved. Only admin can edit approved songs.');
+      return;
+    }
+    
     setCoverImage(imageUrl);
     if (processingID && processingID !== 'undefined') {
       try {
@@ -1448,6 +1455,8 @@ export default function SongDetailPage() {
                       });
                     }
                   }) : undefined}
+                  isApproved={processingData?.approvalStatus === 'approved' && processingData?.shareStatus === 'public_approved'}
+                  isAdmin={isAdmin}
                 />
               ) : (
                 <div className="w-full">

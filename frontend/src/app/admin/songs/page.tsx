@@ -324,6 +324,16 @@ export default function Page() {
             return;
         }
 
+        // ตรวจสอบว่าเพลงได้รับการอนุมัติหรือไม่ (admin สามารถแก้ไขได้เสมอ)
+        const isApproved = processingDetail?.approvalStatus === 'approved' && processingDetail?.shareStatus === 'public_approved';
+        if (isApproved) {
+            // Admin สามารถแก้ไขได้ แต่แสดง warning
+            const confirmed = window.confirm('This processing has been approved. Are you sure you want to edit the lyrics?');
+            if (!confirmed) {
+                return;
+            }
+        }
+
         try {
             setIsLoading(true);
             const result = await adminSongsService.updateLyrics(
@@ -343,7 +353,8 @@ export default function Page() {
         } catch (error) {
             // eslint-disable-next-line no-console
             console.error("Failed to save lyrics:", error);
-            toast.error("Failed to save lyrics");
+            const errorMessage = error instanceof Error ? error.message : 'Failed to save lyrics';
+            toast.error(errorMessage);
         } finally {
             setIsLoading(false);
         }
@@ -354,6 +365,16 @@ export default function Page() {
         if (!selectedSong.processingID) {
             toast.error("Processing ID not available");
             return;
+        }
+        
+        // ตรวจสอบว่าเพลงได้รับการอนุมัติหรือไม่ (admin สามารถแก้ไขได้เสมอ)
+        const isApproved = processingDetail?.approvalStatus === 'approved' && processingDetail?.shareStatus === 'public_approved';
+        if (isApproved) {
+            // Admin สามารถแก้ไขได้ แต่แสดง warning
+            const confirmed = window.confirm('This processing has been approved. Are you sure you want to edit the cover image?');
+            if (!confirmed) {
+                return;
+            }
         }
         
         try {
@@ -379,7 +400,8 @@ export default function Page() {
         } catch (err) {
             // eslint-disable-next-line no-console
             console.error('Failed to update cover image:', err);
-            toast.error("Failed to update cover image");
+            const errorMessage = err instanceof Error ? err.message : 'Failed to update cover image';
+            toast.error(errorMessage);
         } finally {
             setIsLoading(false);
         }
