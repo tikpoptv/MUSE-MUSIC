@@ -62,6 +62,7 @@ export default function Home() {
   const [youtubeVideoDetails, setYoutubeVideoDetails] = useState<YouTubeVideoDetailsResponse | null>(null);
   const [detectedOriginalLanguage, setDetectedOriginalLanguage] = useState<string | null>(null);
   const [selectedTranscriptLanguage, setSelectedTranscriptLanguage] = useState<string>(DEFAULT_TRANSCRIPT_LANGUAGE_CODE);
+  const [processingTime, setProcessingTime] = useState<number>(0);
   const router = useRouter();
 
   const clearYouTubeState = useCallback(() => {
@@ -189,6 +190,12 @@ export default function Home() {
     const m = Math.floor(total / 60);
     const s = total % 60;
     return `${m}:${s.toString().padStart(2, '0')}`;
+  };
+
+  const formatProcessingTime = (seconds: number): string => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
   const runImmediateLyricsSearch = useCallback(async (rawQuery: string) => {
@@ -451,6 +458,20 @@ export default function Home() {
     document.addEventListener('mousedown', onDocClick);
     return () => document.removeEventListener('mousedown', onDocClick);
   }, [showDropdown]);
+
+  // Timer for processing time
+  useEffect(() => {
+    if (!analyzing) {
+      setProcessingTime(0);
+      return;
+    }
+
+    const interval = setInterval(() => {
+      setProcessingTime((prev) => prev + 1);
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [analyzing]);
 
   const handleStartAnalysis = async () => {
     if (youtubeVideoId && !selected) {
@@ -861,6 +882,17 @@ export default function Home() {
         defaultOriginalLanguage={detectedOriginalLanguage ?? translationConfig.originalLanguage}
         defaultTargetLanguage={translationConfig.targetLanguage}
       />
+
+      {/* Processing indicator - bottom right */}
+      {analyzing && (
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-lg bg-[#7B61FF] px-4 py-3 shadow-lg">
+          <RefreshCcw className="h-5 w-5 animate-spin text-white" />
+          <div className="flex flex-col">
+            <span className="text-sm font-medium text-white">System is processing...</span>
+            <span className="text-xs text-white/80">Elapsed time: {formatProcessingTime(processingTime)}</span>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
