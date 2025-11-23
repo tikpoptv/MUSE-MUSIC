@@ -173,10 +173,10 @@ class YouTubeService {
       ? languages
       : config.youtube.transcriptLanguages;
 
+    // Use '=' format to prevent argparse from treating video IDs starting with '-' as options
     const args = [
       scriptPath,
-      '--video-id',
-      trimmedVideoId
+      `--video-id=${trimmedVideoId}`
     ];
 
     if (resolvedLanguages && resolvedLanguages.length > 0) {
