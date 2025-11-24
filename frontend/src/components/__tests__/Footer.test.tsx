@@ -22,16 +22,19 @@ describe('Footer Component', () => {
     
     const footer = screen.getByRole('contentinfo')
     expect(footer).toHaveClass('w-full')
+    expect(footer).toHaveClass('bg-[#3E1E68]')
   })
 
-  it('has correct inline styles', () => {
+  it('renders policy links', () => {
     render(<Footer />)
     
-    const footer = screen.getByRole('contentinfo')
-    expect(footer).toHaveStyle({
-      backgroundColor: '#3E1E68',
-      height: '150px'
-    })
+    const termsLink = screen.getByRole('link', { name: /Terms of Service/i })
+    const privacyLink = screen.getByRole('link', { name: /Privacy Policy/i })
+    
+    expect(termsLink).toBeInTheDocument()
+    expect(termsLink).toHaveAttribute('href', '/terms')
+    expect(privacyLink).toBeInTheDocument()
+    expect(privacyLink).toHaveAttribute('href', '/privacy')
   })
 
   it('renders footer text in white color', () => {

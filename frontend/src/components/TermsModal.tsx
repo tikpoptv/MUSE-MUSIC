@@ -34,39 +34,55 @@ export default function TermsModal({ isOpen, onClose, onAccept }: TermsModalProp
         </div>
         
         <div className="space-y-4 text-sm text-gray-700">
-          <div>
-            <h3 className="font-semibold text-gray-900 mb-2">1. Educational Project</h3>
-            <p>MUSE Music is an educational project developed for CPE 334 Software Engineering course. This is a demonstration application for learning purposes only.</p>
-          </div>
+          <p className="mb-4">
+            By creating an account or using MUSE MUSIC, you agree to our Terms of Service and Privacy Policy. 
+            Please take a moment to review them.
+          </p>
           
-          <div>
-            <h3 className="font-semibold text-gray-900 mb-2">2. Music Content Disclaimer</h3>
-            <p>All music content used in this application is for educational demonstration purposes only. We do not claim ownership of any music tracks and acknowledge that all rights belong to their respective copyright holders.</p>
+          <div className="bg-purple-50 rounded-lg p-4 space-y-3">
+            <div>
+              <h3 className="font-semibold text-gray-900 mb-2">📚 Educational Project</h3>
+              <p>MUSE MUSIC is developed for CPE 334 Software Engineering at KMUTT. This is an educational demonstration project.</p>
+            </div>
+            
+            <div>
+              <h3 className="font-semibold text-gray-900 mb-2">🎵 Content & Copyright</h3>
+              <p>All music content is for educational purposes. We respect copyright and will remove content upon request.</p>
+            </div>
+            
+            <div>
+              <h3 className="font-semibold text-gray-900 mb-2">🤖 AI-Powered Analysis</h3>
+              <p>Our service uses AI/LLM for lyrics translation and mood analysis. Results are predictions and may not be 100% accurate.</p>
+            </div>
+            
+            <div>
+              <h3 className="font-semibold text-gray-900 mb-2">🔒 Privacy & Data</h3>
+              <p>We collect and use data as described in our Privacy Policy. Your data is protected and used for educational purposes only.</p>
+            </div>
           </div>
-          
-          <div>
-            <h3 className="font-semibold text-gray-900 mb-2">3. Non-Commercial Use</h3>
-            <p>This application is strictly for educational and demonstration purposes. No commercial use is intended or permitted. All music content is used under fair use for educational purposes.</p>
-          </div>
-          
-          <div>
-            <h3 className="font-semibold text-gray-900 mb-2">4. Copyright Notice</h3>
-            <p>We respect all copyright holders and their intellectual property rights. If you are a copyright holder and believe your content has been used inappropriately, please contact us for immediate removal.</p>
-          </div>
-          
-          <div>
-            <h3 className="font-semibold text-gray-900 mb-2">5. Educational Purpose</h3>
-            <p>This project demonstrates software engineering principles including user authentication, database design, API development, and frontend-backend integration for academic evaluation.</p>
-          </div>
-          
-          <div>
-            <h3 className="font-semibold text-gray-900 mb-2">6. Data Privacy</h3>
-            <p>User data collected is used solely for educational demonstration purposes. No personal information will be shared or used for commercial purposes.</p>
-          </div>
-          
-          <div>
-            <h3 className="font-semibold text-gray-900 mb-2">7. Project Scope</h3>
-            <p>This is a capstone project for CPE 334 Software Engineering course, demonstrating full-stack development skills and software engineering best practices.</p>
+
+          <div className="mt-4 pt-4 border-t border-gray-200">
+            <p className="text-center text-gray-600">
+              For complete details, please read our{' '}
+              <a 
+                href="/terms" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-[#7B61FF] hover:underline font-semibold"
+              >
+                Terms of Service
+              </a>
+              {' '}and{' '}
+              <a 
+                href="/privacy" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-[#7B61FF] hover:underline font-semibold"
+              >
+                Privacy Policy
+              </a>
+              .
+            </p>
           </div>
         </div>
         

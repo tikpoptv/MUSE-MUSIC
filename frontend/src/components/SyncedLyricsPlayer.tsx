@@ -37,6 +37,8 @@ interface SyncedLyricsPlayerProps {
   initialSyncConfirmed?: boolean;
   initialSongStartTime?: number | null;
   onSyncSettingsChange?: (syncConfirmed: boolean, songStartTime: number | null) => void;
+  isApproved?: boolean;
+  isAdmin?: boolean;
 }
 
 type YouTubePlayer = {
@@ -85,7 +87,9 @@ export default function SyncedLyricsPlayer({
   readonly = false,
   initialSyncConfirmed = false,
   initialSongStartTime = null,
-  onSyncSettingsChange
+  onSyncSettingsChange,
+  isApproved = false,
+  isAdmin = false
 }: SyncedLyricsPlayerProps) {
   const [videoUrl, setVideoUrl] = useState('');
   const [videoId, setVideoId] = useState('');
@@ -649,6 +653,13 @@ export default function SyncedLyricsPlayer({
                 checked={syncConfirmed}
                 onChange={(e) => {
                   const newValue = e.target.checked;
+                  
+                  // ตรวจสอบว่าเพลงได้รับการอนุมัติหรือไม่ และผู้ใช้เป็นแอดมินหรือไม่
+                  if (isApproved && !isAdmin) {
+                    toast.error('Cannot edit sync settings: This processing has been approved. Only admin can edit approved songs.');
+                    return;
+                  }
+                  
                   setSyncConfirmed(newValue);
                   if (onSyncSettingsChange) {
                     onSyncSettingsChange(newValue, songStartTime);
@@ -691,6 +702,13 @@ export default function SyncedLyricsPlayer({
                 value={songStartTime ?? ''}
                 onChange={(e) => {
                   const value = e.target.value === '' ? null : parseFloat(e.target.value);
+                  
+                  // ตรวจสอบว่าเพลงได้รับการอนุมัติหรือไม่ และผู้ใช้เป็นแอดมินหรือไม่
+                  if (isApproved && !isAdmin) {
+                    toast.error('Cannot edit sync settings: This processing has been approved. Only admin can edit approved songs.');
+                    return;
+                  }
+                  
                   setSongStartTime(value);
                   if (onSyncSettingsChange) {
                     onSyncSettingsChange(syncConfirmed, value);

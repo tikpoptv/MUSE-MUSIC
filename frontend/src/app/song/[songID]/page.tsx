@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { useParams, useRouter, useSearchParams, usePathname } from 'next/navigation';
-import { Heart, Share2, MoreVertical, Link2, ExternalLink, Flag, ShieldCheck, ShieldOff } from 'lucide-react';
+import { Heart, Share2, MoreVertical, Link2, ExternalLink, Flag, ShieldCheck, ShieldOff, Maximize2 } from 'lucide-react';
 import MusicCard from '@/components/MusicCard';
 import SkeletonCard from '@/components/SkeletonCard';
 import LyricsTranslationViewer from '@/components/LyricsTranslationViewer';
@@ -99,7 +99,10 @@ export default function SongDetailPage() {
   const [isAdminActionProcessing, setIsAdminActionProcessing] = useState(false);
   const desktopMenuRef = useRef<HTMLDivElement>(null);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
+  const reAnalyzeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const feedbackShakeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const feedbackSectionAnchorId = 'feedback-section-anchor';
+  const [fullscreenViewerSignal, setFullscreenViewerSignal] = useState(0);
 
   const effectiveProcessingID = useMemo(() => {
     if (processingID && processingID !== 'undefined' && processingID !== '') {
@@ -135,6 +138,7 @@ export default function SongDetailPage() {
     };
   }, [moreMenuTarget]);
 
+  const isCheckingFavoriteRef = useRef(false);
   const checkFavoriteStatus = useCallback(async () => {
     if (!songID || songID === 'undefined' || !authService.isAuthenticated()) {
       return;
@@ -144,7 +148,13 @@ export default function SongDetailPage() {
       return;
     }
 
+    // Prevent duplicate API calls
+    if (isCheckingFavoriteRef.current) {
+      return;
+    }
+
     try {
+      isCheckingFavoriteRef.current = true;
       setIsCheckingFavorite(true);
       const favorite = await favoriteService.checkFavorite(effectiveProcessingID);
       setIsFavorite(favorite);
@@ -153,6 +163,7 @@ export default function SongDetailPage() {
       console.error('Failed to check favorite status:', error);
     } finally {
       setIsCheckingFavorite(false);
+      isCheckingFavoriteRef.current = false;
     }
   }, [songID, effectiveProcessingID]);
 
@@ -173,6 +184,7 @@ export default function SongDetailPage() {
     checkAdminStatus();
   }, []);
 
+  const isFetchingRef = useRef(false);
   const fetchSongData = useCallback(async () => {
       if (!songID || songID === 'undefined') {
         toast.error('Invalid song ID');
@@ -186,11 +198,17 @@ export default function SongDetailPage() {
         return;
       }
 
+      // Prevent duplicate API calls
+      if (isFetchingRef.current) {
+        return;
+      }
+
       try {
+        isFetchingRef.current = true;
         setLoading(true);
         
-        // Check admin status fresh to avoid race condition
-        let currentIsAdmin = isAdmin;
+        // Always fetch admin status locally to avoid depending on outer state.
+        let currentIsAdmin = false;
         if (authService.isAuthenticated()) {
           try {
             currentIsAdmin = await authService.checkAdminStatus();
@@ -201,41 +219,77 @@ export default function SongDetailPage() {
         
         const data = await songService.getSongDetail(songID, processingID);
         
+        // Check if song data exists
+        if (!data.song) {
+          toast.error('Song data not found. Please try again.');
+          router.push('/');
+          isFetchingRef.current = false;
+          return;
+        }
+        
+        // Check if lyrics exists (required field)
+        if (!data.song.lyrics || data.song.lyrics.trim() === '') {
+          toast.error('Lyrics data is missing. The song may not be available.');
+          router.push('/');
+          isFetchingRef.current = false;
+          return;
+        }
+        
+        // Check if processing data exists
+        if (!data.processing) {
+          toast.error('Processing data not found. The analysis may not be available yet.');
+          router.push('/');
+          isFetchingRef.current = false;
+          return;
+        }
+        
         setSongData(data.song);
-        if (data.processing) {
-          const processing = data.processing;
+        const processing = data.processing;
+        
+        if (isAnalysisRoute) {
+          const isApproved = processing.approvalStatus === 'approved' && processing.shareStatus === 'public_approved';
           
-          if (isAnalysisRoute) {
-            const isApproved = processing.approvalStatus === 'approved' && processing.shareStatus === 'public_approved';
-            
-            // If approved, only admin can access (everyone else including owner cannot edit after approval)
-            if (isApproved && !currentIsAdmin) {
-              toast.error('This processing has been reviewed and approved. Only admin can access analysis mode.');
-              window.location.href = `/song/${songID}?processingID=${processingID}`;
-              return;
-            }
-            // If not approved, anyone can access (no need to check owner/login status)
+          // If approved, only admin can access (everyone else including owner cannot edit after approval)
+          if (isApproved && !currentIsAdmin) {
+            toast.error('This processing has been reviewed and approved. Only admin can access analysis mode.');
+            isFetchingRef.current = false;
+            window.location.href = `/song/${songID}?processingID=${processingID}`;
+            return;
           }
-          
-          setProcessingData(processing);
-          if (processing.coverImage) {
-            setCoverImage(processing.coverImage);
-          }
-          if (processing.targetLanguage) {
-            setSelectedLanguage(processing.targetLanguage);
-          }
+          // If not approved, anyone can access (no need to check owner/login status)
+        }
+        
+        setProcessingData(processing);
+        if (processing.coverImage) {
+          setCoverImage(processing.coverImage);
+        }
+        if (processing.targetLanguage) {
+          setSelectedLanguage(processing.targetLanguage);
         }
       } catch (error) {
         toast.error(error instanceof Error ? error.message : 'Failed to load song details');
         router.push('/');
       } finally {
         setLoading(false);
+        isFetchingRef.current = false;
       }
-  }, [songID, processingID, router, isAnalysisRoute, isAdmin]);
+  }, [songID, processingID, router, isAnalysisRoute]);
 
   useEffect(() => {
     fetchSongData();
   }, [fetchSongData]);
+
+  // Cleanup timeouts on unmount
+  useEffect(() => {
+    return () => {
+      if (reAnalyzeTimeoutRef.current) {
+        clearTimeout(reAnalyzeTimeoutRef.current);
+      }
+      if (feedbackShakeTimeoutRef.current) {
+        clearTimeout(feedbackShakeTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const handleCopyLink = useCallback(async () => {
     if (!effectiveProcessingID || effectiveProcessingID === 'undefined') {
@@ -312,8 +366,13 @@ export default function SongDetailPage() {
       if (anchor) {
         anchor.scrollIntoView({ behavior: 'smooth', block: 'center' });
         // Shake feedback section after scroll (like when saving without rating)
-        setTimeout(() => {
+        // Clear any existing timeout
+        if (feedbackShakeTimeoutRef.current) {
+          clearTimeout(feedbackShakeTimeoutRef.current);
+        }
+        feedbackShakeTimeoutRef.current = setTimeout(() => {
           feedbackSectionRef.current?.shake();
+          feedbackShakeTimeoutRef.current = null;
         }, 500);
       }
     }
@@ -374,14 +433,15 @@ export default function SongDetailPage() {
   const canReject = isAdmin && processingData?.approvalStatus !== 'rejected';
 
   useEffect(() => {
-    if (songID && songID !== 'undefined' && authService.isAuthenticated()) {
+    if (songID && songID !== 'undefined' && authService.isAuthenticated() && effectiveProcessingID && effectiveProcessingID !== 'undefined') {
       checkFavoriteStatus();
     }
-  }, [songID, checkFavoriteStatus]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [songID, effectiveProcessingID]);
 
   useEffect(() => {
     const fetchProcessingVersions = async () => {
-      if (!songID || songID === 'undefined' || !isDetailRoute) {
+      if (!songID || songID === 'undefined') {
         return;
       }
 
@@ -413,10 +473,10 @@ export default function SongDetailPage() {
       }
     };
 
-    if (isDetailRoute && songID && songID !== 'undefined') {
+    if (songID && songID !== 'undefined') {
       fetchProcessingVersions();
     }
-  }, [songID, processingData?.targetLanguage, effectiveProcessingID, isDetailRoute]);
+  }, [songID, processingData?.targetLanguage, effectiveProcessingID]);
 
   useEffect(() => {
     const fetchRecommendationsByLanguage = async () => {
@@ -469,32 +529,36 @@ export default function SongDetailPage() {
 
   useEffect(() => {
     const fetchRecommendationsByMood = async () => {
-      if (!processingData) return;
+      const mood = processingData?.mood;
+      const moodType = processingData?.moodType;
+      const originalLanguage = processingData?.originalLanguage;
+
+      if (!originalLanguage) return;
 
       let topMood: string | null = null;
       
-      if (processingData.mood && Array.isArray(processingData.mood) && processingData.mood.length > 0) {
-        const sortedMoods = [...processingData.mood].sort((a, b) => (b.percentage || 0) - (a.percentage || 0));
+      if (mood && Array.isArray(mood) && mood.length > 0) {
+        const sortedMoods = [...mood].sort((a, b) => (b.percentage || 0) - (a.percentage || 0));
         topMood = sortedMoods[0].type;
-      } else if (processingData.moodType) {
+      } else if (moodType) {
         try {
-          const parsed = JSON.parse(processingData.moodType) as Array<{ type: string; percentage: number }>;
+          const parsed = JSON.parse(moodType) as Array<{ type: string; percentage: number }>;
           if (Array.isArray(parsed) && parsed.length > 0) {
             const sortedMoods = [...parsed].sort((a, b) => (b.percentage || 0) - (a.percentage || 0));
             topMood = sortedMoods[0].type;
           }
         } catch {
-          topMood = processingData.moodType;
+          topMood = moodType;
         }
       }
 
-      if (!topMood || !processingData.originalLanguage) return;
+      if (!topMood) return;
 
       try {
         setLoadingRecommendationsByMood(true);
         
         const moodSongs = await recommendSongsService.getRecommendedSongsByLanguageAndMood(
-          processingData.originalLanguage,
+          originalLanguage,
           topMood,
           2,
           songID
@@ -506,10 +570,10 @@ export default function SongDetailPage() {
       }
     };
 
-    if (processingData) {
+    if (processingData?.originalLanguage) {
       fetchRecommendationsByMood();
     }
-  }, [processingData, songID]);
+  }, [processingData?.mood, processingData?.moodType, processingData?.originalLanguage, songID]);
 
   const handleLanguageChange = async (language: string) => {
     if (!songID || songID === 'undefined') return;
@@ -672,7 +736,12 @@ export default function SongDetailPage() {
 
       toast.success('Re-analyzing... Please wait a moment.');
       
-      setTimeout(async () => {
+      // Clear any existing timeout
+      if (reAnalyzeTimeoutRef.current) {
+        clearTimeout(reAnalyzeTimeoutRef.current);
+      }
+      
+      reAnalyzeTimeoutRef.current = setTimeout(async () => {
         try {
           const data = await songService.getSongDetail(songID, processingID);
           setSongData(data.song);
@@ -692,6 +761,7 @@ export default function SongDetailPage() {
           setIsReAnalyzing(false);
           setIsReAnalyzeModalOpen(false);
           setPendingLanguageChange(null);
+          reAnalyzeTimeoutRef.current = null;
         }
       }, 2000);
     } catch (error) {
@@ -773,6 +843,13 @@ export default function SongDetailPage() {
 
   const handleCoverImageChange = async (imageUrl: string | null) => {
     if (!isAnalysisRoute) return;
+    
+    // ตรวจสอบว่าเพลงได้รับการอนุมัติหรือไม่ และผู้ใช้เป็นแอดมินหรือไม่
+    const isApproved = processingData?.approvalStatus === 'approved' && processingData?.shareStatus === 'public_approved';
+    if (isApproved && !isAdmin) {
+      toast.error('Cannot edit cover image: This processing has been approved. Only admin can edit approved songs.');
+      return;
+    }
     
     setCoverImage(imageUrl);
     if (processingID && processingID !== 'undefined') {
@@ -1018,6 +1095,7 @@ export default function SongDetailPage() {
 
   return (
     <main className="min-h-screen bg-white">
+
       {/* Structured Data for SEO */}
       {structuredData && (
         <script
@@ -1328,34 +1406,39 @@ export default function SongDetailPage() {
 
           {/* ฝั่งรายละเอียด (60%) */}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', width: '100%' }} className="lg:items-start items-center">
-            {/* Processing Version Bar (read-only route) or Song Details Card (analysis route) */}
-            {isAnalysisRoute ? (
+            {/* Song Details Card (analysis route) */}
+            {isAnalysisRoute && (
               <div style={{ marginBottom: '54px', width: '100%' }}>
                 <SongDetailsCard songData={songData} processingData={processingData} />
               </div>
-            ) : (
-              processingData && (
-                <div style={{ width: '100%', marginBottom: '16px' }}>
-                  <ProcessingVersionBar
-                    versionNumber={currentVersionNumber}
-                    processingID={processingData.processingID}
-                    rating={processingData.averageRating ? Math.round(processingData.averageRating) : undefined}
-                    onNewAnalyze={handleReAnalyzeClick}
-                    newAnalyzeLabel={isDetailRoute ? 'New analyze' : 'Re-analyze'}
-                    versions={processingVersions.map(v => ({ 
-                      versionNumber: v.versionNumber, 
-                      processingID: v.processingID,
-                      averageRating: v.averageRating
-                    }))}
-                    onVersionClick={(clickedProcessingID) => {
-                      if (clickedProcessingID !== effectiveProcessingID) {
+            )}
+
+            {/* Processing Version Bar */}
+            {processingData && (
+              <div style={{ width: '100%', marginBottom: '16px' }}>
+                <ProcessingVersionBar
+                  versionNumber={currentVersionNumber}
+                  processingID={processingData.processingID}
+                  rating={processingData.averageRating ? Math.round(processingData.averageRating) : undefined}
+                  onNewAnalyze={handleReAnalyzeClick}
+                  newAnalyzeLabel={isDetailRoute ? 'New analyze' : 'Re-analyze'}
+                  versions={processingVersions.map(v => ({ 
+                    versionNumber: v.versionNumber, 
+                    processingID: v.processingID,
+                    averageRating: v.averageRating
+                  }))}
+                  onVersionClick={(clickedProcessingID) => {
+                    if (clickedProcessingID !== effectiveProcessingID) {
+                      if (isAnalysisRoute) {
+                        window.location.href = `/song/${songID}/analysis/${clickedProcessingID}`;
+                      } else {
                         window.location.href = `/song/${songID}?processingID=${clickedProcessingID}`;
                       }
-                    }}
-                    currentProcessingID={effectiveProcessingID}
-                  />
-                </div>
-              )
+                    }
+                  }}
+                  currentProcessingID={effectiveProcessingID}
+                />
+              </div>
             )}
 
             {/* Summary */}
@@ -1412,6 +1495,7 @@ export default function SongDetailPage() {
                 songStartTime={processingData?.songStartTime || null}
                 onSave={handleSaveTranslation}
                 youtubeVideoId={processingData?.youtubeVideoId || null}
+                externalFullscreenSignal={fullscreenViewerSignal}
               />
             </div>
 
@@ -1448,6 +1532,8 @@ export default function SongDetailPage() {
                       });
                     }
                   }) : undefined}
+                  isApproved={processingData?.approvalStatus === 'approved' && processingData?.shareStatus === 'public_approved'}
+                  isAdmin={isAdmin}
                 />
               ) : (
                 <div className="w-full">
@@ -1590,6 +1676,18 @@ export default function SongDetailPage() {
         songName={songData?.songName || 'this song'}
         isProcessing={isAdminActionProcessing}
       />
+      {processingData?.translation && isPlaying && (
+        <div className="fixed bottom-6 right-6 z-40">
+          <button
+            type="button"
+            onClick={() => setFullscreenViewerSignal((prev) => prev + 1)}
+            className="flex items-center gap-2 rounded-full bg-[#7B61FF] px-4 py-2 text-white shadow-lg hover:bg-[#6B51EF] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#7B61FF] animate-pulse"
+          >
+            <Maximize2 className="h-4 w-4" />
+            <span className="text-sm font-medium">Open Fullscreen</span>
+          </button>
+        </div>
+      )}
     </main>
   );
 }

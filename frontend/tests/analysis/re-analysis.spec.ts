@@ -28,6 +28,7 @@ test.describe('Re Analysis Flow', () => {
               songID: 'song-123',
               songName: 'Test Song',
               artistName: 'Test Artist',
+              lyrics: 'Sample lyrics for testing purposes.',
             },
             processing: {
               processingID: mockProcessingID,
@@ -63,6 +64,8 @@ test.describe('Re Analysis Flow', () => {
             song: {
               songID: 'song-123',
               songName: 'Test Song',
+              artistName: 'Test Artist',
+              lyrics: 'Sample lyrics for testing purposes.',
             },
             processing: {
               processingID: mockProcessingID,
@@ -120,6 +123,8 @@ test.describe('Re Analysis Flow', () => {
             song: {
               songID: 'song-123',
               songName: 'Test Song',
+              artistName: 'Test Artist',
+              lyrics: 'Sample lyrics for testing purposes.',
             },
             processing: {
               processingID: mockProcessingID,
@@ -180,6 +185,8 @@ test.describe('Re Analysis Flow', () => {
             song: {
               songID: 'song-123',
               songName: 'Test Song',
+              artistName: 'Test Artist',
+              lyrics: 'Sample lyrics for testing purposes.',
             },
             processing: {
               processingID: mockProcessingID,

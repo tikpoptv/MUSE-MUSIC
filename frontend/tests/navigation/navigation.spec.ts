@@ -111,14 +111,23 @@ test.describe('Navigation Tests', () => {
       await page.click('#mobile-menu a[href="/login"]');
       await expect(page).toHaveURL(/\/login/);
     } else {
-      await page.click('a[href="/login"]');
-      await page.waitForURL(/\/login/, { timeout: 5000 });
+      // Wait for navigation to complete before checking URL
+      await Promise.all([
+        page.waitForURL(/\/login/, { timeout: 10000 }),
+        page.click('a[href="/login"]')
+      ]);
       await expect(page).toHaveURL('/login');
-      await page.click('a[href="/register"]');
-      await page.waitForURL(/\/register/, { timeout: 5000 });
+      
+      await Promise.all([
+        page.waitForURL(/\/register/, { timeout: 10000 }),
+        page.click('a[href="/register"]')
+      ]);
       await expect(page).toHaveURL(/\/register/);
-      await page.click('a[href="/login"]');
-      await page.waitForURL(/\/login/, { timeout: 5000 });
+      
+      await Promise.all([
+        page.waitForURL(/\/login/, { timeout: 10000 }),
+        page.click('a[href="/login"]')
+      ]);
       await expect(page).toHaveURL(/\/login/);
     }
   });

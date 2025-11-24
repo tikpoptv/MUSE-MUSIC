@@ -341,7 +341,7 @@ class AdminSongsService {
     }
   }
 
-  static async updateSongLyrics(processingID, lyrics, userID) {
+  static async updateSongLyrics(processingID, lyrics, userID, isAdmin = false) {
     const client = await pool.connect();
     try {
       if (!processingID) {
@@ -353,7 +353,7 @@ class AdminSongsService {
       }
 
       const checkQuery = `
-        SELECT p.processingid, p.songid, p.translation, s.lyrics as original_lyrics
+        SELECT p.processingid, p.songid, p.translation, p.approvalstatus, p.sharestatus, s.lyrics as original_lyrics
         FROM songaiprocessing p
         INNER JOIN songs s ON p.songid = s.songid
         WHERE p.processingid = $1
@@ -362,6 +362,14 @@ class AdminSongsService {
 
       if (checkResult.rows.length === 0) {
         throw new Error('Processing record not found');
+      }
+
+      const processing = checkResult.rows[0];
+      const isApproved = processing.approvalstatus === 'approved' && processing.sharestatus === 'public_approved';
+
+      // เพิ่มกฎ: เพลงต้องไม่ได้รับการอนุมัติ หรือผู้ใช้ต้องเป็นแอดมิน
+      if (isApproved && !isAdmin) {
+        throw new Error('Cannot edit lyrics: This processing has been approved. Only admin can edit approved songs.');
       }
 
       logger.info('Received lyrics to update:', {

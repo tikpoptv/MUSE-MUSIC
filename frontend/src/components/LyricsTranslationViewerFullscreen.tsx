@@ -65,6 +65,8 @@ export default function LyricsTranslationViewerFullscreen({
   const [isFullscreenPlayerReady, setIsFullscreenPlayerReady] = useState(false);
   const currentTimeRef = useRef(currentTime);
   const isPlayingRef = useRef(isPlaying);
+  const hasAppliedInitialSeekRef = useRef(false);
+  const isInitializingRef = useRef(false);
 
   useEffect(() => {
     currentTimeRef.current = currentTime;
@@ -149,7 +151,8 @@ export default function LyricsTranslationViewerFullscreen({
   // Build cache for all pairs using utility function
   useEffect(() => {
     lineTimeCache.current = buildLineTimeCache(pairs, syncedLyricsLines);
-  }, [pairs, syncedLyricsLines]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [translation, syncedLyricsLines]); // ใช้ translation แทน pairs เพื่อลด re-render
   
   const getLineTime = (pairIndex: number): number | null => {
     return getLineTimeUtil(pairIndex, lineTimeCache.current);
@@ -278,7 +281,7 @@ export default function LyricsTranslationViewerFullscreen({
               const initializePlayer = (retryCount = 0) => {
                 if (!fullscreenPlayerRef.current) return;
                 
-                if (retryCount > 15) {
+                if (retryCount > 20) {
                   setIsFullscreenPlayerReady(true);
                   return;
                 }
@@ -298,38 +301,52 @@ export default function LyricsTranslationViewerFullscreen({
                     return;
                   }
                   
-                  const playerState = fullscreenPlayerRef.current.getPlayerState?.();
-                  // Player states: -1 (unstarted), 0 (ended), 1 (playing), 2 (paused), 3 (buffering), 5 (cued)
-                  // Accept cued (5), paused (2), or playing (1) states
-                  if (playerState === -1) {
-                    setTimeout(() => initializePlayer(retryCount + 1), 100);
-                    return;
-                  }
-                  
                   setIsFullscreenPlayerReady(true);
                   
                   if (fullscreenPlayerRef.current.mute) {
                     fullscreenPlayerRef.current.mute();
                   }
                   
-                  const initialTime = currentTimeRef.current;
-                  if (initialTime > 0 && typeof fullscreenPlayerRef.current.seekTo === 'function') {
-                    fullscreenPlayerRef.current.seekTo(initialTime, true);
-                  }
+                  isInitializingRef.current = true;
                   
-                  // Play/pause immediately after seek
+                  // Start playing from beginning first to load video
                   setTimeout(() => {
                     if (!fullscreenPlayerRef.current) return;
                     try {
-                      if (isPlayingRef.current && typeof fullscreenPlayerRef.current.playVideo === 'function') {
+                      if (typeof fullscreenPlayerRef.current.playVideo === 'function') {
                         fullscreenPlayerRef.current.playVideo();
-                      } else if (!isPlayingRef.current && typeof fullscreenPlayerRef.current.pauseVideo === 'function') {
-                        fullscreenPlayerRef.current.pauseVideo();
                       }
+                      
+                      // After starting playback, seek to target time (longer delay for mobile)
+                      const seekDelay = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ? 800 : 500;
+                      setTimeout(() => {
+                        if (!fullscreenPlayerRef.current) return;
+                        const targetTime = currentTimeRef.current;
+                        if (targetTime > 0 && typeof fullscreenPlayerRef.current.seekTo === 'function') {
+                          fullscreenPlayerRef.current.seekTo(targetTime, true);
+                        }
+                        
+                        // Then adjust play/pause state (longer delay for mobile)
+                        const stateDelay = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ? 500 : 300;
+                        setTimeout(() => {
+                          if (!fullscreenPlayerRef.current) return;
+                          try {
+                            if (isPlayingRef.current && typeof fullscreenPlayerRef.current.playVideo === 'function') {
+                              fullscreenPlayerRef.current.playVideo();
+                            } else if (!isPlayingRef.current && typeof fullscreenPlayerRef.current.pauseVideo === 'function') {
+                              fullscreenPlayerRef.current.pauseVideo();
+                            }
+                            hasAppliedInitialSeekRef.current = true;
+                            isInitializingRef.current = false;
+                          } catch {
+                            // Ignore
+                          }
+                        }, stateDelay);
+                      }, seekDelay);
                     } catch {
                       // Ignore
                     }
-                  }, 150);
+                  }, 100);
                 } catch {
                   setTimeout(() => initializePlayer(retryCount + 1), 100);
                 }
@@ -339,8 +356,8 @@ export default function LyricsTranslationViewerFullscreen({
             },
             onStateChange: (event: { data: number }) => {
               // Handle state changes if needed
-              if (event.data === 1 && !isPlayingRef.current) {
-                // Player started playing but main player is paused
+              if (event.data === 1 && !isPlayingRef.current && hasAppliedInitialSeekRef.current) {
+                // Player started playing but main player is paused (only after initial seek is done)
                 if (fullscreenPlayerRef.current && typeof fullscreenPlayerRef.current.pauseVideo === 'function') {
                   try {
                     fullscreenPlayerRef.current.pauseVideo();
@@ -373,15 +390,19 @@ export default function LyricsTranslationViewerFullscreen({
         containerElement.id = '';
       }
       setIsFullscreenPlayerReady(false);
+      hasAppliedInitialSeekRef.current = false;
+      isInitializingRef.current = false;
     };
   }, [youtubeVideoId]);
 
   // Sync fullscreen player with main player's currentTime
   useEffect(() => {
     if (!youtubeVideoId || !fullscreenPlayerRef.current || !isFullscreenPlayerReady) return;
+    // รอให้ทำ initial seek ครั้งแรกให้เสร็จก่อน ค่อยเริ่ม sync ตามเวลาหลัก
+    if (!hasAppliedInitialSeekRef.current || isInitializingRef.current) return;
 
     const syncTime = () => {
-      if (!fullscreenPlayerRef.current) return;
+      if (!fullscreenPlayerRef.current || isInitializingRef.current) return;
 
       try {
         if (typeof fullscreenPlayerRef.current.getCurrentTime !== 'function' ||
@@ -389,10 +410,20 @@ export default function LyricsTranslationViewerFullscreen({
           return;
         }
 
-        const playerTime = fullscreenPlayerRef.current.getCurrentTime();
-        if (Math.abs(playerTime - currentTimeRef.current) > 0.5) {
-          fullscreenPlayerRef.current.seekTo(currentTimeRef.current);
+        // ไม่ควร seek ขณะกำลัง buffering (state 3)
+        const playerState = fullscreenPlayerRef.current.getPlayerState?.();
+        if (playerState === 3) {
+          return;
         }
+
+        const playerTime = fullscreenPlayerRef.current.getCurrentTime();
+        const targetTime = currentTimeRef.current;
+        const diff = Math.abs(playerTime - targetTime);
+
+        // ถ้าคลาดเคลื่อนเล็กน้อย (< 1s) ปล่อยผ่านไป - เพิ่ม tolerance
+        if (diff <= 1) return;
+
+        fullscreenPlayerRef.current.seekTo(targetTime);
       } catch {
         // Ignore
       }
@@ -405,16 +436,18 @@ export default function LyricsTranslationViewerFullscreen({
     }
 
     syncTime();
-    const intervalId = setInterval(syncTime, 500);
+    const intervalId = setInterval(syncTime, 1000); // ช้าลง จาก 500ms เป็น 1000ms
     return () => clearInterval(intervalId);
   }, [youtubeVideoId, isFullscreenPlayerReady, isPlaying]);
 
   // Sync fullscreen player with main player's isPlaying
   useEffect(() => {
     if (!youtubeVideoId || !fullscreenPlayerRef.current || !isFullscreenPlayerReady) return;
+    // รอให้ initialization เสร็จก่อน
+    if (!hasAppliedInitialSeekRef.current || isInitializingRef.current) return;
 
     const syncPlayState = () => {
-      if (!fullscreenPlayerRef.current) return;
+      if (!fullscreenPlayerRef.current || isInitializingRef.current) return;
 
       try {
         const playerState = fullscreenPlayerRef.current.getPlayerState?.();
@@ -443,49 +476,7 @@ export default function LyricsTranslationViewerFullscreen({
     syncPlayState();
   }, [youtubeVideoId, isFullscreenPlayerReady, isPlaying]);
 
-  // When fullscreen player becomes ready, immediately sync with main player state
-  useEffect(() => {
-    if (!isFullscreenPlayerReady || !fullscreenPlayerRef.current) return;
-
-    const syncOnReady = () => {
-      if (!fullscreenPlayerRef.current) return;
-
-      try {
-        const playerState = fullscreenPlayerRef.current.getPlayerState?.();
-        // Wait for player to be ready (not unstarted or buffering)
-        if (playerState === -1 || playerState === 3) {
-          setTimeout(syncOnReady, 100);
-          return;
-        }
-
-        if (fullscreenPlayerRef.current.mute && typeof fullscreenPlayerRef.current.mute === 'function') {
-          fullscreenPlayerRef.current.mute();
-        }
-
-        if (typeof fullscreenPlayerRef.current.seekTo === 'function') {
-          fullscreenPlayerRef.current.seekTo(currentTimeRef.current, true);
-        }
-
-        // Wait a bit after seek before playing
-        setTimeout(() => {
-          if (!fullscreenPlayerRef.current) return;
-          try {
-            if (isPlayingRef.current && typeof fullscreenPlayerRef.current.playVideo === 'function') {
-              fullscreenPlayerRef.current.playVideo();
-            } else if (!isPlayingRef.current && typeof fullscreenPlayerRef.current.pauseVideo === 'function') {
-              fullscreenPlayerRef.current.pauseVideo();
-            }
-          } catch {
-            // Ignore
-          }
-        }, 150);
-      } catch {
-        setTimeout(syncOnReady, 100);
-      }
-    };
-
-    syncOnReady();
-  }, [isFullscreenPlayerReady]);
+  // Removed the syncOnReady effect - initialization is now handled in the onReady callback
 
   useEffect(() => {
     // Prevent zoom on mobile
