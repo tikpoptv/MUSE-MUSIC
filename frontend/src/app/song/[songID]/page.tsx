@@ -440,7 +440,7 @@ export default function SongDetailPage() {
 
   useEffect(() => {
     const fetchProcessingVersions = async () => {
-      if (!songID || songID === 'undefined' || !isDetailRoute) {
+      if (!songID || songID === 'undefined') {
         return;
       }
 
@@ -472,10 +472,10 @@ export default function SongDetailPage() {
       }
     };
 
-    if (isDetailRoute && songID && songID !== 'undefined') {
+    if (songID && songID !== 'undefined') {
       fetchProcessingVersions();
     }
-  }, [songID, processingData?.targetLanguage, effectiveProcessingID, isDetailRoute]);
+  }, [songID, processingData?.targetLanguage, effectiveProcessingID]);
 
   useEffect(() => {
     const fetchRecommendationsByLanguage = async () => {
@@ -1404,34 +1404,39 @@ export default function SongDetailPage() {
 
           {/* ฝั่งรายละเอียด (60%) */}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', width: '100%' }} className="lg:items-start items-center">
-            {/* Processing Version Bar (read-only route) or Song Details Card (analysis route) */}
-            {isAnalysisRoute ? (
+            {/* Song Details Card (analysis route) */}
+            {isAnalysisRoute && (
               <div style={{ marginBottom: '54px', width: '100%' }}>
                 <SongDetailsCard songData={songData} processingData={processingData} />
               </div>
-            ) : (
-              processingData && (
-                <div style={{ width: '100%', marginBottom: '16px' }}>
-                  <ProcessingVersionBar
-                    versionNumber={currentVersionNumber}
-                    processingID={processingData.processingID}
-                    rating={processingData.averageRating ? Math.round(processingData.averageRating) : undefined}
-                    onNewAnalyze={handleReAnalyzeClick}
-                    newAnalyzeLabel={isDetailRoute ? 'New analyze' : 'Re-analyze'}
-                    versions={processingVersions.map(v => ({ 
-                      versionNumber: v.versionNumber, 
-                      processingID: v.processingID,
-                      averageRating: v.averageRating
-                    }))}
-                    onVersionClick={(clickedProcessingID) => {
-                      if (clickedProcessingID !== effectiveProcessingID) {
+            )}
+
+            {/* Processing Version Bar */}
+            {processingData && (
+              <div style={{ width: '100%', marginBottom: '16px' }}>
+                <ProcessingVersionBar
+                  versionNumber={currentVersionNumber}
+                  processingID={processingData.processingID}
+                  rating={processingData.averageRating ? Math.round(processingData.averageRating) : undefined}
+                  onNewAnalyze={handleReAnalyzeClick}
+                  newAnalyzeLabel={isDetailRoute ? 'New analyze' : 'Re-analyze'}
+                  versions={processingVersions.map(v => ({ 
+                    versionNumber: v.versionNumber, 
+                    processingID: v.processingID,
+                    averageRating: v.averageRating
+                  }))}
+                  onVersionClick={(clickedProcessingID) => {
+                    if (clickedProcessingID !== effectiveProcessingID) {
+                      if (isAnalysisRoute) {
+                        window.location.href = `/song/${songID}/analysis/${clickedProcessingID}`;
+                      } else {
                         window.location.href = `/song/${songID}?processingID=${clickedProcessingID}`;
                       }
-                    }}
-                    currentProcessingID={effectiveProcessingID}
-                  />
-                </div>
-              )
+                    }
+                  }}
+                  currentProcessingID={effectiveProcessingID}
+                />
+              </div>
             )}
 
             {/* Summary */}
