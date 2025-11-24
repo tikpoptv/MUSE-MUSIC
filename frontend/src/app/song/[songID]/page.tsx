@@ -99,6 +99,8 @@ export default function SongDetailPage() {
   const [isAdminActionProcessing, setIsAdminActionProcessing] = useState(false);
   const desktopMenuRef = useRef<HTMLDivElement>(null);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
+  const reAnalyzeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const feedbackShakeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const feedbackSectionAnchorId = 'feedback-section-anchor';
 
   const effectiveProcessingID = useMemo(() => {
@@ -135,6 +137,7 @@ export default function SongDetailPage() {
     };
   }, [moreMenuTarget]);
 
+  const isCheckingFavoriteRef = useRef(false);
   const checkFavoriteStatus = useCallback(async () => {
     if (!songID || songID === 'undefined' || !authService.isAuthenticated()) {
       return;
@@ -144,7 +147,13 @@ export default function SongDetailPage() {
       return;
     }
 
+    // Prevent duplicate API calls
+    if (isCheckingFavoriteRef.current) {
+      return;
+    }
+
     try {
+      isCheckingFavoriteRef.current = true;
       setIsCheckingFavorite(true);
       const favorite = await favoriteService.checkFavorite(effectiveProcessingID);
       setIsFavorite(favorite);
@@ -153,6 +162,7 @@ export default function SongDetailPage() {
       console.error('Failed to check favorite status:', error);
     } finally {
       setIsCheckingFavorite(false);
+      isCheckingFavoriteRef.current = false;
     }
   }, [songID, effectiveProcessingID]);
 
@@ -173,6 +183,7 @@ export default function SongDetailPage() {
     checkAdminStatus();
   }, []);
 
+  const isFetchingRef = useRef(false);
   const fetchSongData = useCallback(async () => {
       if (!songID || songID === 'undefined') {
         toast.error('Invalid song ID');
@@ -186,11 +197,17 @@ export default function SongDetailPage() {
         return;
       }
 
+      // Prevent duplicate API calls
+      if (isFetchingRef.current) {
+        return;
+      }
+
       try {
+        isFetchingRef.current = true;
         setLoading(true);
         
-        // Check admin status fresh to avoid race condition
-        let currentIsAdmin = isAdmin;
+        // Always fetch admin status locally to avoid depending on outer state.
+        let currentIsAdmin = false;
         if (authService.isAuthenticated()) {
           try {
             currentIsAdmin = await authService.checkAdminStatus();
@@ -201,41 +218,77 @@ export default function SongDetailPage() {
         
         const data = await songService.getSongDetail(songID, processingID);
         
+        // Check if song data exists
+        if (!data.song) {
+          toast.error('Song data not found. Please try again.');
+          router.push('/');
+          isFetchingRef.current = false;
+          return;
+        }
+        
+        // Check if lyrics exists (required field)
+        if (!data.song.lyrics || data.song.lyrics.trim() === '') {
+          toast.error('Lyrics data is missing. The song may not be available.');
+          router.push('/');
+          isFetchingRef.current = false;
+          return;
+        }
+        
+        // Check if processing data exists
+        if (!data.processing) {
+          toast.error('Processing data not found. The analysis may not be available yet.');
+          router.push('/');
+          isFetchingRef.current = false;
+          return;
+        }
+        
         setSongData(data.song);
-        if (data.processing) {
-          const processing = data.processing;
+        const processing = data.processing;
+        
+        if (isAnalysisRoute) {
+          const isApproved = processing.approvalStatus === 'approved' && processing.shareStatus === 'public_approved';
           
-          if (isAnalysisRoute) {
-            const isApproved = processing.approvalStatus === 'approved' && processing.shareStatus === 'public_approved';
-            
-            // If approved, only admin can access (everyone else including owner cannot edit after approval)
-            if (isApproved && !currentIsAdmin) {
-              toast.error('This processing has been reviewed and approved. Only admin can access analysis mode.');
-              window.location.href = `/song/${songID}?processingID=${processingID}`;
-              return;
-            }
-            // If not approved, anyone can access (no need to check owner/login status)
+          // If approved, only admin can access (everyone else including owner cannot edit after approval)
+          if (isApproved && !currentIsAdmin) {
+            toast.error('This processing has been reviewed and approved. Only admin can access analysis mode.');
+            isFetchingRef.current = false;
+            window.location.href = `/song/${songID}?processingID=${processingID}`;
+            return;
           }
-          
-          setProcessingData(processing);
-          if (processing.coverImage) {
-            setCoverImage(processing.coverImage);
-          }
-          if (processing.targetLanguage) {
-            setSelectedLanguage(processing.targetLanguage);
-          }
+          // If not approved, anyone can access (no need to check owner/login status)
+        }
+        
+        setProcessingData(processing);
+        if (processing.coverImage) {
+          setCoverImage(processing.coverImage);
+        }
+        if (processing.targetLanguage) {
+          setSelectedLanguage(processing.targetLanguage);
         }
       } catch (error) {
         toast.error(error instanceof Error ? error.message : 'Failed to load song details');
         router.push('/');
       } finally {
         setLoading(false);
+        isFetchingRef.current = false;
       }
-  }, [songID, processingID, router, isAnalysisRoute, isAdmin]);
+  }, [songID, processingID, router, isAnalysisRoute]);
 
   useEffect(() => {
     fetchSongData();
   }, [fetchSongData]);
+
+  // Cleanup timeouts on unmount
+  useEffect(() => {
+    return () => {
+      if (reAnalyzeTimeoutRef.current) {
+        clearTimeout(reAnalyzeTimeoutRef.current);
+      }
+      if (feedbackShakeTimeoutRef.current) {
+        clearTimeout(feedbackShakeTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const handleCopyLink = useCallback(async () => {
     if (!effectiveProcessingID || effectiveProcessingID === 'undefined') {
@@ -312,8 +365,13 @@ export default function SongDetailPage() {
       if (anchor) {
         anchor.scrollIntoView({ behavior: 'smooth', block: 'center' });
         // Shake feedback section after scroll (like when saving without rating)
-        setTimeout(() => {
+        // Clear any existing timeout
+        if (feedbackShakeTimeoutRef.current) {
+          clearTimeout(feedbackShakeTimeoutRef.current);
+        }
+        feedbackShakeTimeoutRef.current = setTimeout(() => {
           feedbackSectionRef.current?.shake();
+          feedbackShakeTimeoutRef.current = null;
         }, 500);
       }
     }
@@ -374,10 +432,11 @@ export default function SongDetailPage() {
   const canReject = isAdmin && processingData?.approvalStatus !== 'rejected';
 
   useEffect(() => {
-    if (songID && songID !== 'undefined' && authService.isAuthenticated()) {
+    if (songID && songID !== 'undefined' && authService.isAuthenticated() && effectiveProcessingID && effectiveProcessingID !== 'undefined') {
       checkFavoriteStatus();
     }
-  }, [songID, checkFavoriteStatus]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [songID, effectiveProcessingID]);
 
   useEffect(() => {
     const fetchProcessingVersions = async () => {
@@ -469,32 +528,36 @@ export default function SongDetailPage() {
 
   useEffect(() => {
     const fetchRecommendationsByMood = async () => {
-      if (!processingData) return;
+      const mood = processingData?.mood;
+      const moodType = processingData?.moodType;
+      const originalLanguage = processingData?.originalLanguage;
+
+      if (!originalLanguage) return;
 
       let topMood: string | null = null;
       
-      if (processingData.mood && Array.isArray(processingData.mood) && processingData.mood.length > 0) {
-        const sortedMoods = [...processingData.mood].sort((a, b) => (b.percentage || 0) - (a.percentage || 0));
+      if (mood && Array.isArray(mood) && mood.length > 0) {
+        const sortedMoods = [...mood].sort((a, b) => (b.percentage || 0) - (a.percentage || 0));
         topMood = sortedMoods[0].type;
-      } else if (processingData.moodType) {
+      } else if (moodType) {
         try {
-          const parsed = JSON.parse(processingData.moodType) as Array<{ type: string; percentage: number }>;
+          const parsed = JSON.parse(moodType) as Array<{ type: string; percentage: number }>;
           if (Array.isArray(parsed) && parsed.length > 0) {
             const sortedMoods = [...parsed].sort((a, b) => (b.percentage || 0) - (a.percentage || 0));
             topMood = sortedMoods[0].type;
           }
         } catch {
-          topMood = processingData.moodType;
+          topMood = moodType;
         }
       }
 
-      if (!topMood || !processingData.originalLanguage) return;
+      if (!topMood) return;
 
       try {
         setLoadingRecommendationsByMood(true);
         
         const moodSongs = await recommendSongsService.getRecommendedSongsByLanguageAndMood(
-          processingData.originalLanguage,
+          originalLanguage,
           topMood,
           2,
           songID
@@ -506,10 +569,10 @@ export default function SongDetailPage() {
       }
     };
 
-    if (processingData) {
+    if (processingData?.originalLanguage) {
       fetchRecommendationsByMood();
     }
-  }, [processingData, songID]);
+  }, [processingData?.mood, processingData?.moodType, processingData?.originalLanguage, songID]);
 
   const handleLanguageChange = async (language: string) => {
     if (!songID || songID === 'undefined') return;
@@ -672,7 +735,12 @@ export default function SongDetailPage() {
 
       toast.success('Re-analyzing... Please wait a moment.');
       
-      setTimeout(async () => {
+      // Clear any existing timeout
+      if (reAnalyzeTimeoutRef.current) {
+        clearTimeout(reAnalyzeTimeoutRef.current);
+      }
+      
+      reAnalyzeTimeoutRef.current = setTimeout(async () => {
         try {
           const data = await songService.getSongDetail(songID, processingID);
           setSongData(data.song);
@@ -692,6 +760,7 @@ export default function SongDetailPage() {
           setIsReAnalyzing(false);
           setIsReAnalyzeModalOpen(false);
           setPendingLanguageChange(null);
+          reAnalyzeTimeoutRef.current = null;
         }
       }, 2000);
     } catch (error) {
