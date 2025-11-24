@@ -27,6 +27,7 @@ test.describe('Social Share Flow', () => {
               songID: 'song-123',
               songName: 'Test Song',
               artistName: 'Test Artist',
+              lyrics: 'Sample lyrics for testing purposes.',
             },
             processing: {
               processingID: mockProcessingID,
@@ -78,6 +79,8 @@ test.describe('Social Share Flow', () => {
             song: {
               songID: 'song-123',
               songName: 'Test Song',
+              artistName: 'Test Artist',
+              lyrics: 'Sample lyrics for testing purposes.',
             },
             processing: {
               processingID: mockProcessingID,
@@ -131,6 +134,8 @@ test.describe('Social Share Flow', () => {
             song: {
               songID: 'song-123',
               songName: 'Test Song',
+              artistName: 'Test Artist',
+              lyrics: 'Sample lyrics for testing purposes.',
             },
             processing: {
               processingID: mockProcessingID,
@@ -191,6 +196,8 @@ test.describe('Social Share Flow', () => {
             song: {
               songID: 'song-123',
               songName: 'Test Song',
+              artistName: 'Test Artist',
+              lyrics: 'Sample lyrics for testing purposes.',
             },
             processing: {
               processingID: mockProcessingID,
@@ -252,6 +259,8 @@ test.describe('Social Share Flow', () => {
             song: {
               songID: 'song-123',
               songName: 'Test Song',
+              artistName: 'Test Artist',
+              lyrics: 'Sample lyrics for testing purposes.',
             },
             processing: {
               processingID: mockProcessingID,
@@ -314,6 +323,8 @@ test.describe('Social Share Flow', () => {
             song: {
               songID: 'song-123',
               songName: 'Test Song',
+              artistName: 'Test Artist',
+              lyrics: 'Sample lyrics for testing purposes.',
             },
             processing: {
               processingID: mockProcessingID,

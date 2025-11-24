@@ -36,6 +36,7 @@ interface LyricsTranslationViewerProps {
   onMuteToggle?: () => void;
   volume?: number;
   isMuted?: boolean;
+  externalFullscreenSignal?: number;
 }
 
 export default function LyricsTranslationViewer({
@@ -64,11 +65,13 @@ export default function LyricsTranslationViewer({
   onVolumeChange,
   onMuteToggle,
   volume = 100,
-  isMuted = false
+  isMuted = false,
+  externalFullscreenSignal
 }: LyricsTranslationViewerProps) {
   const [selectedLanguage, setSelectedLanguage] = useState<string>(targetLanguage || defaultLanguage);
   const [isShaking, setIsShaking] = useState(false);
   const [isFullscreenOpen, setIsFullscreenOpen] = useState(false);
+  const fullscreenSignalRef = useRef<number | undefined>(externalFullscreenSignal);
   const lyricsContainerRef = useRef<HTMLDivElement>(null);
   const lineRefs = useRef<Map<number, HTMLDivElement>>(new Map());
 
@@ -79,6 +82,16 @@ export default function LyricsTranslationViewer({
       setSelectedLanguage(defaultLanguage);
     }
   }, [targetLanguage, defaultLanguage]);
+
+  useEffect(() => {
+    if (
+      externalFullscreenSignal !== undefined &&
+      externalFullscreenSignal !== fullscreenSignalRef.current
+    ) {
+      fullscreenSignalRef.current = externalFullscreenSignal;
+      setIsFullscreenOpen(true);
+    }
+  }, [externalFullscreenSignal]);
 
   const downloadLyricsAsTxt = () => {
     if (!originalLyrics || !translation) {

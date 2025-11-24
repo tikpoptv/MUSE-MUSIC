@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { useParams, useRouter, useSearchParams, usePathname } from 'next/navigation';
-import { Heart, Share2, MoreVertical, Link2, ExternalLink, Flag, ShieldCheck, ShieldOff } from 'lucide-react';
+import { Heart, Share2, MoreVertical, Link2, ExternalLink, Flag, ShieldCheck, ShieldOff, Maximize2 } from 'lucide-react';
 import MusicCard from '@/components/MusicCard';
 import SkeletonCard from '@/components/SkeletonCard';
 import LyricsTranslationViewer from '@/components/LyricsTranslationViewer';
@@ -102,6 +102,7 @@ export default function SongDetailPage() {
   const reAnalyzeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const feedbackShakeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const feedbackSectionAnchorId = 'feedback-section-anchor';
+  const [fullscreenViewerSignal, setFullscreenViewerSignal] = useState(0);
 
   const effectiveProcessingID = useMemo(() => {
     if (processingID && processingID !== 'undefined' && processingID !== '') {
@@ -1094,6 +1095,7 @@ export default function SongDetailPage() {
 
   return (
     <main className="min-h-screen bg-white">
+
       {/* Structured Data for SEO */}
       {structuredData && (
         <script
@@ -1493,6 +1495,7 @@ export default function SongDetailPage() {
                 songStartTime={processingData?.songStartTime || null}
                 onSave={handleSaveTranslation}
                 youtubeVideoId={processingData?.youtubeVideoId || null}
+                externalFullscreenSignal={fullscreenViewerSignal}
               />
             </div>
 
@@ -1673,6 +1676,18 @@ export default function SongDetailPage() {
         songName={songData?.songName || 'this song'}
         isProcessing={isAdminActionProcessing}
       />
+      {processingData?.translation && isPlaying && (
+        <div className="fixed bottom-6 right-6 z-40">
+          <button
+            type="button"
+            onClick={() => setFullscreenViewerSignal((prev) => prev + 1)}
+            className="flex items-center gap-2 rounded-full bg-[#7B61FF] px-4 py-2 text-white shadow-lg hover:bg-[#6B51EF] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#7B61FF] animate-pulse"
+          >
+            <Maximize2 className="h-4 w-4" />
+            <span className="text-sm font-medium">Open Fullscreen</span>
+          </button>
+        </div>
+      )}
     </main>
   );
 }
