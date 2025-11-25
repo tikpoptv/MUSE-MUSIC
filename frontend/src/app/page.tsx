@@ -32,6 +32,7 @@ type NavbarStartDetail = {
 };
 
 const NAVBAR_START_EVENT = 'muse-navbar-start-analysis';
+const MAX_YOUTUBE_TRANSCRIPT_DURATION_SECONDS = 7 * 60;
 
 export default function Home() {
   const [data, setData] = useState<HomeResponse>({ hero: [], sections: [] });
@@ -129,10 +130,31 @@ export default function Home() {
     return '';
   }, []);
 
+  const getOrFetchYouTubeDetails = useCallback(
+    async (videoId: string): Promise<YouTubeVideoDetailsResponse> => {
+      if (youtubeVideoDetails && youtubeVideoDetails.videoId === videoId) {
+        return youtubeVideoDetails;
+      }
+      const details = await youtubeService.getVideoDetails(videoId);
+      setYoutubeVideoDetails(details);
+      return details;
+    },
+    [youtubeVideoDetails]
+  );
+
   const handleFetchYouTubeTranscript = useCallback(async () => {
     if (!youtubeVideoId) return;
     try {
       setFetchingYouTubeTranscript(true);
+      toast.loading('Checking YouTube video duration...', { id: 'youtube-transcript' });
+      const details = await getOrFetchYouTubeDetails(youtubeVideoId);
+      if (details.duration > MAX_YOUTUBE_TRANSCRIPT_DURATION_SECONDS) {
+        toast.error('YouTube video is longer than 7 minutes. Transcript fetch is not allowed.', { id: 'youtube-transcript' });
+        setYoutubeTranscriptText('');
+        setYoutubeTranscriptMeta(null);
+        setDetectedOriginalLanguage(null);
+        return;
+      }
       toast.loading('Fetching YouTube transcript...', { id: 'youtube-transcript' });
       const response = await youtubeService.getTranscript(youtubeVideoId, { 
         format: 'raw', 
@@ -158,7 +180,7 @@ export default function Home() {
       } else {
         setDetectedOriginalLanguage(null);
       }
-      setYoutubeVideoDetails(response.videoDetails ?? null);
+      setYoutubeVideoDetails(response.videoDetails ?? details ?? null);
       toast.success('YouTube transcript ready', { id: 'youtube-transcript' });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to fetch YouTube transcript';
@@ -169,7 +191,7 @@ export default function Home() {
     } finally {
       setFetchingYouTubeTranscript(false);
     }
-  }, [normalizeTranscriptText, youtubeVideoId, selectedTranscriptLanguage]);
+  }, [normalizeTranscriptText, youtubeVideoId, selectedTranscriptLanguage, getOrFetchYouTubeDetails]);
 
   const handleClearYouTubeTranscript = useCallback(() => {
     clearYouTubeState();

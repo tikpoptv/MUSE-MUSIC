@@ -66,16 +66,52 @@ class ForYouService {
   static async getMoodStats(userID) {
     const client = await pool.connect();
     try {
-      // Get all processing records with moodtype for this user
+      // Get mood signals prioritizing user's processing, then any public processing from history songs
       const query = `
-        SELECT DISTINCT
-          p.processingid,
-          p.moodtype
-        FROM songaiprocessing p
-        WHERE p.createdby = $1
-          AND p.status = 'completed'
-          AND p.moodtype IS NOT NULL
-          AND p.moodtype != ''
+        WITH user_processing AS (
+          SELECT DISTINCT ON (p.songid)
+            p.songid,
+            p.moodtype,
+            p.createdat
+          FROM songaiprocessing p
+          WHERE p.createdby = $1
+            AND p.status = 'completed'
+            AND p.moodtype IS NOT NULL
+            AND p.moodtype != ''
+          ORDER BY p.songid, p.createdat DESC
+        ),
+        history_songs AS (
+          SELECT DISTINCT h.songid
+          FROM history h
+          WHERE h.userid = $1
+        ),
+        history_processing AS (
+          SELECT DISTINCT ON (p.songid)
+            p.songid,
+            p.moodtype,
+            p.createdat
+          FROM songaiprocessing p
+          INNER JOIN history_songs hs ON hs.songid = p.songid
+          WHERE p.status = 'completed'
+            AND p.sharestatus = 'public_approved'
+            AND p.moodtype IS NOT NULL
+            AND p.moodtype != ''
+          ORDER BY p.songid, p.createdat DESC
+        ),
+        combined_moods AS (
+          SELECT songid, moodtype, createdat
+          FROM user_processing
+          UNION
+          SELECT hp.songid, hp.moodtype, hp.createdat
+          FROM history_processing hp
+          WHERE NOT EXISTS (
+            SELECT 1
+            FROM user_processing up
+            WHERE up.songid = hp.songid
+          )
+        )
+        SELECT moodtype
+        FROM combined_moods
       `;
 
       const result = await client.query(query, [userID]);
@@ -97,8 +133,8 @@ class ForYouService {
           const moods = JSON.parse(row.moodtype);
 
           if (Array.isArray(moods) && moods.length > 0) {
-            // Get the top mood (first item, usually sorted by percentage)
-            moods.forEach(moodItem => {
+            const maxWeight = 4;
+            moods.forEach((moodItem, index) => {
               let moodRaw = null;
 
               if (typeof moodItem === 'object' && moodItem !== null && moodItem.type) {
@@ -110,27 +146,27 @@ class ForYouService {
               if (moodRaw) {
                 const normalized = normalizeMainMood(moodRaw);
                 if (normalized && moodMap.has(normalized)) {
-                  moodMap.set(normalized, moodMap.get(normalized) + 1);
+                  const weight = Math.max(maxWeight - index, 1);
+                  moodMap.set(normalized, moodMap.get(normalized) + weight);
                 }
               }
             });
           } else if (typeof moods === 'object' && moods !== null && moods.type) {
             const normalized = normalizeMainMood(moods.type);
             if (normalized && moodMap.has(normalized)) {
-              moodMap.set(normalized, moodMap.get(normalized) + 1);
+              moodMap.set(normalized, moodMap.get(normalized) + 4);
             }
           } else if (typeof moods === 'string') {
             const normalized = normalizeMainMood(moods);
             if (normalized && moodMap.has(normalized)) {
-              moodMap.set(normalized, moodMap.get(normalized) + 1);
+              moodMap.set(normalized, moodMap.get(normalized) + 4);
             }
           }
         } catch (e) {
-          // If not JSON, treat as string
           if (typeof row.moodtype === 'string') {
             const normalized = normalizeMainMood(row.moodtype);
             if (normalized && moodMap.has(normalized)) {
-              moodMap.set(normalized, moodMap.get(normalized) + 1);
+              moodMap.set(normalized, moodMap.get(normalized) + 4);
             }
           }
         }
@@ -293,6 +329,7 @@ class ForYouService {
             p.averagerating,
             p.coverimage,
             p.moodtype,
+            p.createdat,
             s.songname,
             s.artistname,
             ROW_NUMBER() OVER (
@@ -316,7 +353,10 @@ class ForYouService {
           artistname as artist,
           COALESCE(coverimage, '') as image,
           processingid as processingid,
-          moodtype as moodtype
+          moodtype as moodtype,
+          totalratings,
+          averagerating,
+          createdat
         FROM RankedProcessing
         WHERE rn = 1
         ORDER BY 
@@ -380,11 +420,35 @@ class ForYouService {
         user_favorites AS (
           SELECT 
             f.songid,
-            1 as is_favorite
+            1 as is_favorite,
+            MAX(f.createdat) as favorited_at
           FROM userfavorites f
           WHERE f.userid = $1
             AND f.favoritetype = 'song'
             AND f.songid IS NOT NULL
+          GROUP BY f.songid
+        ),
+        user_history AS (
+          SELECT 
+            h.songid,
+            COUNT(*) FILTER (WHERE h.actiontype = 'view') as view_count,
+            COUNT(*) FILTER (WHERE h.actiontype = 'save') as save_count,
+            COALESCE(SUM(h.playduration), 0) as total_play_duration,
+            MAX(h.timestamp) as last_played_at
+          FROM history h
+          WHERE h.userid = $1
+          GROUP BY h.songid
+        ),
+        user_ratings AS (
+          SELECT 
+            p.songid,
+            COUNT(r.rating) as rating_count,
+            AVG(r.rating)::float as rating_avg,
+            MAX(r.createdat) as last_rated_at
+          FROM aiprocessingratings r
+          INNER JOIN songaiprocessing p ON p.processingid = r.processingid
+          WHERE r.userid = $1
+          GROUP BY p.songid
         ),
         song_scores AS (
           SELECT 
@@ -396,20 +460,55 @@ class ForYouService {
             COALESCE(ua.analysis_count, 0) as analysis_count,
             COALESCE(ua.has_translation, 0) as has_translation,
             COALESCE(uf.is_favorite, 0) as is_favorite,
-            COALESCE(ua.last_analyzed_at, NULL) as last_analyzed_at,
+            ua.last_analyzed_at,
+            COALESCE(uh.view_count, 0) as view_count,
+            COALESCE(uh.save_count, 0) as save_count,
+            COALESCE(uh.total_play_duration, 0) as total_play_duration,
+            uh.last_played_at,
+            COALESCE(ur.rating_avg, 0) as rating_avg,
+            COALESCE(ur.rating_count, 0) as rating_count,
+            GREATEST(
+              COALESCE(ua.last_analyzed_at, to_timestamp(0)),
+              COALESCE(uh.last_played_at, to_timestamp(0)),
+              COALESCE(ur.last_rated_at, to_timestamp(0)),
+              COALESCE(uf.favorited_at, to_timestamp(0))
+            ) as last_activity_at,
             (
               COALESCE(ua.analysis_count, 0) * 3 +
-              COALESCE(ua.has_translation, 0) * 2 +
-              COALESCE(uf.is_favorite, 0) * 2
+              CASE WHEN COALESCE(ua.has_translation, 0) = 1 THEN 2 ELSE 0 END +
+              COALESCE(uf.is_favorite, 0) * 4 +
+              COALESCE(uh.view_count, 0) * 1 +
+              COALESCE(uh.save_count, 0) * 2 +
+              LEAST(COALESCE(uh.total_play_duration, 0) / 60.0, 30) * 0.5 +
+              COALESCE(ur.rating_avg, 0) * 1.5 +
+              CASE 
+                WHEN GREATEST(
+                  COALESCE(ua.last_analyzed_at, to_timestamp(0)),
+                  COALESCE(uh.last_played_at, to_timestamp(0)),
+                  COALESCE(ur.last_rated_at, to_timestamp(0)),
+                  COALESCE(uf.favorited_at, to_timestamp(0))
+                ) >= NOW() - INTERVAL '7 days' THEN 5
+                WHEN GREATEST(
+                  COALESCE(ua.last_analyzed_at, to_timestamp(0)),
+                  COALESCE(uh.last_played_at, to_timestamp(0)),
+                  COALESCE(ur.last_rated_at, to_timestamp(0)),
+                  COALESCE(uf.favorited_at, to_timestamp(0))
+                ) >= NOW() - INTERVAL '30 days' THEN 3
+                WHEN GREATEST(
+                  COALESCE(ua.last_analyzed_at, to_timestamp(0)),
+                  COALESCE(uh.last_played_at, to_timestamp(0)),
+                  COALESCE(ur.last_rated_at, to_timestamp(0)),
+                  COALESCE(uf.favorited_at, to_timestamp(0))
+                ) >= NOW() - INTERVAL '90 days' THEN 1
+                ELSE 0
+              END
             ) as score
           FROM songs s
           LEFT JOIN user_analysis ua ON s.songid = ua.songid
           LEFT JOIN user_favorites uf ON s.songid = uf.songid
+          LEFT JOIN user_history uh ON s.songid = uh.songid
+          LEFT JOIN user_ratings ur ON s.songid = ur.songid
           WHERE s.isactive = TRUE
-            AND (
-              ua.songid IS NOT NULL 
-              OR uf.songid IS NOT NULL
-            )
         ),
         ranked_songs AS (
           SELECT 
@@ -468,11 +567,25 @@ class ForYouService {
           analysis_count,
           has_translation,
           is_favorite,
+          view_count,
+          save_count,
+          total_play_duration,
+          rating_avg,
+          rating_count,
           score,
-          last_analyzed_at
+          last_analyzed_at,
+          last_played_at,
+          last_activity_at
         FROM ranked_songs
         WHERE score > 0
-        ORDER BY score DESC, last_analyzed_at DESC NULLS LAST
+          AND (
+            analysis_count > 0
+            OR is_favorite = 1
+            OR view_count > 0
+            OR save_count > 0
+            OR rating_count > 0
+          )
+        ORDER BY score DESC, last_activity_at DESC NULLS LAST
         LIMIT $2 OFFSET $3
       `;
 
@@ -497,6 +610,9 @@ class ForYouService {
           }
         }
 
+        const playDuration = row.total_play_duration ? parseInt(row.total_play_duration) : 0;
+        const ratingAvg = row.rating_avg ? Number(row.rating_avg) : 0;
+
         return {
           id: row.songid,
           processingID: row.processingid,
@@ -509,8 +625,15 @@ class ForYouService {
           analysisCount: parseInt(row.analysis_count) || 0,
           hasTranslation: row.has_translation === 1,
           isFavorite: row.is_favorite === 1,
-          score: parseInt(row.score) || 0,
-          lastAnalyzedAt: row.last_analyzed_at
+          viewCount: parseInt(row.view_count) || 0,
+          saveCount: parseInt(row.save_count) || 0,
+          totalPlayDuration: playDuration,
+          ratingAverage: ratingAvg,
+          ratingCount: parseInt(row.rating_count) || 0,
+          score: Number(row.score) || 0,
+          lastAnalyzedAt: row.last_analyzed_at,
+          lastPlayedAt: row.last_played_at,
+          lastActivityAt: row.last_activity_at
         };
       });
 
