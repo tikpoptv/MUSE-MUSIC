@@ -8,7 +8,7 @@ import { getLanguageNames } from '@/utils/languageUtils';
 const languageToCountry: Record<string, string> = {
   'Thai': 'th',
   'English': 'us',
-  'Lao': 'la',
+  'Laos': 'la',
   'Japanese': 'jp',
   'Korean': 'kr'
 };

@@ -143,7 +143,7 @@ export const findLanguageForCountry = (countryName: string) => {
     'Sri Lanka': 'Sinhala',
     'Nepal': 'Nepali',
     'Myanmar': 'Burmese',
-    'Laos': 'Lao',
+    'Laos': 'Laos',
     'Cambodia': 'Khmer'
   };
   
