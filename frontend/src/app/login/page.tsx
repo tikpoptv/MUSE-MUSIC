@@ -23,7 +23,7 @@ export default function LoginPage() {
     const isAuth = authService.isAuthenticated();
     
     if (isAuth) {
-      toast.success('คุณเข้าสู่ระบบอยู่แล้ว');
+      toast.success('You are already logged in');
       setTimeout(() => {
         window.location.href = '/';
       }, 1500);
