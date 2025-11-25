@@ -1,22 +1,29 @@
 import React from "react";
-import { Smile } from "lucide-react";
+import { Smile, Frown, Angry, Meh, ThumbsDown, Zap } from "lucide-react";
 
 interface MoodCardProps {
   moodType: string;
   percentage: number;
 }
 
-// Map mood types to display names and colors
-const moodConfig: Record<string, { label: string; bgColor: string; textColor: string; iconColor: string }> = {
-  happy: { label: 'Happy', bgColor: 'bg-yellow-100', textColor: 'text-yellow-700', iconColor: 'text-yellow-600' },
-  sad: { label: 'Sad', bgColor: 'bg-blue-100', textColor: 'text-blue-700', iconColor: 'text-blue-600' },
-  fear: { label: 'Fear', bgColor: 'bg-purple-100', textColor: 'text-purple-700', iconColor: 'text-purple-600' },
-  anger: { label: 'Anger', bgColor: 'bg-red-100', textColor: 'text-red-700', iconColor: 'text-red-600' },
-  disgust: { label: 'Disgust', bgColor: 'bg-green-100', textColor: 'text-green-700', iconColor: 'text-green-600' },
-  surprise: { label: 'Surprise', bgColor: 'bg-orange-100', textColor: 'text-orange-700', iconColor: 'text-orange-600' },
-  powerful: { label: 'Powerful', bgColor: 'bg-pink-100', textColor: 'text-pink-700', iconColor: 'text-pink-600' },
-  calm: { label: 'Calm', bgColor: 'bg-cyan-100', textColor: 'text-cyan-700', iconColor: 'text-cyan-600' },
-  energetic: { label: 'Energetic', bgColor: 'bg-amber-100', textColor: 'text-amber-700', iconColor: 'text-amber-600' },
+type MoodConfig = {
+  label: string;
+  bgColor: string;
+  textColor: string;
+  iconColor: string;
+  Icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
+};
+
+const moodConfig: Record<string, MoodConfig> = {
+  happy: { label: 'Happy', bgColor: 'bg-yellow-100', textColor: 'text-yellow-700', iconColor: 'text-yellow-600', Icon: Smile },
+  sad: { label: 'Sad', bgColor: 'bg-blue-100', textColor: 'text-blue-700', iconColor: 'text-blue-600', Icon: Frown },
+  fear: { label: 'Fear', bgColor: 'bg-purple-100', textColor: 'text-purple-700', iconColor: 'text-purple-600', Icon: Meh },
+  anger: { label: 'Anger', bgColor: 'bg-red-100', textColor: 'text-red-700', iconColor: 'text-red-600', Icon: Angry },
+  disgust: { label: 'Disgust', bgColor: 'bg-green-100', textColor: 'text-green-700', iconColor: 'text-green-600', Icon: ThumbsDown },
+  surprise: { label: 'Surprise', bgColor: 'bg-orange-100', textColor: 'text-orange-700', iconColor: 'text-orange-600', Icon: Zap },
+  powerful: { label: 'Powerful', bgColor: 'bg-pink-100', textColor: 'text-pink-700', iconColor: 'text-pink-600', Icon: Smile },
+  calm: { label: 'Calm', bgColor: 'bg-cyan-100', textColor: 'text-cyan-700', iconColor: 'text-cyan-600', Icon: Meh },
+  energetic: { label: 'Energetic', bgColor: 'bg-amber-100', textColor: 'text-amber-700', iconColor: 'text-amber-600', Icon: Zap },
 };
 
 const MoodCard: React.FC<MoodCardProps> = ({ moodType, percentage }) => {
@@ -25,7 +32,10 @@ const MoodCard: React.FC<MoodCardProps> = ({ moodType, percentage }) => {
     bgColor: 'bg-gray-100',
     textColor: 'text-gray-700',
     iconColor: 'text-gray-600',
+    Icon: Smile,
   };
+
+  const IconComponent = config.Icon;
 
   return (
     <div
@@ -37,7 +47,7 @@ const MoodCard: React.FC<MoodCardProps> = ({ moodType, percentage }) => {
       <div className={`w-full aspect-square rounded-xl mb-3 relative overflow-hidden ${config.bgColor} transition-transform duration-300 group-hover:scale-[1.02]`}>
         {/* Mood icon centered */}
         <div className={`absolute inset-0 flex items-center justify-center ${config.iconColor}`}>
-          <Smile className="w-20 h-20" strokeWidth={1.5} />
+          <IconComponent className="w-20 h-20" strokeWidth={1.5} />
         </div>
         
         {/* Percentage badge */}

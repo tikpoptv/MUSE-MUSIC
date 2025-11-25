@@ -54,6 +54,14 @@ export const metadata: Metadata = {
     description: 'Discover lyrics meanings, moods, and translations — MUSE MUSIC',
     images: ['/images/cover.jpg'],
   },
+  icons: {
+    icon: [
+      { url: '/icon.png', type: 'image/png' },
+      { url: '/favicon.ico', type: 'image/x-icon' },
+    ],
+    shortcut: ['/favicon.ico', '/icon.png'],
+    apple: [{ url: '/icon.png' }],
+  },
   alternates: {
     canonical: '/',
   },

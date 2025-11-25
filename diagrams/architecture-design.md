@@ -19,7 +19,7 @@ C4Context
     System_Ext(cloudflare, "CloudFlare", "CDN, WAF, DDoS Protection, DNS")
     System_Ext(lrclib, "LRCLIB API", "External lyrics database")
     System_Ext(youtube, "YouTube Transcript API", "Video transcript service")
-    System_Ext(oauth, "OAuth Providers", "Google (active)<br/>GitHub, Facebook, Apple (planned)")
+    System_Ext(oauth, "OAuth Providers", "Google, GitHub (active)<br/>Facebook, Apple (planned)")
     System_Ext(email, "Email Service", "SendGrid/SMTP")
     
     Rel(user, cloudflare, "Uses", "HTTPS")
@@ -398,7 +398,7 @@ graph TB
   - **Bot Management**: Automated bot detection and blocking
   - **DNS Management**: Secure DNS resolution
 
-- **Authentication**: JWT tokens + OAuth 2.0 (Google only; GitHub/Facebook/Apple planned)
+- **Authentication**: JWT tokens + OAuth 2.0 (Google, GitHub)
 - **Authorization**: Role-based access control (Customer, Admin, Super Admin)
 - **2FA**: TOTP-based two-factor authentication
 - **Rate Limiting**: Per-endpoint request throttling
@@ -431,6 +431,10 @@ graph LR
     
     DB --> REPLICA1[(Read Replica 1)]
     DB --> REPLICA2[(Read Replica 2)]
+    
+    BE1 --> REDIS[Redis Cache]
+    BE2 --> REDIS
+    BE3 --> REDIS
 ```
 
 ### Performance Optimization
@@ -440,6 +444,7 @@ graph LR
   - Indexed queries (see schema indexes)
   - Read replicas for heavy reads
 - **Caching**: 
+  - Redis for session storage
   - CDN for static assets (MinIO + CloudFlare)
 - **API**: 
   - Rate limiting per endpoint
@@ -482,6 +487,7 @@ graph LR
 - **Nginx**: Reverse proxy and load balancing
 - **PostgreSQL**: Primary database with replication support
 - **MinIO**: Object storage for media files
+- **Redis**: Caching layer (planned)
 
 ### Performance Metrics
 - **CDN Cache Hit Rate**: Target 90%+ (CloudFlare)

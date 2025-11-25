@@ -213,14 +213,16 @@ describe('ShareService', () => {
   });
 
   describe('getProcessingByShortLink', () => {
-    it('should return processing data when found and approved', async () => {
+    it('should return processing data when found', async () => {
       const mockRow = {
         processingid: 'proc-123',
         songid: 'song-456',
         coverimage: 'https://example.com/cover.jpg',
         summary: 'Test summary',
         songname: 'Test Song',
-        artistname: 'Test Artist'
+        artistname: 'Test Artist',
+        sharestatus: 'public_approved',
+        approvalstatus: 'approved'
       };
 
       DatabaseService.query.mockResolvedValueOnce({
@@ -235,12 +237,46 @@ describe('ShareService', () => {
         coverImage: 'https://example.com/cover.jpg',
         summary: 'Test summary',
         songName: 'Test Song',
-        artistName: 'Test Artist'
+        artistName: 'Test Artist',
+        shareStatus: 'public_approved',
+        approvalStatus: 'approved',
+        isApproved: true
       });
       expect(DatabaseService.query).toHaveBeenCalledWith(
-        expect.stringContaining("sharestatus = 'public_approved'"),
+        expect.stringContaining('WHERE p.shortlink = $1'),
         ['abc123def456']
       );
+    });
+
+    it('should return processing data with pending status', async () => {
+      const mockRow = {
+        processingid: 'proc-789',
+        songid: 'song-999',
+        coverimage: 'https://example.com/cover2.jpg',
+        summary: 'Pending summary',
+        songname: 'Pending Song',
+        artistname: 'Pending Artist',
+        sharestatus: 'public_pending',
+        approvalstatus: 'pending'
+      };
+
+      DatabaseService.query.mockResolvedValueOnce({
+        rows: [mockRow]
+      });
+
+      const result = await ShareService.getProcessingByShortLink('pending123');
+
+      expect(result).toEqual({
+        processingID: 'proc-789',
+        songID: 'song-999',
+        coverImage: 'https://example.com/cover2.jpg',
+        summary: 'Pending summary',
+        songName: 'Pending Song',
+        artistName: 'Pending Artist',
+        shareStatus: 'public_pending',
+        approvalStatus: 'pending',
+        isApproved: false
+      });
     });
 
     it('should return null when shortLink not found', async () => {
@@ -263,7 +299,7 @@ describe('ShareService', () => {
       expect(DatabaseService.query).not.toHaveBeenCalled();
     });
 
-    it('should query with approval filters', async () => {
+    it('should query without sharestatus filters', async () => {
       DatabaseService.query.mockResolvedValueOnce({
         rows: []
       });
@@ -272,8 +308,9 @@ describe('ShareService', () => {
 
       const queryCall = DatabaseService.query.mock.calls[0];
       const query = queryCall[0];
-      expect(query).toContain("sharestatus = 'public_approved'");
-      expect(query).toContain("approvalstatus = 'approved'");
+      expect(query).toContain('WHERE p.shortlink = $1');
+      expect(query).not.toContain("sharestatus = 'public_approved'");
+      expect(query).not.toContain("approvalstatus = 'approved'");
     });
   });
 });
