@@ -13,6 +13,7 @@ graph TB
     Y[🌐 YouTube Transcript API]
     NS[📧 Email/Notification Service]
     PM[💳 Payment/Premium future]
+    OAUTH[🔐 OAuth Providers<br/>Google, GitHub<br/>Facebook, Apple future]
 
     %% Public Web Zone
     subgraph PUB[Public Web Next.js, CDN]
@@ -92,6 +93,7 @@ graph TB
     UC15 --> NS
     UC13 --> L
     UC14 --> Y
+    UC2 -.extend.-> OAUTH
 
     %% Styling
     classDef actor fill:#e1f5ff,stroke:#01579b,stroke-width:2px
@@ -100,7 +102,7 @@ graph TB
 
     class V,U,A,CR actor
     class UC1,UC2,UC2a,UC2b,UC3,UC4,UC5,UC6,UC7,UC8,UC8a,UC9,UC10,UC11,UC12,UC12a,UC15 usecase
-    class L,Y,NS,PM,UC13,UC14 external
+    class L,Y,NS,PM,OAUTH,UC13,UC14 external
 ```
 
 ### Actor Highlights
@@ -115,7 +117,7 @@ graph TB
 | ID   | Description | Key Components / References |
 |------|-------------|-----------------------------|
 | UC1  | Public visitors browse marketing sections, pricing, features before signup | `frontend/src/app/page.tsx`, `Navbar`, `Footer` |
-| UC2  | Account lifecycle: register, login, 2FA check (OTP) | `frontend/src/app/login`, `backend/src/controllers/authController.js`, `User` model |
+| UC2  | Account lifecycle: register, login, 2FA check (OTP), OAuth (Google, GitHub currently; Facebook, Apple planned) | `frontend/src/app/login`, `backend/src/controllers/authController.js`, `User` model, `googleAuthService.js` |
 | UC2a | Forgot-password + reset flow (email link) | `frontend/src/app/reset-password`, `backend/src/services/emailService.js` |
 | UC2b | Multi-step onboarding/setup wizard (profile, preferences) | `frontend/src/app/setup/step*/page.tsx`, `SetupRedirect` |
 | UC3  | Search catalog, import via lyrics search, upload songs | `backend/src/services/songService.js`, `lyricsSearchResults`, `frontend search components` |

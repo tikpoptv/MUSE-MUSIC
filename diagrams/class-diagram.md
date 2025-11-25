@@ -262,6 +262,37 @@ classDiagram
         +Timestamp updatedAt
     }
 
+    %% System Management Classes
+    class Prompts {
+        +UUID promptID PK
+        +String promptType
+        +Text promptText
+        +Text temp
+        +Boolean isActive
+        +Timestamp createdAt
+        +Timestamp updatedAt
+    }
+
+    class SystemLogs {
+        +UUID logID PK
+        +String level
+        +String category
+        +Text message
+        +JSONB details
+        +String method
+        +String path
+        +Int statusCode
+        +UUID userID FK
+        +String userRole
+        +INET ipAddress
+        +Text userAgent
+        +String requestID
+        +Text errorStack
+        +String errorCode
+        +Int duration
+        +Timestamp createdAt
+    }
+
     %% Relationships
     Users "1" --o "0..1" Customers : extends
     Users "1" --o "*" Songs : creates/updates
@@ -275,6 +306,7 @@ classDiagram
     Users "1" --o "*" Reports : creates
     Users "1" --o "*" SongAIProcessing : triggers
     Users "1" --o "*" AIProcessingRatings : rates
+    Users "1" --o "*" SystemLogs : generates
     
     Songs "1" --o "*" SongAIProcessing : processed by
     Songs "*" --o "0..1" LyricsSearchResults : sourced from
@@ -292,6 +324,17 @@ classDiagram
     UserSessions "1" --o "*" TwoFactorVerification : verified in
 ```
 
+## Database Schema Summary
+
+**Total Tables: 18**
+- **User Management**: Users, Customers, UserSessions, UserTwoFactorAuth, TwoFactorVerification (5 tables)
+- **Music Content**: Songs, LyricsSearchResults, SongAIProcessing, AIProcessingRatings (4 tables)
+- **Organization**: Playlists, PlaylistSongs (2 tables)
+- **Activity**: History, UserFavorites (2 tables)
+- **Communication**: Notifications, Reports (2 tables)
+- **System**: Prompts, SystemLogs (2 tables)
+- **Security**: UserSessions, UserTwoFactorAuth, TwoFactorVerification (integrated above)
+
 ## Key Relationships
 
 ### User Management
@@ -299,6 +342,7 @@ classDiagram
 - **Users ↔ UserSessions**: One-to-many for tracking login sessions
 - **Users ↔ UserTwoFactorAuth**: One-to-one for 2FA configuration
 - **Users ↔ TwoFactorVerification**: One-to-many for 2FA verification attempts
+- **Users ↔ SystemLogs**: One-to-many for system activity logging
 
 ### Content Management
 - **Songs ↔ LyricsSearchResults**: Many-to-one linking songs to external API sources
@@ -364,6 +408,17 @@ classDiagram
 - `backup_code`: Backup code
 - `recovery_email`: Email recovery
 - `recovery_sms`: SMS recovery
+
+### Prompt Type
+- `translation`: Translation prompts
+- `mood`: Mood analysis prompts
+- `both`: Combined prompts
+
+### Log Level (SystemLogs)
+- `info`: Information logs
+- `error`: Error logs
+- `warn`: Warning logs
+- `debug`: Debug logs
 
 ## Database Files Reference
 - Schema: `backend/database/migrations/001_create_initial_schema.sql`

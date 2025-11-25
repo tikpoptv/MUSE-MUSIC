@@ -469,7 +469,7 @@ sequenceDiagram
 |-----------|--------------|--------------|--------------|
 | **Frontend** | 2 instances @ 2GB RAM | ~20% | 1000 concurrent users |
 | **Backend** | 2 instances @ 4GB RAM | ~30% | 500 req/sec |
-| **Database** | 4GB RAM, 2 cores | ~40% | 10,000 connections |
+| **Database** | 4GB RAM, 2 cores, 18 tables | ~40% | 10,000 connections |
 | **MinIO** | 100GB storage | ~15GB | 500GB |
 | **N8N** | 2GB RAM | ~25% | 50 parallel workflows |
 | **Ollama** | 16GB RAM + GPU | ~60% | 10 concurrent analyses |

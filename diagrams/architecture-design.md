@@ -19,7 +19,7 @@ C4Context
     System_Ext(cloudflare, "CloudFlare", "CDN, WAF, DDoS Protection, DNS")
     System_Ext(lrclib, "LRCLIB API", "External lyrics database")
     System_Ext(youtube, "YouTube Transcript API", "Video transcript service")
-    System_Ext(oauth, "OAuth Providers", "Google, GitHub authentication")
+    System_Ext(oauth, "OAuth Providers", "Google, GitHub (active)<br/>Facebook, Apple (planned)")
     System_Ext(email, "Email Service", "SendGrid/SMTP")
     
     Rel(user, cloudflare, "Uses", "HTTPS")
@@ -172,6 +172,8 @@ graph TB
             DBSVC[Database Service]
             EMAILSVC[Email Service]
             MINIOSVC[MinIO Service]
+            PROMPTSVC[Prompt Service]
+            LOGSVC[Log Service]
         end
         
         subgraph "External"
@@ -192,9 +194,12 @@ graph TB
     SONGSVC --> DBSVC
     ANALYSISSVC --> DBSVC
     ANALYSISSVC --> N8N
+    ANALYSISSVC --> PROMPTSVC
     FORYOUSVC --> DBSVC
     USERSVC --> DBSVC
     EMAILSVC --> N8N
+    PROMPTSVC --> DBSVC
+    LOGSVC --> DBSVC
     
     DBSVC --> DB
     MINIOSVC --> MINIO

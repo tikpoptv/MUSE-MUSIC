@@ -1216,6 +1216,7 @@ graph TB
         USERS[(Users)]
         PROCESSING[(SongAIProcessing)]
         SONGS[(Songs)]
+        SYSTEMLOGS[(SystemLogs)]
     end
     
     ADMINPAGE --> SERVERPAGE
@@ -1232,19 +1233,24 @@ graph TB
     ADMINCTRL --> LOGSVC
     
     LOGSVC --> LOGFILES
+    LOGSVC --> SYSTEMLOGS
     ADMINSVC_B --> USERS
     ADMINSVC_B --> PROCESSING
     ADMINSVC_B --> SONGS
     
     LOGGER --> LOGFILES
+    LOGGER --> SYSTEMLOGS
 ```
 
 **Key Components:**
 - `frontend/src/app/admin/server/page.tsx` - Server logs viewer
 - `frontend/src/app/admin/dashboard/page.tsx` - System metrics
-- `backend/src/routes/admin.js` - Admin monitoring routes
+- `frontend/src/services/adminLogsService.ts` - Admin logs API
+- `backend/src/routes/adminLogs.js` - Admin logs routes
 - `backend/src/middleware/logger.js` - Winston logging middleware
+- `backend/src/services/logService.js` - Log retrieval and management
 - `backend/src/services/adminService.js` - System metrics aggregation
+- Database: `SystemLogs` table for persistent logging
 
 ---
 
@@ -1275,7 +1281,7 @@ graph TB
     end
     
     subgraph "Database"
-        PROMPTS[(AI Prompts Config<br/>Future table)]
+        PROMPTS[(Prompts Table)]
     end
     
     PROMPTSPAGE --> PROMPTEDITOR
@@ -1284,8 +1290,8 @@ graph TB
     
     PROMPTEDITOR --> ADMINSVC_F
     ADMINSVC_F --> APISVC_F
-    APISVC_F -->|PUT /api/admin/prompts| ADMINROUTE
-    APISVC_F -->|POST /api/admin/prompts/test| ADMINROUTE
+    APISVC_F -->|GET/PUT /api/prompts| ADMINROUTE
+    APISVC_F -->|POST /api/prompt-test| ADMINROUTE
     
     ADMINROUTE --> ADMINCTRL
     ADMINCTRL --> PROMPTSVC
@@ -1296,8 +1302,12 @@ graph TB
 **Key Components:**
 - `frontend/src/app/admin/prompts/page.tsx` - Prompt management UI
 - `frontend/src/app/admin/edit-prompt/page.tsx` - Prompt editor
-- `backend/src/routes/admin.js` - Prompt routes
-- `backend/src/services/promptService.js` - Prompt CRUD (future)
+- `frontend/src/services/promptService.ts` - Prompt API calls
+- `frontend/src/services/promptTestService.ts` - Prompt testing
+- `backend/src/routes/prompts.js` - Prompt routes
+- `backend/src/routes/promptTest.js` - Prompt test routes
+- `backend/src/services/promptService.js` - Prompt CRUD
+- `backend/src/services/promptTestService.js` - Prompt testing logic
 - `n8n-translator-workflow.json` - AI prompt configuration
 
 ---
