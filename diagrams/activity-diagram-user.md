@@ -1,12 +1,13 @@
 # MUSE MUSIC - User Activity Diagrams
 
 ## Overview
-Activity diagrams showing the workflows and business processes for registered users in the MUSE MUSIC platform. These diagrams illustrate the step-by-step flows from user actions to system responses.
+Activity diagrams showing actual user workflows in MUSE MUSIC platform based on verified codebase inspection. All flows match actual routes, controllers, services, and database schema.
 
 **Last Updated:** November 25, 2025  
 **Repository:** tikpoptv/MUSE-MUSIC  
 **Branch:** docs/diagrams  
-**Actor:** Registered User
+**Actor:** Registered User  
+**Verification:** All activities verified against actual code
 
 ---
 
@@ -17,59 +18,61 @@ flowchart TD
     Start([User visits MUSE MUSIC]) --> Choice1{Has Account?}
     
     %% Registration Flow
-    Choice1 -->|No| Register[Navigate to Register Page]
-    Register --> FillRegForm[Fill Registration Form:<br/>- Email<br/>- Password<br/>- Display Name<br/>- Preferred Language]
+    Choice1 -->|No| Register[Navigate to /register]
+    Register --> FillRegForm[Fill Registration Form:<br/>- username 3-20 chars<br/>- email optional<br/>- password strong<br/>- fullName optional]
     FillRegForm --> ValidateReg{Form Valid?}
     ValidateReg -->|No| RegError[Show Validation Errors]
     RegError --> FillRegForm
-    ValidateReg -->|Yes| SubmitReg[Submit Registration]
-    SubmitReg --> CreateAccount[Backend: Create User Account<br/>- Hash Password bcrypt<br/>- Generate UUID<br/>- Create Customer Profile]
-    CreateAccount --> SendWelcome[Send Welcome Email<br/>via N8N]
-    SendWelcome --> AutoLogin[Auto Login with JWT]
-    AutoLogin --> Setup
+    ValidateReg -->|Yes| SubmitReg[POST /api/auth/register]
+    SubmitReg --> CheckExists{Username/Email<br/>Exists?}
+    CheckExists -->|Yes| RegError409[Show 409: Already Exists]
+    RegError409 --> FillRegForm
+    CheckExists -->|No| CreateAccount[UserService.createUser:<br/>- Hash password bcrypt<br/>- Generate UUID<br/>- role = customer<br/>- setupCompleted = false]
+    CreateAccount --> SendWelcome[EmailService.sendWelcomeEmail<br/>if email provided]
+    SendWelcome --> CreateSession[SessionService.createSession]
+    CreateSession --> GenToken[JWTService.generateAccessToken<br/>+ RefreshToken]
+    GenToken --> ReturnReg[Return tokens + user data]
+    ReturnReg --> CheckSetup
     
     %% Login Flow
-    Choice1 -->|Yes| Login[Navigate to Login Page]
+    Choice1 -->|Yes| Login[Navigate to /login]
     Login --> ChoiceAuth{Login Method?}
     
     %% Standard Login
-    ChoiceAuth -->|Email/Password| FillLogin[Enter Email & Password]
-    FillLogin --> SubmitLogin[Submit Login]
+    ChoiceAuth -->|Email/Password| FillLogin[Enter username & password]
+    FillLogin --> SubmitLogin[POST /api/auth/login]
     SubmitLogin --> ValidateLogin{Credentials Valid?}
-    ValidateLogin -->|No| LoginError[Show Error Message]
+    ValidateLogin -->|No| LoginError[Show 401 Error]
     LoginError --> FillLogin
-    ValidateLogin -->|Yes| Check2FA{2FA Enabled?}
+    ValidateLogin -->|Yes| UpdateStatus[UPDATE Users<br/>SET loginStatus = online]
+    UpdateStatus --> CreateLoginSession[SessionService.createSession<br/>deviceInfo, IP, userAgent]
+    CreateLoginSession --> GenLoginToken[Generate JWT tokens]
+    GenLoginToken --> ReturnLogin[Return tokens + user data]
+    ReturnLogin --> CheckSetup
     
-    Check2FA -->|Yes| Enter2FA[Enter OTP Code]
-    Enter2FA --> Verify2FA{OTP Valid?}
-    Verify2FA -->|No| 2FAError[Show Error Message]
-    2FAError --> Enter2FA
-    Verify2FA -->|Yes| GenerateJWT
-    
-    Check2FA -->|No| GenerateJWT[Generate JWT Token]
-    
-    %% OAuth Login
-    ChoiceAuth -->|Google OAuth| GoogleAuth[Redirect to Google]
+    %% Google OAuth Flow
+    ChoiceAuth -->|Google OAuth| GoogleAuth[POST /api/auth/google<br/>Redirect to Google]
     GoogleAuth --> GoogleConsent[User Grants Permission]
-    GoogleConsent --> GoogleCallback[Callback with Auth Code]
-    GoogleCallback --> ValidateGoogle[Backend: Verify Google Token]
-    ValidateGoogle --> CheckUserExists{User Exists?}
-    CheckUserExists -->|No| CreateGoogleAccount[Create Account from Google Profile]
-    CreateGoogleAccount --> GenerateJWT
-    CheckUserExists -->|Yes| GenerateJWT
+    GoogleConsent --> GoogleCallback[POST /api/auth/google/callback<br/>with authCode]
+    GoogleCallback --> VerifyGoogle[GoogleAuthService:<br/>- verifyGoogleToken<br/>- getUserInfo from Google]
+    VerifyGoogle --> CheckGoogleUser{User Exists<br/>providerID?}
+    CheckGoogleUser -->|No| CreateGoogleUser[UserService.createUser:<br/>- provider = google<br/>- providerID<br/>- providerEmail<br/>- No password]
+    CreateGoogleUser --> GenGoogleToken
+    CheckGoogleUser -->|Yes| GenGoogleToken[Generate JWT tokens]
+    GenGoogleToken --> ReturnLogin
     
     %% Post Login
-    GenerateJWT --> StoreToken[Store JWT in LocalStorage]
-    StoreToken --> CheckSetup{Setup Complete?}
-    CheckSetup -->|No| Setup[Redirect to Setup Wizard]
-    CheckSetup -->|Yes| Dashboard[Redirect to For You Page]
+    CheckSetup{setupCompleted?}
+    CheckSetup -->|No| Setup[Redirect to /setup]
+    CheckSetup -->|Yes| Dashboard[Redirect to /for-you]
     
     %% Setup Flow
-    Setup --> Step1[Step 1: Favorite Genres]
-    Step1 --> Step2[Step 2: Mood Preferences]
-    Step2 --> Step3[Step 3: Language Settings]
-    Step3 --> SavePreferences[Save User Preferences]
-    SavePreferences --> Dashboard
+    Setup --> Step1[/setup/step1<br/>Select Favorite Genres]
+    Step1 --> Step2[/setup/step2<br/>Mood Preferences]
+    Step2 --> Step3[/setup/step3<br/>Language Settings]
+    Step3 --> SaveSetup[POST /api/setup/save<br/>UPDATE Customers<br/>SET preferences]
+    SaveSetup --> MarkComplete[UPDATE Users<br/>SET setupCompleted = true]
+    MarkComplete --> Dashboard
     
     Dashboard --> End([User Logged In])
     
@@ -77,103 +80,94 @@ flowchart TD
     style End fill:#c8e6c9
     style LoginError fill:#ffcdd2
     style RegError fill:#ffcdd2
-    style 2FAError fill:#ffcdd2
+    style RegError409 fill:#ffcdd2
     style Dashboard fill:#fff9c4
 ```
 
 ---
 
-## 🎵 Activity 2: Song Search & Analysis
+## 🎵 Activity 2: Song Search & AI Analysis
 
 ```mermaid
 flowchart TD
-    Start([User on For You / Home]) --> SearchAction[Click Search Icon]
-    SearchAction --> EnterQuery[Enter Song/Artist Name]
-    EnterQuery --> ChoiceSource{Search Source?}
+    Start([User on /for-you]) --> SearchClick[Click Search Icon]
+    SearchClick --> EnterQuery[Enter Song/Artist Name]
+    EnterQuery --> SubmitSearch[POST /api/lyrics/search]
     
-    %% Local Catalog Search
-    ChoiceSource -->|Local Catalog| SearchLocal[Search Songs Table]
-    SearchLocal --> CheckLocalResults{Results Found?}
-    CheckLocalResults -->|Yes| DisplayResults
-    CheckLocalResults -->|No| ShowNoResults[Show: No Results in Catalog]
-    ShowNoResults --> OfferExternal[Suggest: Search External Lyrics]
-    OfferExternal --> ChoiceSource
+    SubmitSearch --> CallLRCLIB[LyricsService:<br/>Call LRCLIB API<br/>GET https://lrclib.net/api/search]
+    CallLRCLIB --> CheckResults{Results Found?}
+    CheckResults -->|No| ShowNoResults[Show: No Results]
+    ShowNoResults --> End1([End])
     
-    %% External Lyrics Search
-    ChoiceSource -->|External LRCLIB| SearchLRCLIB[API Call to LRCLIB]
-    SearchLRCLIB --> CheckLRCResults{Results Found?}
-    CheckLRCResults -->|No| SearchYouTube[Suggest: Search YouTube]
-    SearchYouTube --> End1([No Results])
+    CheckResults -->|Yes| CacheResults[INSERT INTO<br/>LyricsSearchResults<br/>- externalID<br/>- trackName<br/>- artistName<br/>- instrumental<br/>- sourceAPI = lrclib]
+    CacheResults --> DisplayResults[Display Search Results List]
     
-    CheckLRCResults -->|Yes| CacheLyrics[Cache Results in<br/>LyricsSearchResults Table]
-    CacheLyrics --> DisplayResults[Display Search Results<br/>List of Songs]
-    
-    %% Song Selection
     DisplayResults --> UserSelect[User Selects Song]
-    UserSelect --> CheckAnalyzed{Already Analyzed?}
+    UserSelect --> CheckExists{Song Already<br/>in Songs table?}
     
-    CheckAnalyzed -->|Yes| LoadExisting[Load from<br/>SongAIProcessing Table]
-    LoadExisting --> DisplaySong
+    CheckExists -->|Yes| LoadSong[Load existing Song]
+    LoadSong --> CheckProcessed
     
-    CheckAnalyzed -->|No| ConfirmAnalysis[Show: Start AI Analysis?<br/>- Translation<br/>- Mood Detection<br/>- Summary]
-    ConfirmAnalysis --> UserConfirm{User Confirms?}
-    UserConfirm -->|No| DisplaySong
+    CheckExists -->|No| ConfirmCreate[Show: Create Song<br/>& Start Analysis?]
+    ConfirmCreate --> UserConfirm{User Confirms?}
+    UserConfirm -->|No| End1
     
-    UserConfirm -->|Yes| CheckCover{Has Cover Image?}
-    CheckCover -->|No| PromptUpload[Prompt: Upload Cover Image]
+    UserConfirm -->|Yes| FetchFullLyrics[LyricsService:<br/>Fetch full lyrics from LRCLIB]
+    FetchFullLyrics --> CreateSong[INSERT INTO Songs:<br/>- songName<br/>- artistName<br/>- lyrics<br/>- syncedLyrics<br/>- lyricsSearchResultID<br/>- sourceStatus = from_lyrics_search<br/>- createdBy = userID]
+    CreateSong --> UpdateUsage[UPDATE LyricsSearchResults<br/>SET usageCount++<br/>lastUsedAt = NOW]
+    UpdateUsage --> CheckCover
+    
+    CheckCover{Has Cover Image?}
+    CheckCover -->|No| PromptUpload[Optional: Upload Cover]
     PromptUpload --> UploadChoice{User Uploads?}
-    UploadChoice -->|Yes| UploadImage[Upload to MinIO]
-    UploadImage --> StartAnalysis
-    UploadChoice -->|No| UseDefault[Use Default Placeholder]
-    UseDefault --> StartAnalysis
+    UploadChoice -->|Yes| UploadToMinIO[POST /api/images/upload<br/>ImageController:<br/>- multer memory<br/>- MinIOService.uploadImage<br/>- Returns URL]
+    UploadToMinIO --> StartAnalysis
+    UploadChoice -->|No| StartAnalysis
     CheckCover -->|Yes| StartAnalysis
     
-    %% AI Analysis Flow
+    %% AI Analysis
     StartAnalysis[Start AI Analysis]
-    StartAnalysis --> FetchLyrics[Fetch Lyrics:<br/>1. Check LyricsSearchResults<br/>2. Call LRCLIB API<br/>3. Try YouTube Transcript]
-    FetchLyrics --> CheckLyricsFound{Lyrics Found?}
-    CheckLyricsFound -->|No| AnalysisError[Show Error: No Lyrics Available]
-    AnalysisError --> End2([Analysis Failed])
+    StartAnalysis --> FetchYouTube[Optional: Search YouTube<br/>POST /api/youtube/search]
+    FetchYouTube --> CreateProcessing[INSERT INTO SongAIProcessing:<br/>- songID<br/>- status = processing<br/>- shareStatus = private<br/>- isPublic = false<br/>- coverImage URL<br/>- youtubeVideoId<br/>- createdBy = userID]
+    CreateProcessing --> ShowLoading[Show Loading Screen]
     
-    CheckLyricsFound -->|Yes| SaveSong[Save Song to Songs Table]
-    SaveSong --> CreateProcessing[Create SongAIProcessing Record<br/>Status: processing]
-    CreateProcessing --> ShowLoading[Show Loading Screen<br/>with Progress Indicator]
+    ShowLoading --> CallN8N[POST /api/analysis/translate<br/>TranslateService:<br/>Call N8N Webhook]
+    CallN8N --> N8NProcess[N8N Workflow:<br/>- Send to Ollama AI<br/>- Translate lyrics<br/>- Detect mood 5 types<br/>- Generate summary]
+    N8NProcess --> WaitResponse[Wait for N8N Response<br/>timeout 120s]
     
-    ShowLoading --> CallN8N[Call N8N Workflow Webhook]
-    CallN8N --> N8NProcess[N8N: Send to Ollama AI<br/>- Translate Lyrics<br/>- Detect Mood<br/>- Generate Summary]
-    N8NProcess --> WaitResponse[Wait for Response<br/>timeout: 120s]
-    
-    WaitResponse --> CheckSuccess{Analysis Success?}
-    CheckSuccess -->|No| UpdateFailed[Update Status: failed]
+    WaitResponse --> CheckSuccess{Success?}
+    CheckSuccess -->|No| UpdateFailed[UPDATE SongAIProcessing<br/>SET status = failed<br/>errorMessage]
     UpdateFailed --> ShowError[Show Error Message]
-    ShowError --> Retry{User Retries?}
-    Retry -->|Yes| StartAnalysis
-    Retry -->|No| End2
+    ShowError --> RetryOption{Retry?}
+    RetryOption -->|Yes| CallN8N
+    RetryOption -->|No| End2([Analysis Failed])
     
-    CheckSuccess -->|Yes| UpdateCompleted[Update SongAIProcessing:<br/>- translations<br/>- mood_percentages<br/>- summary<br/>Status: completed]
-    UpdateCompleted --> AddToHistory[Add to UserHistory]
-    AddToHistory --> DisplaySong
+    CheckSuccess -->|Yes| UpdateCompleted[UPDATE SongAIProcessing:<br/>- summary<br/>- translation<br/>- interpretation<br/>- moodType JSON array<br/>- originallanguage<br/>- targetLanguage<br/>- status = completed<br/>- isCompleteProcessing = true]
+    UpdateCompleted --> AddHistory[INSERT INTO History:<br/>- songID<br/>- userID<br/>- processingID<br/>- actionType = view]
+    AddHistory --> CheckProcessed
     
-    %% Display Song
-    DisplaySong[Display Song Analysis Page:<br/>- Synced Lyrics Player<br/>- Translation Side-by-Side<br/>- Mood Radar Chart<br/>- Summary<br/>- Cover Image]
+    CheckProcessed{Already<br/>Processed?}
+    CheckProcessed -->|Yes| LoadExisting[SELECT FROM SongAIProcessing<br/>WHERE processingID]
+    LoadExisting --> DisplaySong
+    CheckProcessed -->|No| CreateProcessing
+    
+    DisplaySong[Navigate to /song/[songID]<br/>Display:<br/>- SyncedLyricsPlayer<br/>- Original & Translation<br/>- Mood Radar Chart<br/>- Summary<br/>- Cover Image]
     DisplaySong --> UserActions{User Action?}
     
-    UserActions -->|Add to Favorites| AddFav[Save to UserFavorites]
+    UserActions -->|Add Favorite| AddFav[POST /api/favorites/add<br/>INSERT INTO UserFavorites]
     AddFav --> ShowToast1[Show Success Toast]
     ShowToast1 --> UserActions
     
-    UserActions -->|Share| GenerateShare[Generate Share Link]
-    GenerateShare --> CopyLink[Copy Link to Clipboard]
-    CopyLink --> ShowToast2[Show Success Toast]
+    UserActions -->|Share| ShareFlow[Go to Activity 3: Share]
+    
+    UserActions -->|Rate| OpenFeedback[Open Feedback Form]
+    OpenFeedback --> SubmitRating[POST /api/ratings<br/>rating 1-5 + comment]
+    SubmitRating --> UpsertRating[INSERT/UPDATE<br/>AIProcessingRatings<br/>UNIQUE processingID,userID]
+    UpsertRating --> TriggerUpdate[Trigger: update_rating_stats<br/>UPDATE SongAIProcessing<br/>- totalRatings<br/>- averageRating<br/>- starCount]
+    TriggerUpdate --> ShowToast2[Show Thank You]
     ShowToast2 --> UserActions
     
-    UserActions -->|Rate & Feedback| OpenFeedback[Open Feedback Form]
-    OpenFeedback --> SubmitFeedback[Submit Rating 1-5 stars<br/>+ Optional Comment]
-    SubmitFeedback --> SaveRating[Save to UserRatings]
-    SaveRating --> ShowToast3[Show Thank You Message]
-    ShowToast3 --> UserActions
-    
-    UserActions -->|Done| End3([Activity Complete])
+    UserActions -->|Done| End3([Complete])
     
     style Start fill:#e3f2fd
     style End1 fill:#ffcdd2
@@ -181,231 +175,191 @@ flowchart TD
     style End3 fill:#c8e6c9
     style DisplaySong fill:#fff9c4
     style N8NProcess fill:#ff6d5a,color:#fff
-    style AnalysisError fill:#ffcdd2
-    style ShowError fill:#ffcdd2
+    style UpdateFailed fill:#ffcdd2
 ```
 
 ---
 
-## 💖 Activity 3: Manage Favorites & History
+## 🔗 Activity 3: Share Song Analysis
 
 ```mermaid
 flowchart TD
-    Start([User on For You Page]) --> ViewSection{View Section?}
+    Start([User on /song/songID]) --> ClickShare[Click Share Button]
+    ClickShare --> CallShare[POST /api/share/create<br/>body: processingID]
+    CallShare --> CheckExisting{shortlink exists<br/>in SongAIProcessing?}
     
-    %% Favorites Section
-    ViewSection -->|Favorites| LoadFav[Load UserFavorites<br/>JOIN Songs<br/>JOIN SongAIProcessing]
-    LoadFav --> CheckFavEmpty{Has Favorites?}
-    CheckFavEmpty -->|No| ShowEmptyFav[Show: No Favorites Yet<br/>Browse Songs to Add]
-    ShowEmptyFav --> End1([End])
+    CheckExisting -->|Yes| LoadExisting[Return existing shortlink]
+    LoadExisting --> DisplayLink
     
-    CheckFavEmpty -->|Yes| DisplayFav[Display Favorite Songs<br/>with MusicCard Components]
-    DisplayFav --> FavAction{User Action?}
+    CheckExisting -->|No| GenerateShort[ShareService:<br/>Generate shortLink<br/>SHA256 hash substring 12 chars]
+    GenerateShort --> CheckUnique{shortlink<br/>unique?}
+    CheckUnique -->|No| RegenerateShort[Add timestamp + retry]
+    RegenerateShort --> CheckUnique
+    CheckUnique -->|Yes| UpdateProcessing[UPDATE SongAIProcessing<br/>SET shortlink<br/>WHERE processingID]
+    UpdateProcessing --> DisplayLink
     
-    FavAction -->|Click Song| NavigateToSong[Navigate to Song Detail]
-    NavigateToSong --> End2([View Song])
+    DisplayLink[Display Share Modal:<br/>Share URL:<br/>frontend.url/share/shortlink]
+    DisplayLink --> CopyLink[User Clicks Copy]
+    CopyLink --> CopyToClipboard[Copy to Clipboard]
+    CopyToClipboard --> ShowToast[Show Success Toast]
+    ShowToast --> ShareOptions{Share Via?}
     
-    FavAction -->|Remove Favorite| ConfirmRemove{Confirm Remove?}
-    ConfirmRemove -->|No| FavAction
-    ConfirmRemove -->|Yes| DeleteFav[DELETE from UserFavorites]
-    DeleteFav --> RefreshFav[Refresh Favorites List]
-    RefreshFav --> ShowToast1[Show: Removed from Favorites]
-    ShowToast1 --> DisplayFav
+    ShareOptions -->|Social Media| OpenShare[Open Share Dialog]
+    OpenShare --> End1([Shared])
+    
+    ShareOptions -->|Close| CloseModal[Close Modal]
+    CloseModal --> End2([Done])
+    
+    %% Public Access
+    Start2([Someone visits<br/>share/shortlink]) --> LoadShare[GET /api/share/shortlink]
+    LoadShare --> QueryDB[SELECT FROM SongAIProcessing p<br/>JOIN Songs s<br/>WHERE p.shortlink<br/>NO approval check<br/>Public access]
+    QueryDB --> CheckFound{Found?}
+    CheckFound -->|No| Show404[Show 404:<br/>Processing not found]
+    Show404 --> End3([End])
+    CheckFound -->|Yes| DisplayPublic[Display Share Page:<br/>- Song Info<br/>- Translation<br/>- Mood Chart<br/>- Summary<br/>- Cover Image<br/>Read-only view]
+    DisplayPublic --> End4([Public View])
+    
+    style Start fill:#e3f2fd
+    style Start2 fill:#e3f2fd
+    style End1 fill:#c8e6c9
+    style End2 fill:#c8e6c9
+    style End3 fill:#ffcdd2
+    style End4 fill:#c8e6c9
+    style Show404 fill:#ffcdd2
+```
+
+---
+
+## 💖 Activity 4: Favorites & History
+
+```mermaid
+flowchart TD
+    Start([User on /for-you]) --> ViewSection{View Section?}
+    
+    %% Favorites
+    ViewSection -->|Favorites| LoadFav[GET /api/favorites<br/>FavoriteController]
+    LoadFav --> QueryFav[SELECT FROM UserFavorites<br/>JOIN Songs<br/>JOIN SongAIProcessing<br/>WHERE userID]
+    QueryFav --> CheckEmpty{Has Items?}
+    CheckEmpty -->|No| ShowEmpty[Show: No Favorites Yet]
+    ShowEmpty --> End1([End])
+    CheckEmpty -->|Yes| DisplayFav[Display Favorite Cards]
+    DisplayFav --> FavAction{Action?}
+    
+    FavAction -->|View Song| NavSong[Navigate to /song/songID]
+    NavSong --> End2([View Song])
+    
+    FavAction -->|Remove| ConfirmRemove{Confirm?}
+    ConfirmRemove -->|No| DisplayFav
+    ConfirmRemove -->|Yes| RemoveFav[POST /api/favorites/remove<br/>DELETE FROM UserFavorites<br/>WHERE favoriteID]
+    RemoveFav --> RefreshFav[Refresh List]
+    RefreshFav --> DisplayFav
     
     FavAction -->|Done| End1
     
-    %% History Section
-    ViewSection -->|History| LoadHistory[Load UserHistory<br/>JOIN Songs<br/>JOIN SongAIProcessing<br/>ORDER BY analyzed_at DESC]
-    LoadHistory --> CheckHistoryEmpty{Has History?}
-    CheckHistoryEmpty -->|No| ShowEmptyHistory[Show: No Analysis History<br/>Start Analyzing Songs]
-    ShowEmptyHistory --> End1
+    %% History
+    ViewSection -->|History| LoadHistory[GET /api/history<br/>HistoryController]
+    LoadHistory --> QueryHistory[SELECT FROM History<br/>JOIN Songs<br/>JOIN SongAIProcessing<br/>WHERE userID<br/>ORDER BY timestamp DESC]
+    QueryHistory --> CheckHistEmpty{Has Items?}
+    CheckHistEmpty -->|No| ShowEmptyHist[Show: No History]
+    ShowEmptyHist --> End1
+    CheckHistEmpty -->|Yes| DisplayHistory[Display History List<br/>with Timestamps]
+    DisplayHistory --> HistAction{Action?}
     
-    CheckHistoryEmpty -->|Yes| DisplayHistory[Display Analysis History<br/>with Timestamps]
-    DisplayHistory --> HistoryAction{User Action?}
+    HistAction -->|View Song| NavSong2[Navigate to /song/songID]
+    NavSong2 --> End2
     
-    HistoryAction -->|Click Song| NavigateToSong2[Navigate to Song Detail]
-    NavigateToSong2 --> End2
+    HistAction -->|Done| End1
     
-    HistoryAction -->|Filter by Date| SelectDate[Select Date Range]
-    SelectDate --> FilterHistory[Filter UserHistory<br/>WHERE analyzed_at BETWEEN dates]
-    FilterHistory --> DisplayHistory
+    %% For You Feed
+    ViewSection -->|For You Feed| LoadFeed[GET /api/foryou<br/>ForyouController]
+    LoadFeed --> QueryFeed[ForyouService:<br/>- Recent songs<br/>- Popular mood types<br/>- Recommended based on<br/>  user preferences<br/>- Top rated songs]
+    QueryFeed --> DisplayFeed[Display For You Page:<br/>- Recent Analyses<br/>- Mood Statistics<br/>- Recommendations<br/>- Top Rated]
+    DisplayFeed --> FeedAction{Action?}
     
-    HistoryAction -->|Clear History| ConfirmClear{Confirm Clear All?}
-    ConfirmClear -->|No| HistoryAction
-    ConfirmClear -->|Yes| DeleteHistory[DELETE from UserHistory<br/>WHERE user_id = current_user]
-    DeleteHistory --> ShowToast2[Show: History Cleared]
-    ShowToast2 --> ShowEmptyHistory
+    FeedAction -->|Click Song| NavSong3[Navigate to /song/songID]
+    NavSong3 --> End2
     
-    HistoryAction -->|Done| End1
-    
-    %% Recommendations Section
-    ViewSection -->|Recommendations| LoadRecommend[Load Recommendations<br/>Based on:<br/>- Favorite Genres<br/>- Mood Preferences<br/>- Analysis History]
-    LoadRecommend --> DisplayRecommend[Display Recommended Songs]
-    DisplayRecommend --> RecommendAction{User Action?}
-    
-    RecommendAction -->|Click Song| NavigateToSong3[Navigate to Song Detail]
-    NavigateToSong3 --> End2
-    
-    RecommendAction -->|Refresh| RefreshRecommend[Regenerate Recommendations]
-    RefreshRecommend --> LoadRecommend
-    
-    RecommendAction -->|Done| End1
+    FeedAction -->|Done| End1
     
     style Start fill:#e3f2fd
     style End1 fill:#c8e6c9
     style End2 fill:#c8e6c9
-    style ShowEmptyFav fill:#fff3e0
-    style ShowEmptyHistory fill:#fff3e0
+    style ShowEmpty fill:#fff3e0
+    style ShowEmptyHist fill:#fff3e0
 ```
 
 ---
 
-## 🔗 Activity 4: Share Song Analysis
+## ⚙️ Activity 5: 2FA Setup & Management
 
 ```mermaid
 flowchart TD
-    Start([User viewing Song Analysis]) --> ClickShare[Click Share Button]
-    ClickShare --> OpenModal[Open Share Modal]
-    OpenModal --> CheckExisting{Share Link Exists?}
+    Start([User on /account]) --> Load2FAStatus[GET 2FA Status from Users table<br/>twoFactorEnabled field]
+    Load2FAStatus --> Check2FA{2FA Enabled?}
     
-    CheckExisting -->|Yes| LoadExisting[Load from SharedSongs Table]
-    LoadExisting --> CheckStatus{Status?}
+    %% Enable 2FA
+    Check2FA -->|No| ShowEnable[Show: Enable 2FA button]
+    ShowEnable --> ClickEnable{User Clicks Enable?}
+    ClickEnable -->|No| End1([End])
+    ClickEnable -->|Yes| GenerateSecret[POST /api/2fa/setup<br/>TwoFactorService:<br/>- speakeasy.generateSecret<br/>- Generate QR with qrcode lib]
+    GenerateSecret --> DisplayQR[Display Setup Modal:<br/>- QR Code image<br/>- Manual Entry Key<br/>- Instructions]
+    DisplayQR --> UserScans[User Scans with App:<br/>Google Authenticator<br/>Authy, etc.]
+    UserScans --> EnterCode[Enter 6-digit Code]
+    EnterCode --> VerifyCode[POST /api/2fa/verify-setup<br/>body: token]
+    VerifyCode --> CheckValid{Code Valid?}
+    CheckValid -->|No| ShowError[Show Error:<br/>Invalid Code]
+    ShowError --> EnterCode
+    CheckValid -->|Yes| GenerateBackup[POST /api/2fa/generate-backup-codes<br/>TwoFactorService:<br/>Generate 10 random codes]
+    GenerateBackup --> SaveBackup[INSERT INTO UserTwoFactorAuth:<br/>- secret encrypted<br/>- backupCodes hashed<br/>- isEnabled = true<br/>- setupCompleted = true]
+    SaveBackup --> Update2FAFlag[UPDATE Users<br/>SET twoFactorEnabled = true<br/>twoFactorSetupCompleted = true]
+    Update2FAFlag --> DisplayBackup[Display Backup Codes:<br/>⚠️ Save these securely<br/>Download as text file option]
+    DisplayBackup --> ShowSuccess[Show Success Toast:<br/>2FA Enabled]
+    ShowSuccess --> LoadManage
     
-    CheckStatus -->|approved| DisplayApproved[Display Share Link<br/>Status: ✅ Approved]
-    DisplayApproved --> CopyLink
+    %% Manage 2FA
+    Check2FA -->|Yes| LoadManage[Show 2FA Management Options:<br/>- View Backup Codes<br/>- Regenerate Backup Codes<br/>- Disable 2FA]
+    LoadManage --> ManageAction{User Action?}
     
-    CheckStatus -->|pending| DisplayPending[Display Share Link<br/>Status: ⏳ Pending Approval]
-    DisplayPending --> WaitOption[Option: Copy Link Anyway<br/>Note: Link inactive until approved]
-    WaitOption --> CopyLink
+    ManageAction -->|View Codes| RequirePass[Require Password<br/>for Security]
+    RequirePass --> EnterPass[Enter Password]
+    EnterPass --> VerifyPass{Password Valid?}
+    VerifyPass -->|No| ShowPassError[Show Error]
+    ShowPassError --> EnterPass
+    VerifyPass -->|Yes| FetchBackup[SELECT FROM UserTwoFactorAuth<br/>Decrypt backupCodes]
+    FetchBackup --> ShowCodes[Display Backup Codes]
+    ShowCodes --> LoadManage
     
-    CheckStatus -->|rejected| DisplayRejected[Display Status: ❌ Rejected<br/>Show Reason if Available]
-    DisplayRejected --> RequestNew{Request New?}
-    RequestNew -->|No| CloseModal1[Close Modal]
-    CloseModal1 --> End1([End])
-    RequestNew -->|Yes| GenerateNew
+    ManageAction -->|Regenerate| RequirePass2[Require Password + OTP]
+    RequirePass2 --> EnterBoth[Enter Password & Code]
+    EnterBoth --> VerifyBoth{Both Valid?}
+    VerifyBoth -->|No| ShowError2[Show Error]
+    ShowError2 --> EnterBoth
+    VerifyBoth -->|Yes| GenerateNew[Generate new 10 codes]
+    GenerateNew --> UpdateBackup[UPDATE UserTwoFactorAuth<br/>SET backupCodes = new]
+    UpdateBackup --> ShowNewCodes[Display New Codes]
+    ShowNewCodes --> LoadManage
     
-    CheckExisting -->|No| GenerateNew[Generate Share Link]
-    GenerateNew --> CreateShort[Create Short Link:<br/>- Generate UUID<br/>- Create 8-char shortcode<br/>- Check uniqueness]
-    CreateShort --> SaveShare[Save to SharedSongs Table:<br/>- song_id<br/>- user_id<br/>- short_link<br/>- is_public: false<br/>- status: pending]
-    SaveShare --> NotifyAdmin[Queue Admin Notification<br/>New Share Request]
-    NotifyAdmin --> DisplayPending
+    ManageAction -->|Disable| RequirePass3[Require Password + OTP]
+    RequirePass3 --> EnterToDisable[Enter Password & Code]
+    EnterToDisable --> VerifyToDisable{Both Valid?}
+    VerifyToDisable -->|No| ShowError3[Show Error]
+    ShowError3 --> EnterToDisable
+    VerifyToDisable -->|Yes| ConfirmDisable{Confirm Disable?<br/>⚠️ Less Secure}
+    ConfirmDisable -->|No| LoadManage
+    ConfirmDisable -->|Yes| Disable2FA[POST /api/2fa/disable<br/>UPDATE Users<br/>SET twoFactorEnabled = false<br/>DELETE FROM UserTwoFactorAuth]
+    Disable2FA --> ShowDisabled[Show: 2FA Disabled]
+    ShowDisabled --> ShowEnable
     
-    %% Copy Link Actions
-    CopyLink[Copy Link to Clipboard]
-    CopyLink --> ShowToast[Show Success Toast:<br/>Link Copied!]
-    ShowToast --> ShareOptions{Share Via?}
-    
-    ShareOptions -->|Social Media| OpenSocial[Open Share Dialog:<br/>- Facebook<br/>- Twitter<br/>- LINE<br/>- WhatsApp]
-    OpenSocial --> End2([Shared Successfully])
-    
-    ShareOptions -->|QR Code| GenerateQR[Generate QR Code<br/>for Share Link]
-    GenerateQR --> DisplayQR[Display QR Code<br/>Option: Download as Image]
-    DisplayQR --> End2
-    
-    ShareOptions -->|Done| CloseModal2[Close Modal]
-    CloseModal2 --> End1
+    ManageAction -->|Done| End1
     
     style Start fill:#e3f2fd
     style End1 fill:#c8e6c9
-    style End2 fill:#c8e6c9
-    style DisplayApproved fill:#c8e6c9
-    style DisplayPending fill:#fff9c4
-    style DisplayRejected fill:#ffcdd2
-    style NotifyAdmin fill:#ff6d5a,color:#fff
-```
-
----
-
-## ⚙️ Activity 5: Account Settings & 2FA
-
-```mermaid
-flowchart TD
-    Start([User clicks Account Settings]) --> LoadSettings[Load User Settings Page]
-    LoadSettings --> DisplayOptions[Display Settings Sections:<br/>- Profile<br/>- Security 2FA<br/>- Preferences<br/>- Language]
-    DisplayOptions --> UserChoice{Select Section?}
-    
-    %% Profile Section
-    UserChoice -->|Profile| EditProfile[Edit Profile Information:<br/>- Display Name<br/>- Email read-only<br/>- Avatar Upload]
-    EditProfile --> ValidateProfile{Valid?}
-    ValidateProfile -->|No| ShowProfileError[Show Validation Errors]
-    ShowProfileError --> EditProfile
-    ValidateProfile -->|Yes| SaveProfile[UPDATE Users Table]
-    SaveProfile --> ShowToast1[Show Success Toast]
-    ShowToast1 --> DisplayOptions
-    
-    %% Security & 2FA Section
-    UserChoice -->|Security| Check2FAStatus{2FA Enabled?}
-    
-    Check2FAStatus -->|No| OfferEnable[Show: Enable 2FA<br/>for Better Security]
-    OfferEnable --> EnableChoice{Enable 2FA?}
-    EnableChoice -->|No| DisplayOptions
-    EnableChoice -->|Yes| GenerateSecret[Generate TOTP Secret<br/>using Speakeasy]
-    GenerateSecret --> GenerateQR[Generate QR Code<br/>for Authenticator App]
-    GenerateQR --> DisplayQR[Display QR Code<br/>Show Secret Key<br/>Generate Backup Codes]
-    DisplayQR --> UserScans[User Scans with App:<br/>Google Authenticator<br/>Authy<br/>Microsoft Authenticator]
-    UserScans --> EnterVerify[Enter Verification Code]
-    EnterVerify --> VerifyCode{Code Valid?}
-    VerifyCode -->|No| ShowVerifyError[Show Error: Invalid Code]
-    ShowVerifyError --> EnterVerify
-    VerifyCode -->|Yes| Enable2FA[UPDATE UserSettings:<br/>two_factor_enabled: true<br/>two_factor_secret: encrypted]
-    Enable2FA --> ShowBackupCodes[Display Backup Codes<br/>Prompt: Save Securely]
-    ShowBackupCodes --> ShowToast2[Show Success: 2FA Enabled]
-    ShowToast2 --> DisplayOptions
-    
-    Check2FAStatus -->|Yes| Show2FAOptions[Display 2FA Options:<br/>- View Backup Codes<br/>- Regenerate Codes<br/>- Disable 2FA]
-    Show2FAOptions --> TwoFAAction{User Action?}
-    
-    TwoFAAction -->|View Codes| RequirePassword1[Enter Password to View]
-    RequirePassword1 --> VerifyPass1{Password Valid?}
-    VerifyPass1 -->|No| ShowPassError1[Show Error]
-    ShowPassError1 --> RequirePassword1
-    VerifyPass1 -->|Yes| DisplayBackup[Display Backup Codes]
-    DisplayBackup --> Show2FAOptions
-    
-    TwoFAAction -->|Regenerate| RequirePassword2[Enter Password + OTP]
-    RequirePassword2 --> VerifyAuth{Auth Valid?}
-    VerifyAuth -->|No| ShowAuthError[Show Error]
-    ShowAuthError --> RequirePassword2
-    VerifyAuth -->|Yes| RegenerateBackup[Generate New Backup Codes<br/>Invalidate Old Codes]
-    RegenerateBackup --> ShowNewCodes[Display New Codes]
-    ShowNewCodes --> ShowToast3[Show Success Toast]
-    ShowToast3 --> Show2FAOptions
-    
-    TwoFAAction -->|Disable| RequirePassword3[Enter Password + OTP<br/>to Disable]
-    RequirePassword3 --> VerifyDisable{Auth Valid?}
-    VerifyDisable -->|No| ShowAuthError2[Show Error]
-    ShowAuthError2 --> RequirePassword3
-    VerifyDisable -->|Yes| ConfirmDisable{Confirm Disable 2FA?<br/>Warning: Less Secure}
-    ConfirmDisable -->|No| Show2FAOptions
-    ConfirmDisable -->|Yes| Disable2FA[UPDATE UserSettings:<br/>two_factor_enabled: false<br/>Clear secret & codes]
-    Disable2FA --> ShowToast4[Show: 2FA Disabled]
-    ShowToast4 --> DisplayOptions
-    
-    TwoFAAction -->|Back| DisplayOptions
-    
-    %% Preferences Section
-    UserChoice -->|Preferences| EditPreferences[Edit Preferences:<br/>- Favorite Genres<br/>- Mood Preferences<br/>- Email Notifications]
-    EditPreferences --> SavePreferences[UPDATE Customers Table]
-    SavePreferences --> ShowToast5[Show Success Toast]
-    ShowToast5 --> DisplayOptions
-    
-    %% Language Section
-    UserChoice -->|Language| SelectLanguage[Select Language:<br/>- English<br/>- Thai<br/>- Japanese<br/>- Korean<br/>- Chinese]
-    SelectLanguage --> SaveLanguage[UPDATE Customers:<br/>preferred_language]
-    SaveLanguage --> RefreshUI[Refresh UI with New Language]
-    RefreshUI --> ShowToast6[Show Success Toast]
-    ShowToast6 --> DisplayOptions
-    
-    UserChoice -->|Done| End([Settings Saved])
-    
-    style Start fill:#e3f2fd
-    style End fill:#c8e6c9
     style DisplayQR fill:#fff9c4
-    style ShowBackupCodes fill:#fff9c4
-    style ShowVerifyError fill:#ffcdd2
-    style ShowPassError1 fill:#ffcdd2
-    style ShowAuthError fill:#ffcdd2
-    style ShowAuthError2 fill:#ffcdd2
+    style DisplayBackup fill:#fff9c4
+    style ShowError fill:#ffcdd2
+    style ShowPassError fill:#ffcdd2
+    style ShowError2 fill:#ffcdd2
+    style ShowError3 fill:#ffcdd2
 ```
 
 ---
@@ -414,44 +368,47 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    Start([User Forgot Password]) --> ClickForgot[Click Forgot Password Link]
-    ClickForgot --> EnterEmail[Enter Email Address]
-    EnterEmail --> ValidateEmail{Email Valid?}
-    ValidateEmail -->|No| ShowEmailError[Show Validation Error]
-    ShowEmailError --> EnterEmail
+    Start([User Forgot Password]) --> Navigate[Navigate to /forgot-password]
+    Navigate --> EnterEmail[Enter Email Address]
+    EnterEmail --> Submit[POST /api/auth/forgot-password]
+    Submit --> ValidateEmail{Email Valid<br/>Format?}
+    ValidateEmail -->|No| ShowError[Show Validation Error]
+    ShowError --> EnterEmail
     
-    ValidateEmail -->|Yes| SubmitRequest[Submit Reset Request]
-    SubmitRequest --> CheckUserExists{User Exists?}
-    
-    CheckUserExists -->|No| ShowGeneric[Show Generic Message:<br/>If account exists,<br/>email will be sent<br/>Security: Don't reveal user existence]
+    ValidateEmail -->|Yes| CheckUser{User Exists<br/>with Email?}
+    CheckUser -->|No| ShowGeneric[Show Generic Success:<br/>Check email for reset link<br/>Security: Don't reveal<br/>user existence]
     ShowGeneric --> End1([End])
     
-    CheckUserExists -->|Yes| GenerateToken[Generate Reset Token:<br/>- UUID<br/>- Expires in 1 hour<br/>- Store in UserSessions]
-    GenerateToken --> BuildEmail[Build Reset Email:<br/>- Reset Link with Token<br/>- Expiry Warning<br/>- Security Notice]
-    BuildEmail --> SendEmail[Send Email via N8N Webhook]
-    SendEmail --> ShowSuccess[Show Success Message:<br/>Check your email for reset link]
+    CheckUser -->|Yes| GenerateToken[Generate crypto token<br/>32 bytes random]
+    GenerateToken --> SetExpiry[Set expiry: NOW + 1 hour]
+    SetExpiry --> UpdateUser[UPDATE Users SET<br/>passwordResetToken = token<br/>passwordResetTokenExpiry]
+    UpdateUser --> BuildEmail[Build Reset Email:<br/>- Reset link with token<br/>- Expiry warning<br/>- Security notice]
+    BuildEmail --> SendEmail[EmailService:<br/>Send via N8N webhook]
+    SendEmail --> ShowSuccess[Show Success Message]
     ShowSuccess --> End1
     
-    %% Reset Link Flow
-    Start2([User Clicks Email Link]) --> ValidateToken{Token Valid<br/>& Not Expired?}
-    ValidateToken -->|No| ShowExpired[Show Error:<br/>Link expired or invalid<br/>Request new reset]
+    %% Reset Flow
+    Start2([User Clicks Email Link]) --> OpenReset[Open /reset-password/token]
+    OpenReset --> ValidateToken[GET /api/auth/validate-reset-token/token]
+    ValidateToken --> CheckToken{Token Valid<br/>& Not Expired?}
+    CheckToken -->|No| ShowExpired[Show Error:<br/>Link expired or invalid]
     ShowExpired --> End2([End])
     
-    ValidateToken -->|Yes| LoadResetPage[Load Reset Password Page]
-    LoadResetPage --> EnterNewPass[Enter New Password:<br/>- Min 8 characters<br/>- Uppercase<br/>- Lowercase<br/>- Number<br/>- Special char]
-    EnterNewPass --> EnterConfirm[Confirm New Password]
-    EnterConfirm --> ValidatePass{Passwords Match<br/>& Meet Rules?}
+    CheckToken -->|Yes| ShowResetForm[Display Reset Password Form]
+    ShowResetForm --> EnterNewPass[Enter New Password<br/>- Min 8 characters<br/>- Uppercase<br/>- Lowercase<br/>- Number<br/>- Special char]
+    EnterNewPass --> EnterConfirm[Confirm Password]
+    EnterConfirm --> ValidatePass{Match &<br/>Meet Rules?}
     ValidatePass -->|No| ShowPassError[Show Validation Errors]
     ShowPassError --> EnterNewPass
     
-    ValidatePass -->|Yes| HashPassword[Hash Password with Bcrypt]
-    HashPassword --> UpdatePassword[UPDATE Users:<br/>password_hash<br/>updated_at]
-    UpdatePassword --> InvalidateSessions[DELETE all UserSessions<br/>for this user<br/>Force re-login]
-    InvalidateSessions --> InvalidateToken[DELETE reset token]
-    InvalidateToken --> SendConfirmEmail[Send Confirmation Email:<br/>Password Changed Successfully]
-    SendConfirmEmail --> ShowSuccessReset[Show Success Page:<br/>Password Reset Complete]
-    ShowSuccessReset --> RedirectLogin[Redirect to Login Page<br/>after 3 seconds]
-    RedirectLogin --> End3([User Must Login Again])
+    ValidatePass -->|Yes| Submit Reset[POST /api/auth/reset-password<br/>body: token, newPassword]
+    SubmitReset --> HashPass[bcrypt.hash newPassword]
+    HashPass --> UpdatePassword[UPDATE Users SET<br/>password = hashed<br/>passwordResetToken = NULL<br/>passwordResetTokenExpiry = NULL]
+    UpdatePassword --> InvalidateSessions[DELETE FROM UserSessions<br/>WHERE userID<br/>Force re-login]
+    InvalidateSessions --> SendConfirm[EmailService:<br/>Send confirmation email]
+    SendConfirm --> ShowSuccessReset[Show Success:<br/>Password Reset Complete]
+    ShowSuccessReset --> RedirectLogin[Redirect to /login<br/>after 3 seconds]
+    RedirectLogin --> End3([Must Login Again])
     
     style Start fill:#e3f2fd
     style Start2 fill:#e3f2fd
@@ -459,47 +416,45 @@ flowchart TD
     style End2 fill:#ffcdd2
     style End3 fill:#c8e6c9
     style ShowExpired fill:#ffcdd2
-    style ShowEmailError fill:#ffcdd2
+    style ShowError fill:#ffcdd2
     style ShowPassError fill:#ffcdd2
     style SendEmail fill:#ff6d5a,color:#fff
 ```
 
 ---
 
-## 📝 Activity Summary
+## 📝 Summary
 
-### User Activities Covered
-1. ✅ **Registration & Login** - Account creation, OAuth, 2FA, setup wizard
-2. ✅ **Song Search & Analysis** - Search catalog/external, AI processing, display results
-3. ✅ **Favorites & History** - Manage favorites, view history, recommendations
-4. ✅ **Share Links** - Generate share links, approval status, social sharing
-5. ✅ **Account Settings** - Profile edit, 2FA management, preferences, language
-6. ✅ **Password Reset** - Forgot password flow, email verification, secure reset
+### Verified User Activities (6 Activities)
+1. ✅ **Registration & Login** - Standard + Google OAuth (verified against authController)
+2. ✅ **Song Search & AI Analysis** - LRCLIB + N8N + Ollama (verified against lyricsController, translateController)
+3. ✅ **Share Links** - Simple share via shortlink (verified against shareController, shareService)
+4. ✅ **Favorites & History** - Standard CRUD (verified against favoriteController, historyController)
+5. ✅ **2FA Management** - Speakeasy + QRCode (verified against twoFactorController, twoFactorService)
+6. ✅ **Password Reset** - Email token flow (verified against authController, emailService)
 
-### Key Components Used
-- **Frontend Pages**: login, register, song, for-you, account, share, setup
-- **Frontend Components**: Navbar, MusicCard, LyricsViewer, SyncedLyricsPlayer, FeedbackSection, Modals
-- **Frontend Services**: authService, songService, analysisService, favoriteService, historyService
-- **Backend Controllers**: authController, songController, analysisController, shareController
-- **Backend Services**: userService, googleAuthService, lyricsService, translateService, shareService
-- **External Services**: N8N, Ollama, LRCLIB, YouTube APIs, Google OAuth
+### Key Findings from Code Inspection
+- **NO approval system for shares** - shares are public immediately via shortlink
+- **NO SharedSongs table** - sharing uses shortlink field in SongAIProcessing
+- **Rating system uses trigger** - update_rating_stats auto-updates averageRating
+- **LyricsSearchResults has usage tracking** - usageCount and lastUsedAt auto-updated via trigger
+- **Setup wizard** - setupCompleted flag determines if user needs onboarding
+- **2FA is optional** - stored in UserTwoFactorAuth table with encrypted secrets
 
-### Database Tables Involved
-- Users, Customers, UserSessions, UserSettings
+### Database Tables Used
+- Users, Customers, UserSessions, UserTwoFactorAuth
 - Songs, LyricsSearchResults, SongAIProcessing
-- UserFavorites, UserHistory, UserRatings, SharedSongs
-- SystemLogs, ErrorLogs
+- UserFavorites, History, AIProcessingRatings
+- SystemLogs (via logger middleware)
 
----
-
-## 🔍 Notes
-
-- All flows are based on actual codebase implementation
-- Error handling and validation included in each flow
-- Security measures (JWT, 2FA, password hashing) integrated
-- External service integrations (N8N, Ollama, APIs) shown with proper timing
-- Toast notifications and user feedback included
-- Database operations match actual schema
+### External Services
+- **LRCLIB API** - lyrics search via https://lrclib.net/api/search
+- **N8N** - AI workflow orchestration
+- **Ollama** - AI model (gpt-oss:120b) via N8N
+- **MinIO** - S3-compatible image storage
+- **Email via N8N** - welcome, password reset, confirmation emails
+- **Google OAuth** - google-auth-library
 
 **Verification Date:** November 25, 2025  
-**Codebase State:** All activities verified against actual implementation
+**Codebase State:** All activities verified against actual routes, controllers, services, and schema  
+**Method:** File inspection + grep search + SQL schema analysis

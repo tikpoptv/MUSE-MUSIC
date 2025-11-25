@@ -1,753 +1,433 @@
 # MUSE MUSIC - Admin Activity Diagrams
 
 ## Overview
-Activity diagrams showing the workflows and business processes for administrators in the MUSE MUSIC platform. These diagrams illustrate administrative tasks, content moderation, system monitoring, and user management.
+Activity diagrams showing actual admin workflows in MUSE MUSIC platform based on verified codebase inspection. All flows match actual routes, controllers, services, and database schema.
 
 **Last Updated:** November 25, 2025  
 **Repository:** tikpoptv/MUSE-MUSIC  
 **Branch:** docs/diagrams  
-**Actor:** Admin / Content Reviewer
+**Actor:** Admin / Super Admin  
+**Verification:** All activities verified against actual code
 
 ---
 
-## 🔐 Activity 1: Admin Login & Dashboard Access
+## 🔐 Activity 1: Admin Login & Dashboard
 
 ```mermaid
 flowchart TD
-    Start([Admin User]) --> Login[Navigate to Login Page]
-    Login --> EnterCreds[Enter Admin Email & Password]
-    EnterCreds --> SubmitLogin[Submit Login]
+    Start([Admin User]) --> Login[Navigate to /login]
+    Login --> EnterCreds[Enter Email/Username & Password]
+    EnterCreds --> SubmitLogin[POST /api/auth/login]
     SubmitLogin --> ValidateCreds{Credentials Valid?}
     
-    ValidateCreds -->|No| ShowError[Show Error Message]
+    ValidateCreds -->|No| ShowError[Show 401 Error]
     ShowError --> EnterCreds
     
-    ValidateCreds -->|Yes| CheckRole{User Role = Admin?}
-    CheckRole -->|No| DenyAccess[Show Error:<br/>Unauthorized Access<br/>Admin privileges required]
-    DenyAccess --> End1([Access Denied])
+    ValidateCreds -->|Yes| CheckRole{User role =<br/>admin or super_admin?}
+    CheckRole -->|No| DenyAccess[Redirect to /for-you<br/>User Dashboard]
+    DenyAccess --> End1([Normal User Access])
     
-    CheckRole -->|Yes| Require2FA[Require 2FA Verification<br/>Admin Routes Protected]
-    Require2FA --> Enter2FA[Enter OTP Code from<br/>Authenticator App]
-    Enter2FA --> Verify2FA{OTP Valid?}
-    Verify2FA -->|No| Show2FAError[Show Error: Invalid OTP]
-    Show2FAError --> Retry2FA{Retry Count < 3?}
-    Retry2FA -->|No| LockAccount[Temporary Lock<br/>Log Security Event]
-    LockAccount --> End1
-    Retry2FA -->|Yes| Enter2FA
-    
-    Verify2FA -->|Yes| GenerateJWT[Generate JWT Token<br/>with Admin Role]
+    CheckRole -->|Yes| GenerateJWT[Generate JWT Token<br/>with role claim]
     GenerateJWT --> StoreToken[Store Token in LocalStorage]
-    StoreToken --> LogAdminLogin[Log Admin Login Event<br/>to AuditLogs Table]
-    LogAdminLogin --> LoadDashboard[Load Admin Dashboard]
+    StoreToken --> Navigate[Navigate to /admin]
     
-    LoadDashboard --> FetchStats[Fetch Dashboard Statistics:<br/>- Total Users<br/>- Total Songs<br/>- Processing Queue<br/>- Pending Approvals<br/>- System Health]
-    FetchStats --> DisplayDashboard[Display Admin Dashboard:<br/>- Overview Cards<br/>- Recent Activities<br/>- Charts & Graphs<br/>- Quick Actions]
-    DisplayDashboard --> AdminChoice{Select Action?}
+    Navigate --> CheckSetup{setupCompleted?}
+    CheckSetup -->|No| RedirectSetup[Redirect to /setup<br/>Complete Setup First]
+    RedirectSetup --> End1
     
-    AdminChoice -->|User Management| NavUsers[Navigate to User Management]
-    AdminChoice -->|Song Management| NavSongs[Navigate to Song Management]
-    AdminChoice -->|Content Approval| NavApproval[Navigate to Approval Queue]
-    AdminChoice -->|AI Processing| NavProcessing[Navigate to Processing Monitor]
-    AdminChoice -->|System Logs| NavLogs[Navigate to Logs Viewer]
-    AdminChoice -->|Settings| NavSettings[Navigate to System Settings]
-    AdminChoice -->|Logout| Logout[Logout & Clear Session]
+    CheckSetup -->|Yes| LoadDashboard[GET /api/dashboard<br/>DashboardController]
+    LoadDashboard --> FetchStats[DashboardService:<br/>- getDashboardStats<br/>- getTrafficData<br/>- getSongsByMood]
+    FetchStats --> QueryStats[Parallel Queries:<br/>SELECT COUNT Users<br/>SELECT COUNT Songs<br/>SELECT COUNT pending approval<br/>SELECT COUNT Sessions<br/>SELECT traffic by date<br/>SELECT songs GROUP BY mood]
+    QueryStats --> DisplayDashboard[Display Admin Dashboard:<br/>- Total Users card<br/>- Total Songs card<br/>- Pending Approval badge<br/>- Total Sessions card<br/>- Traffic Chart<br/>- Songs by Mood Chart]
+    DisplayDashboard --> AdminChoice{Select Menu?}
     
-    NavUsers --> End2([Open User Management])
-    NavSongs --> End3([Open Song Management])
-    NavApproval --> End4([Open Approval Queue])
-    NavProcessing --> End5([Open Processing Monitor])
-    NavLogs --> End6([Open Logs Viewer])
-    NavSettings --> End7([Open Settings])
-    Logout --> End8([Logged Out])
+    AdminChoice -->|Songs Management| NavSongs[Navigate to /admin/songs]
+    AdminChoice -->|Admin Users| NavManage[Navigate to /admin/manage]
+    AdminChoice -->|System Logs| NavLogs[Navigate to /admin/logs]
+    AdminChoice -->|AI Prompts| NavPrompts[Navigate to /admin/prompts]
+    AdminChoice -->|Logout| Logout[POST /api/auth/logout]
+    
+    NavSongs --> End2([Open Songs Management])
+    NavManage --> End3([Open Admin Management])
+    NavLogs --> End4([Open Logs Viewer])
+    NavPrompts --> End5([Open Prompts Manager])
+    Logout --> End6([Logged Out])
     
     style Start fill:#e3f2fd
-    style End1 fill:#ffcdd2
+    style End1 fill:#fff3e0
     style End2 fill:#c8e6c9
     style End3 fill:#c8e6c9
     style End4 fill:#c8e6c9
     style End5 fill:#c8e6c9
     style End6 fill:#c8e6c9
-    style End7 fill:#c8e6c9
-    style End8 fill:#c8e6c9
-    style DenyAccess fill:#ffcdd2
-    style Show2FAError fill:#ffcdd2
-    style LockAccount fill:#ffcdd2
+    style DenyAccess fill:#fff3e0
+    style ShowError fill:#ffcdd2
     style DisplayDashboard fill:#fff9c4
 ```
 
 ---
 
-## 👥 Activity 2: User Management
+## 🎵 Activity 2: Songs Management (Approve/Reject)
 
 ```mermaid
 flowchart TD
-    Start([Admin on Dashboard]) --> ClickUsers[Navigate to User Management]
-    ClickUsers --> LoadUsers[Load Users List<br/>FROM Users JOIN Customers<br/>ORDER BY created_at DESC]
-    LoadUsers --> DisplayUsers[Display Users Table:<br/>- ID, Email, Name<br/>- Role, Status<br/>- Created Date<br/>- Last Login<br/>- Actions]
+    Start([Admin on Dashboard]) --> Navigate[Navigate to /admin/songs]
+    Navigate --> LoadSongs[GET /api/admin/songs<br/>AdminSongsController]
+    LoadSongs --> QuerySongs[AdminSongsService.getPendingSongs<br/>SELECT FROM SongAIProcessing<br/>JOIN Songs<br/>LEFT JOIN Users createdBy<br/>WHERE statusFilter]
     
-    DisplayUsers --> FilterOption{Filter/Search?}
-    FilterOption -->|Search| EnterSearch[Enter Search Query:<br/>Email or Name]
-    EnterSearch --> SearchUsers[Search Users<br/>WHERE email LIKE or name LIKE]
-    SearchUsers --> DisplayFiltered[Display Filtered Results]
-    DisplayFiltered --> DisplayUsers
+    QuerySongs --> ApplyFilters{Apply Filters?}
+    ApplyFilters -->|Status Filter| SelectStatus[Select Status:<br/>- all<br/>- pending not_approve<br/>- approved done<br/>- rejected<br/>- private<br/>- public_pending<br/>- public_approved]
+    SelectStatus --> FilterQuery[WHERE approvalStatus OR shareStatus]
+    FilterQuery --> DisplayTable
     
-    FilterOption -->|Filter by Role| SelectRole[Select Role Filter:<br/>- All<br/>- User<br/>- Admin]
-    SelectRole --> FilterByRole[Filter Users<br/>WHERE role = selected]
-    FilterByRole --> DisplayFiltered
+    ApplyFilters -->|Search| EnterSearch[Enter Search Query:<br/>songName OR artistName]
+    EnterSearch --> SearchQuery[WHERE songname ILIKE<br/>OR artistname ILIKE]
+    SearchQuery --> DisplayTable
     
-    FilterOption -->|Filter by Status| SelectStatus[Select Status Filter:<br/>- All<br/>- Active<br/>- Suspended<br/>- Deleted]
-    SelectStatus --> FilterByStatus[Filter Users<br/>WHERE is_active = status]
-    FilterByStatus --> DisplayFiltered
+    ApplyFilters -->|No Filter| DisplayTable[Display Songs Table:<br/>- Processing ID<br/>- Song Name & Artist<br/>- Language<br/>- Status Badge<br/>- Created By<br/>- Created Date<br/>- Highlight pending<br/>Pagination]
     
-    FilterOption -->|No Filter| UserAction{Select User Action?}
+    DisplayTable --> CheckPending{Has Pending Items?}
+    CheckPending -->|Yes| ShowBadge[Show Pending Count Badge<br/>GET /api/admin/songs/pending-count]
+    CheckPending -->|No| NoBadge[No Badge]
+    ShowBadge --> SongAction
+    NoBadge --> SongAction
     
-    %% View User Details
-    UserAction -->|View Details| SelectUser[Click on User Row]
-    SelectUser --> LoadUserDetail[Load User Details:<br/>- Profile Info<br/>- Activity Stats<br/>- Favorites Count<br/>- History Count<br/>- Ratings Given<br/>- Shares Created]
-    LoadUserDetail --> DisplayDetail[Display User Detail Modal]
-    DisplayDetail --> DetailAction{Detail Action?}
-    DetailAction -->|Edit| EditUser
-    DetailAction -->|Suspend| SuspendUser
-    DetailAction -->|Delete| DeleteUser
-    DetailAction -->|Close| DisplayUsers
-    
-    %% Edit User
-    UserAction -->|Edit User| EditUser[Open Edit User Form]
-    EditUser --> ModifyFields[Modify Fields:<br/>- Display Name<br/>- Role admin/user<br/>- Email Verified<br/>- Status Active/Inactive]
-    ModifyFields --> ValidateEdit{Valid Changes?}
-    ValidateEdit -->|No| ShowEditError[Show Validation Errors]
-    ShowEditError --> ModifyFields
-    ValidateEdit -->|Yes| ConfirmEdit{Confirm Changes?}
-    ConfirmEdit -->|No| DisplayUsers
-    ConfirmEdit -->|Yes| UpdateUser[UPDATE Users Table<br/>SET modified fields]
-    UpdateUser --> LogEdit[Log to AuditLogs:<br/>Action: User Updated<br/>Admin: current_admin<br/>Target: user_id<br/>Changes: JSON]
-    LogEdit --> ShowToast1[Show Success Toast]
-    ShowToast1 --> RefreshUsers[Refresh Users List]
-    RefreshUsers --> DisplayUsers
-    
-    %% Suspend User
-    UserAction -->|Suspend User| SuspendUser[Open Suspend Dialog]
-    SuspendUser --> EnterReason[Enter Suspension Reason]
-    EnterReason --> ConfirmSuspend{Confirm Suspend?}
-    ConfirmSuspend -->|No| DisplayUsers
-    ConfirmSuspend -->|Yes| UpdateSuspend[UPDATE Users:<br/>is_active = false<br/>suspended_reason<br/>suspended_at<br/>suspended_by]
-    UpdateSuspend --> InvalidateTokens[DELETE UserSessions<br/>WHERE user_id = target<br/>Force logout]
-    InvalidateTokens --> LogSuspend[Log to AuditLogs:<br/>Action: User Suspended]
-    LogSuspend --> SendNotification[Send Email Notification<br/>to User via N8N]
-    SendNotification --> ShowToast2[Show Success Toast]
-    ShowToast2 --> RefreshUsers
-    
-    %% Delete User
-    UserAction -->|Delete User| DeleteUser[Open Delete Dialog]
-    DeleteUser --> WarningDelete[Show Warning:<br/>⚠️ Permanent Action<br/>Will delete:<br/>- User data<br/>- History<br/>- Favorites<br/>- Ratings<br/>Cannot be undone]
-    WarningDelete --> TypeConfirm[Require: Type DELETE to confirm]
-    TypeConfirm --> ConfirmDelete{Confirmation Match?}
-    ConfirmDelete -->|No| DisplayUsers
-    ConfirmDelete -->|Yes| BeginDelete[BEGIN TRANSACTION]
-    BeginDelete --> DeleteRelated[DELETE Related Records:<br/>1. UserSessions<br/>2. UserSettings<br/>3. UserFavorites<br/>4. UserHistory<br/>5. UserRatings<br/>6. SharedSongs owner]
-    DeleteRelated --> DeleteCustomer[DELETE from Customers]
-    DeleteCustomer --> DeleteUserRecord[DELETE from Users]
-    DeleteUserRecord --> CommitDelete[COMMIT TRANSACTION]
-    CommitDelete --> LogDelete[Log to AuditLogs:<br/>Action: User Deleted<br/>Include: user_email for records]
-    LogDelete --> ShowToast3[Show Success Toast]
-    ShowToast3 --> RefreshUsers
-    
-    %% Bulk Actions
-    UserAction -->|Bulk Actions| SelectMultiple[Select Multiple Users<br/>via Checkboxes]
-    SelectMultiple --> BulkChoice{Bulk Action?}
-    BulkChoice -->|Export| ExportCSV[Export Selected Users<br/>to CSV file]
-    ExportCSV --> DownloadCSV[Download CSV]
-    DownloadCSV --> DisplayUsers
-    
-    BulkChoice -->|Bulk Email| ComposeBulk[Compose Bulk Email<br/>Subject & Message]
-    ComposeBulk --> SendBulk[Send via N8N<br/>to Selected Users]
-    SendBulk --> LogBulkEmail[Log Bulk Email Action]
-    LogBulkEmail --> ShowToast4[Show Success Toast]
-    ShowToast4 --> DisplayUsers
-    
-    UserAction -->|Done| End([Back to Dashboard])
-    
-    style Start fill:#e3f2fd
-    style End fill:#c8e6c9
-    style WarningDelete fill:#ffcdd2
-    style ShowEditError fill:#ffcdd2
-    style SendNotification fill:#ff6d5a,color:#fff
-    style SendBulk fill:#ff6d5a,color:#fff
-```
-
----
-
-## 🎵 Activity 3: Song Management
-
-```mermaid
-flowchart TD
-    Start([Admin on Dashboard]) --> ClickSongs[Navigate to Song Management]
-    ClickSongs --> LoadSongs[Load Songs List<br/>FROM Songs<br/>LEFT JOIN SongAIProcessing<br/>ORDER BY created_at DESC]
-    LoadSongs --> DisplaySongs[Display Songs Table:<br/>- ID, Title, Artist<br/>- Status processed/pending<br/>- Upload Date<br/>- User Email<br/>- Actions]
-    
-    DisplaySongs --> FilterOption{Filter/Search?}
-    FilterOption -->|Search| EnterSearch[Enter Search Query:<br/>Title or Artist]
-    EnterSearch --> SearchSongs[Search Songs<br/>WHERE title LIKE or artist LIKE]
-    SearchSongs --> DisplayFiltered[Display Filtered Results]
-    DisplayFiltered --> DisplaySongs
-    
-    FilterOption -->|Filter by Status| SelectStatus[Select Status Filter:<br/>- All<br/>- Completed<br/>- Processing<br/>- Failed<br/>- Pending]
-    SelectStatus --> FilterStatus[Filter SongAIProcessing<br/>WHERE status = selected]
-    FilterStatus --> DisplayFiltered
-    
-    FilterOption -->|Filter by Date| SelectDateRange[Select Date Range]
-    SelectDateRange --> FilterDate[Filter Songs<br/>WHERE created_at BETWEEN dates]
-    FilterDate --> DisplayFiltered
-    
-    FilterOption -->|No Filter| SongAction{Select Song Action?}
+    SongAction{Select Action?}
     
     %% View Song Details
-    SongAction -->|View Details| SelectSong[Click on Song Row]
-    SelectSong --> LoadSongDetail[Load Song Details:<br/>- Metadata<br/>- Lyrics Original<br/>- AI Processing Results<br/>- Upload User Info<br/>- Cover Image URL<br/>- Statistics Usage]
-    LoadSongDetail --> DisplaySongDetail[Display Song Detail Modal:<br/>- All Fields<br/>- Translation Preview<br/>- Mood Chart<br/>- Summary]
-    DisplaySongDetail --> DetailAction{Detail Action?}
-    DetailAction -->|Edit| EditSong
-    DetailAction -->|Reprocess| ReprocessSong
-    DetailAction -->|Delete| DeleteSong
-    DetailAction -->|Close| DisplaySongs
+    SongAction -->|View Details| ClickRow[Click Song Row]
+    ClickRow --> OpenModal[Open Detail Modal<br/>Show:<br/>- Song Metadata<br/>- Lyrics Original<br/>- Translation<br/>- Mood Chart<br/>- Summary<br/>- Cover Image<br/>- Created By Info<br/>- Status]
+    OpenModal --> ModalAction{Modal Action?}
+    ModalAction -->|Approve| QuickApprove[Click Approve in Modal]
+    QuickApprove --> ApproveFlow
+    ModalAction -->|Reject| QuickReject[Click Reject in Modal]
+    QuickReject --> RejectFlow
+    ModalAction -->|Close| CloseModal[Close Modal]
+    CloseModal --> DisplayTable
     
-    %% Edit Song
-    SongAction -->|Edit Song| EditSong[Open Edit Song Form]
-    EditSong --> ModifyFields[Modify Fields:<br/>- Title<br/>- Artist<br/>- Album<br/>- Genre<br/>- Release Year<br/>- Cover Image URL]
-    ModifyFields --> ValidateEdit{Valid Changes?}
-    ValidateEdit -->|No| ShowEditError[Show Validation Errors]
-    ShowEditError --> ModifyFields
-    ValidateEdit -->|Yes| UpdateSong[UPDATE Songs Table]
-    UpdateSong --> LogEdit[Log to AuditLogs:<br/>Action: Song Updated]
-    LogEdit --> ShowToast1[Show Success Toast]
-    ShowToast1 --> RefreshSongs[Refresh Songs List]
-    RefreshSongs --> DisplaySongs
+    %% Approve Song
+    SongAction -->|Approve| SelectApprove[Select Song to Approve]
+    SelectApprove --> ApproveFlow[POST /api/admin/songs/:processingID/approve<br/>body: note optional]
+    ApproveFlow --> UpdateApprove[UPDATE SongAIProcessing SET<br/>approvalStatus = approved<br/>shareStatus = public_approved<br/>approvedBy = adminUserID<br/>approvedAt = NOW<br/>approvalNote<br/>isPublic = TRUE]
+    UpdateApprove --> ShowToast1[Show Success Toast]
+    ShowToast1 --> RefreshList[Refresh Songs List]
+    RefreshList --> DisplayTable
     
-    %% Reprocess Song
-    SongAction -->|Reprocess AI| ReprocessSong[Open Reprocess Dialog]
-    ReprocessSong --> ConfirmReprocess{Confirm Reprocess?<br/>Will overwrite existing data}
-    ConfirmReprocess -->|No| DisplaySongs
-    ConfirmReprocess -->|Yes| UpdateStatus[UPDATE SongAIProcessing:<br/>status = processing<br/>processing_started_at = NOW]
-    UpdateStatus --> CallN8N[Call N8N Workflow Webhook<br/>with song_id]
-    CallN8N --> ShowProcessing[Show Processing Toast:<br/>AI Reprocessing Started]
-    ShowProcessing --> RefreshSongs
-    
-    %% Delete Song
-    SongAction -->|Delete Song| DeleteSong[Open Delete Dialog]
-    DeleteSong --> WarningDelete[Show Warning:<br/>⚠️ Will delete:<br/>- Song metadata<br/>- AI processing data<br/>- User favorites referencing<br/>- User history referencing<br/>- Share links referencing]
-    WarningDelete --> TypeConfirm[Require: Type DELETE to confirm]
-    TypeConfirm --> ConfirmDelete{Confirmation Match?}
-    ConfirmDelete -->|No| DisplaySongs
-    
-    ConfirmDelete -->|Yes| CheckImage{Has Cover Image<br/>in MinIO?}
-    CheckImage -->|Yes| DeleteImage[Delete Image from MinIO<br/>via minioService]
-    DeleteImage --> BeginDelete
-    CheckImage -->|No| BeginDelete
-    
-    BeginDelete[BEGIN TRANSACTION]
-    BeginDelete --> DeleteRelated[DELETE Related Records:<br/>1. SharedSongs<br/>2. UserFavorites<br/>3. UserHistory<br/>4. UserRatings<br/>5. SongAIProcessing]
-    DeleteRelated --> DeleteSongRecord[DELETE from Songs]
-    DeleteSongRecord --> CommitDelete[COMMIT TRANSACTION]
-    CommitDelete --> LogDelete[Log to AuditLogs:<br/>Action: Song Deleted]
-    LogDelete --> ShowToast2[Show Success Toast]
-    ShowToast2 --> RefreshSongs
+    %% Reject Song
+    SongAction -->|Reject| SelectReject[Select Song to Reject]
+    SelectReject --> RejectFlow[POST /api/admin/songs/:processingID/reject<br/>body: note optional]
+    RejectFlow --> UpdateReject[UPDATE SongAIProcessing SET<br/>approvalStatus = rejected<br/>shareStatus = private<br/>approvedBy = adminUserID<br/>approvedAt = NOW<br/>approvalNote<br/>isPublic = FALSE]
+    UpdateReject --> ShowToast2[Show Success Toast]
+    ShowToast2 --> RefreshList
     
     %% Bulk Actions
     SongAction -->|Bulk Actions| SelectMultiple[Select Multiple Songs<br/>via Checkboxes]
     SelectMultiple --> BulkChoice{Bulk Action?}
     
-    BulkChoice -->|Bulk Delete| ConfirmBulkDelete{Confirm Delete All?}
-    ConfirmBulkDelete -->|No| DisplaySongs
-    ConfirmBulkDelete -->|Yes| BulkDeleteLoop[For Each Selected Song:<br/>Delete as per single delete flow]
-    BulkDeleteLoop --> LogBulkDelete[Log Bulk Delete Action]
-    LogBulkDelete --> ShowToast3[Show Success Toast]
-    ShowToast3 --> RefreshSongs
+    BulkChoice -->|Bulk Approve| ConfirmBulk{Confirm Approve All?<br/>Count: X songs}
+    ConfirmBulk -->|No| DisplayTable
+    ConfirmBulk -->|Yes| BulkApproveAPI[POST /api/admin/songs/bulk-approve<br/>body: processingIDs array, note]
+    BulkApproveAPI --> BulkApproveLoop[AdminSongsService.bulkApprove:<br/>For each ID:<br/>UPDATE SongAIProcessing<br/>SET approved fields]
+    BulkApproveLoop --> ReturnBulkResult[Return: approved count, errors array]
+    ReturnBulkResult --> ShowBulkToast[Show Toast:<br/>X songs approved<br/>Y errors if any]
+    ShowBulkToast --> RefreshList
     
-    BulkChoice -->|Bulk Reprocess| ConfirmBulkReprocess{Confirm Reprocess All?}
-    ConfirmBulkReprocess -->|No| DisplaySongs
-    ConfirmBulkReprocess -->|Yes| BulkReprocessLoop[For Each Selected Song:<br/>Trigger N8N Workflow]
-    BulkReprocessLoop --> LogBulkReprocess[Log Bulk Reprocess Action]
-    LogBulkReprocess --> ShowToast4[Show Success Toast]
-    ShowToast4 --> RefreshSongs
+    BulkChoice -->|Bulk Reject| EnterBulkNote[Optional: Enter Reason]
+    EnterBulkNote --> ConfirmReject{Confirm Reject All?}
+    ConfirmReject -->|No| DisplayTable
+    ConfirmReject -->|Yes| BulkRejectAPI[POST /api/admin/songs/bulk-reject<br/>body: processingIDs array, note]
+    BulkRejectAPI --> BulkRejectLoop[AdminSongsService.bulkReject:<br/>For each ID:<br/>UPDATE SongAIProcessing<br/>SET rejected fields]
+    BulkRejectLoop --> ReturnRejectResult[Return: rejected count, errors array]
+    ReturnRejectResult --> ShowRejectToast[Show Toast:<br/>X songs rejected]
+    ShowRejectToast --> RefreshList
     
-    BulkChoice -->|Export| ExportCSV[Export Selected Songs<br/>to CSV file]
-    ExportCSV --> DownloadCSV[Download CSV]
-    DownloadCSV --> DisplaySongs
+    %% Edit Lyrics
+    SongAction -->|Edit Lyrics| SelectEdit[Select Song to Edit]
+    SelectEdit --> OpenEditor[Open Lyrics Editor Modal]
+    OpenEditor --> EditText[Edit Lyrics Text<br/>Textarea with formatting]
+    EditText --> SaveLyrics[PUT /api/admin/songs/:processingID/lyrics<br/>body: lyrics text]
+    SaveLyrics --> ValidateEdit{Admin or<br/>Super Admin?}
+    ValidateEdit -->|No| ShowEditError[Show 403:<br/>Only admins can edit]
+    ShowEditError --> OpenEditor
+    ValidateEdit -->|Yes| UpdateLyrics[AdminSongsService:<br/>UPDATE lyrics in Song<br/>via processingID->songID<br/>SET updatedBy = adminID]
+    UpdateLyrics --> ShowToast3[Show Success Toast]
+    ShowToast3 --> RefreshList
     
     SongAction -->|Done| End([Back to Dashboard])
     
     style Start fill:#e3f2fd
     style End fill:#c8e6c9
-    style WarningDelete fill:#ffcdd2
+    style ShowEditError fill:#ffcdd2
+```
+
+---
+
+## 👥 Activity 3: Admin User Management
+
+```mermaid
+flowchart TD
+    Start([Admin on Dashboard]) --> Navigate[Navigate to /admin/manage]
+    Navigate --> LoadAdmins[GET /api/admin/manage<br/>AdminManageController]
+    LoadAdmins --> QueryAdmins[AdminManageService.getAdminUsers:<br/>SELECT FROM Users<br/>WHERE role IN admin, super_admin<br/>ORDER BY role, createdAt DESC]
+    QueryAdmins --> DisplayTable[Display Admin Users Table:<br/>- User ID<br/>- Username<br/>- Email<br/>- Full Name<br/>- Role badge<br/>- Register Date<br/>- Actions]
+    
+    DisplayTable --> AdminAction{Select Action?}
+    
+    %% Add Admin
+    AdminAction -->|Add Admin| ClickAdd[Click Add Admin Button]
+    ClickAdd --> OpenAddModal[Open Add Admin Modal]
+    OpenAddModal --> EnterEmail[Enter User Email]
+    EnterEmail --> SelectRole[Select Role:<br/>- admin<br/>- super_admin]
+    SelectRole --> ConfirmAdd{Confirm Add?}
+    ConfirmAdd -->|No| CloseAdd[Close Modal]
+    CloseAdd --> DisplayTable
+    
+    ConfirmAdd -->|Yes| SubmitAdd[POST /api/admin/manage<br/>body: email, role]
+    SubmitAdd --> FindUser[SELECT FROM Users<br/>WHERE email]
+    FindUser --> CheckExists{User Exists?}
+    CheckExists -->|No| ShowError404[Show 404:<br/>User not found]
+    ShowError404 --> OpenAddModal
+    
+    CheckExists -->|Yes| CheckAlreadyAdmin{Already Admin?}
+    CheckAlreadyAdmin -->|Yes| ShowError409[Show 409:<br/>User already admin]
+    ShowError409 --> OpenAddModal
+    
+    CheckAlreadyAdmin -->|No| UpdateToAdmin[UPDATE Users<br/>SET role = selected<br/>WHERE userID]
+    UpdateToAdmin --> SendPromoEmail[EmailService:<br/>sendAdminPromotionEmail<br/>via N8N]
+    SendPromoEmail --> ShowToast1[Show Success Toast:<br/>Admin added]
+    ShowToast1 --> RefreshList[Refresh Admin List]
+    RefreshList --> DisplayTable
+    
+    %% Update Role
+    AdminAction -->|Update Role| SelectUser[Select Admin User]
+    SelectUser --> OpenUpdate[Open Update Role Modal]
+    OpenUpdate --> ChangeRole[Select New Role:<br/>- admin<br/>- super_admin]
+    ChangeRole --> ConfirmUpdate{Confirm Update?}
+    ConfirmUpdate -->|No| CloseUpdate[Close Modal]
+    CloseUpdate --> DisplayTable
+    
+    ConfirmUpdate -->|Yes| SubmitUpdate[PUT /api/admin/manage/:userID<br/>body: role]
+    SubmitUpdate --> UpdateRole[AdminManageService:<br/>UPDATE Users<br/>SET role<br/>WHERE userID]
+    UpdateRole --> SendUpdateEmail[EmailService:<br/>Send role update email]
+    SendUpdateEmail --> ShowToast2[Show Success Toast:<br/>Role updated]
+    ShowToast2 --> RefreshList
+    
+    %% Remove Admin
+    AdminAction -->|Remove Admin| SelectRemove[Select Admin to Remove]
+    SelectRemove --> ConfirmRemove{Confirm Remove?<br/>⚠️ Will demote to customer}
+    ConfirmRemove -->|No| DisplayTable
+    ConfirmRemove -->|Yes| SubmitRemove[DELETE /api/admin/manage/:userID]
+    SubmitRemove --> CheckNotAdmin{User is Admin?}
+    CheckNotAdmin -->|No| ShowError400[Show 400:<br/>User not an admin]
+    ShowError400 --> DisplayTable
+    
+    CheckNotAdmin -->|Yes| DemoteUser[AdminManageService:<br/>UPDATE Users<br/>SET role = customer<br/>WHERE userID]
+    DemoteUser --> SendDemoteEmail[EmailService:<br/>Send demotion notification]
+    SendDemoteEmail --> ShowToast3[Show Success Toast:<br/>Admin removed]
+    ShowToast3 --> RefreshList
+    
+    AdminAction -->|Done| End([Back to Dashboard])
+    
+    style Start fill:#e3f2fd
+    style End fill:#c8e6c9
+    style ShowError404 fill:#ffcdd2
+    style ShowError409 fill:#ffcdd2
+    style ShowError400 fill:#ffcdd2
+    style SendPromoEmail fill:#ff6d5a,color:#fff
+```
+
+---
+
+## 📊 Activity 4: System Logs Viewer
+
+```mermaid
+flowchart TD
+    Start([Admin on Dashboard]) --> Navigate[Navigate to /admin/logs]
+    Navigate --> LoadLogs[GET /api/admin/logs<br/>AdminLogsController]
+    LoadLogs --> QueryLogs[LogService.getLogs:<br/>SELECT FROM SystemLogs<br/>ORDER BY createdAt DESC<br/>LIMIT 50 per page]
+    QueryLogs --> DisplayLogs[Display Logs Table:<br/>- Log ID<br/>- Level badge<br/>- Category<br/>- Message<br/>- User if available<br/>- Created At<br/>- Actions]
+    
+    DisplayLogs --> ApplyFilters{Apply Filters?}
+    
+    ApplyFilters -->|Level Filter| SelectLevel[Select Level:<br/>- info<br/>- error<br/>- warn<br/>- debug]
+    SelectLevel --> FilterLevel[WHERE level = selected]
+    FilterLevel --> RefreshQuery[Re-query with filters]
+    RefreshQuery --> DisplayLogs
+    
+    ApplyFilters -->|Category Filter| SelectCategory[Select Category:<br/>- api<br/>- database<br/>- auth<br/>- admin<br/>- etc.]
+    SelectCategory --> FilterCategory[WHERE category = selected]
+    FilterCategory --> RefreshQuery
+    
+    ApplyFilters -->|Date Range| SelectDates[Select Start & End Date]
+    SelectDates --> FilterDate[WHERE createdAt BETWEEN dates]
+    FilterDate --> RefreshQuery
+    
+    ApplyFilters -->|Search| EnterSearch[Enter Search Query]
+    EnterSearch --> FilterSearch[WHERE message ILIKE<br/>OR details::text ILIKE]
+    FilterSearch --> RefreshQuery
+    
+    ApplyFilters -->|User Filter| SelectUser[Filter by User ID]
+    SelectUser --> FilterUser[WHERE userID = selected]
+    FilterUser --> RefreshQuery
+    
+    ApplyFilters -->|No Filter| LogAction{Select Action?}
+    
+    %% View Log Details
+    LogAction -->|View Details| ClickLog[Click Log Row]
+    ClickLog --> OpenLogModal[Open Log Detail Modal:<br/>- Full Message<br/>- Details JSON formatted<br/>- Request Context<br/>  method, path, statusCode<br/>- User Context<br/>  userID, role<br/>- System Context<br/>  IP, userAgent, requestID<br/>- Error Context<br/>  stack, code<br/>- Performance<br/>  duration ms]
+    OpenLogModal --> CloseLogModal[Close Modal]
+    CloseLogModal --> DisplayLogs
+    
+    %% View Statistics
+    LogAction -->|View Stats| LoadStats[GET /api/admin/logs/stats<br/>LogService.getLogStats]
+    LoadStats --> QueryStats[SELECT COUNT, level<br/>GROUP BY level<br/>Last 24 hours, 7 days, 30 days]
+    QueryStats --> DisplayStats[Display Statistics:<br/>- Total Logs count<br/>- Errors count<br/>- Warns count<br/>- Info count<br/>- Debug count<br/>- Chart by level<br/>- Chart by category<br/>- Recent errors list]
+    DisplayStats --> CloseStats[Close Stats]
+    CloseStats --> DisplayLogs
+    
+    %% Export Logs
+    LogAction -->|Export| SelectExport[Select Export Format:<br/>- CSV<br/>- JSON]
+    SelectExport --> GenerateExport[Generate Export File<br/>with current filters]
+    GenerateExport --> DownloadFile[Download File]
+    DownloadFile --> DisplayLogs
+    
+    %% Pagination
+    LogAction -->|Navigate Pages| ChangePage[Change Page<br/>page & limit params]
+    ChangePage --> LoadLogs
+    
+    LogAction -->|Done| End([Back to Dashboard])
+    
+    style Start fill:#e3f2fd
+    style End fill:#c8e6c9
+    style OpenLogModal fill:#fff9c4
+    style DisplayStats fill:#fff9c4
+```
+
+---
+
+## 🤖 Activity 5: AI Prompts Management
+
+```mermaid
+flowchart TD
+    Start([Admin on Dashboard]) --> Navigate[Navigate to /admin/prompts]
+    Navigate --> LoadPrompts[GET /api/prompts<br/>PromptController]
+    LoadPrompts --> QueryPrompts[PromptService:<br/>SELECT FROM Prompts<br/>ORDER BY createdAt DESC]
+    QueryPrompts --> DisplayPrompts[Display Prompts List:<br/>- Prompt ID<br/>- Prompt Type badge<br/>  translation/mood/both<br/>- Prompt Text preview<br/>- Is Active toggle<br/>- Created At<br/>- Actions]
+    
+    DisplayPrompts --> PromptAction{Select Action?}
+    
+    %% Add New Prompt
+    PromptAction -->|Add Prompt| ClickAdd[Click Add Prompt Button]
+    ClickAdd --> OpenAdd[Open Add Prompt Modal]
+    OpenAdd --> FillPrompt[Fill Form:<br/>- promptType select<br/>  translation/mood/both<br/>- promptText textarea<br/>- temp optional<br/>- isActive checkbox]
+    FillPrompt --> ValidatePrompt{Valid?}
+    ValidatePrompt -->|No| ShowPromptError[Show Validation Errors]
+    ShowPromptError --> FillPrompt
+    ValidatePrompt -->|Yes| SubmitAdd[POST /api/prompts<br/>body: promptData]
+    SubmitAdd --> InsertPrompt[INSERT INTO Prompts<br/>- promptID UUID<br/>- promptType<br/>- promptText<br/>- temp<br/>- isActive<br/>- createdAt NOW]
+    InsertPrompt --> ShowToast1[Show Success Toast]
+    ShowToast1 --> RefreshPrompts[Refresh Prompts List]
+    RefreshPrompts --> DisplayPrompts
+    
+    %% Edit Prompt
+    PromptAction -->|Edit| SelectEdit[Select Prompt to Edit]
+    SelectEdit --> OpenEdit[Open Edit Prompt Modal]
+    OpenEdit --> EditFields[Edit Fields:<br/>- promptType<br/>- promptText<br/>- temp<br/>- isActive]
+    EditFields --> ValidateEdit{Valid?}
+    ValidateEdit -->|No| ShowEditError[Show Validation Errors]
+    ShowEditError --> EditFields
+    ValidateEdit -->|Yes| SubmitEdit[PUT /api/prompts/:promptID<br/>body: updated data]
+    SubmitEdit --> UpdatePrompt[UPDATE Prompts<br/>SET fields<br/>updatedAt = NOW<br/>WHERE promptID]
+    UpdatePrompt --> ShowToast2[Show Success Toast]
+    ShowToast2 --> RefreshPrompts
+    
+    %% Toggle Active
+    PromptAction -->|Toggle Active| SelectToggle[Click isActive Toggle]
+    SelectToggle --> UpdateActive[PUT /api/prompts/:promptID<br/>body: isActive boolean]
+    UpdateActive --> UpdateDB[UPDATE Prompts<br/>SET isActive<br/>WHERE promptID]
+    UpdateDB --> ShowToast3[Show Toggle Toast]
+    ShowToast3 --> RefreshPrompts
+    
+    %% Delete Prompt
+    PromptAction -->|Delete| SelectDelete[Select Prompt to Delete]
+    SelectDelete --> ConfirmDelete{Confirm Delete?<br/>⚠️ Cannot be undone}
+    ConfirmDelete -->|No| DisplayPrompts
+    ConfirmDelete -->|Yes| SubmitDelete[DELETE /api/prompts/:promptID]
+    SubmitDelete --> DeleteDB[DELETE FROM Prompts<br/>WHERE promptID]
+    DeleteDB --> ShowToast4[Show Success Toast]
+    ShowToast4 --> RefreshPrompts
+    
+    %% Test Prompt
+    PromptAction -->|Test| SelectTest[Select Prompt to Test]
+    SelectTest --> OpenTest[Open Test Prompt Modal]
+    OpenTest --> EnterTest[Enter Test Lyrics Text]
+    EnterTest --> SubmitTest[POST /api/prompts/test<br/>body: promptID, testText]
+    SubmitTest --> CallN8N[Call N8N with test prompt<br/>Send to Ollama AI]
+    CallN8N --> WaitTest[Wait for Response]
+    WaitTest --> DisplayResult[Display Test Results:<br/>- Translation<br/>- Mood Analysis<br/>- Processing Time]
+    DisplayResult --> CloseTest[Close Test Modal]
+    CloseTest --> DisplayPrompts
+    
+    %% View Prompt Details
+    PromptAction -->|View Details| ClickView[Click Prompt Row]
+    ClickView --> OpenView[Open Detail Modal:<br/>- Full Prompt Text<br/>- Temp Text if any<br/>- Type & Status<br/>- Created/Updated dates<br/>- Usage statistics optional]
+    OpenView --> CloseView[Close Modal]
+    CloseView --> DisplayPrompts
+    
+    PromptAction -->|Done| End([Back to Dashboard])
+    
+    style Start fill:#e3f2fd
+    style End fill:#c8e6c9
+    style ShowPromptError fill:#ffcdd2
     style ShowEditError fill:#ffcdd2
     style CallN8N fill:#ff6d5a,color:#fff
 ```
 
 ---
 
-## ✅ Activity 4: Content Approval (Share Links)
+## 📝 Summary
 
-```mermaid
-flowchart TD
-    Start([Admin on Dashboard]) --> ClickApproval[Navigate to Approval Queue]
-    ClickApproval --> LoadPending[Load Pending Share Links<br/>FROM SharedSongs<br/>WHERE status = pending<br/>JOIN Songs<br/>JOIN Users<br/>ORDER BY requested_at ASC]
-    
-    LoadPending --> CheckQueue{Has Pending Items?}
-    CheckQueue -->|No| ShowEmpty[Show: No Pending Approvals<br/>All caught up! 🎉]
-    ShowEmpty --> End1([Back to Dashboard])
-    
-    CheckQueue -->|Yes| DisplayQueue[Display Approval Queue:<br/>- Song Title & Artist<br/>- Requested By Email<br/>- Request Date<br/>- Preview Link<br/>- Actions Approve/Reject]
-    
-    DisplayQueue --> FilterOption{Filter?}
-    FilterOption -->|Filter by User| SelectUser[Select User Filter]
-    SelectUser --> FilterUser[Filter WHERE user_id = selected]
-    FilterUser --> DisplayFiltered[Display Filtered Results]
-    DisplayFiltered --> DisplayQueue
-    
-    FilterOption -->|Filter by Date| SelectDate[Select Date Range]
-    SelectDate --> FilterDate[Filter WHERE requested_at BETWEEN]
-    FilterDate --> DisplayFiltered
-    
-    FilterOption -->|Sort| SelectSort[Select Sort:<br/>- Oldest First<br/>- Newest First<br/>- Song Title<br/>- User Email]
-    SelectSort --> ApplySort[Apply ORDER BY]
-    ApplySort --> DisplayFiltered
-    
-    FilterOption -->|No Filter| AdminAction{Select Action?}
-    
-    %% Preview Share Link
-    AdminAction -->|Preview| SelectShare[Click Preview Icon]
-    SelectShare --> OpenPreview[Open Share Link Preview<br/>in New Tab/Modal]
-    OpenPreview --> ReviewContent[Review Content:<br/>- Song Analysis<br/>- Translation Quality<br/>- Mood Detection<br/>- Summary<br/>- Cover Image]
-    ReviewContent --> MakeDecision{Content Appropriate?}
-    MakeDecision -->|Yes| QuickApprove[Quick Approve Button]
-    QuickApprove --> ApproveFlow
-    MakeDecision -->|No| QuickReject[Quick Reject Button]
-    QuickReject --> RejectFlow
-    MakeDecision -->|Need More Info| ClosePreview[Close Preview]
-    ClosePreview --> DisplayQueue
-    
-    %% Approve Share Link
-    AdminAction -->|Approve| SelectApprove[Select Share Link to Approve]
-    SelectApprove --> ApproveFlow[Open Approve Dialog]
-    ApproveFlow --> ConfirmApprove{Confirm Approve?}
-    ConfirmApprove -->|No| DisplayQueue
-    ConfirmApprove -->|Yes| UpdateApprove[UPDATE SharedSongs:<br/>status = approved<br/>is_public = true<br/>approved_at = NOW<br/>approved_by = admin_id]
-    UpdateApprove --> LogApprove[Log to AuditLogs:<br/>Action: Share Link Approved<br/>Admin: current_admin<br/>Target: share_id]
-    LogApprove --> NotifyUser[Send Approval Email<br/>to User via N8N:<br/>Include active share link]
-    NotifyUser --> ShowToast1[Show Success Toast:<br/>Share Link Approved]
-    ShowToast1 --> RefreshQueue[Refresh Approval Queue]
-    RefreshQueue --> DisplayQueue
-    
-    %% Reject Share Link
-    AdminAction -->|Reject| SelectReject[Select Share Link to Reject]
-    SelectReject --> RejectFlow[Open Reject Dialog]
-    RejectFlow --> EnterReason[Enter Rejection Reason:<br/>Textarea Required]
-    EnterReason --> SelectReasonType[Select Reason Type:<br/>- Inappropriate Content<br/>- Copyright Issues<br/>- Low Quality<br/>- Spam<br/>- Other]
-    SelectReasonType --> ValidateReason{Reason Provided?}
-    ValidateReason -->|No| ShowReasonError[Show Error: Reason Required]
-    ShowReasonError --> EnterReason
-    
-    ValidateReason -->|Yes| ConfirmReject{Confirm Reject?}
-    ConfirmReject -->|No| DisplayQueue
-    ConfirmReject -->|Yes| UpdateReject[UPDATE SharedSongs:<br/>status = rejected<br/>is_public = false<br/>rejected_reason<br/>rejected_at = NOW<br/>rejected_by = admin_id]
-    UpdateReject --> LogReject[Log to AuditLogs:<br/>Action: Share Link Rejected]
-    LogReject --> NotifyRejection[Send Rejection Email<br/>to User via N8N:<br/>Include reason]
-    NotifyRejection --> ShowToast2[Show Success Toast:<br/>Share Link Rejected]
-    ShowToast2 --> RefreshQueue
-    
-    %% Bulk Actions
-    AdminAction -->|Bulk Actions| SelectMultiple[Select Multiple Share Links<br/>via Checkboxes]
-    SelectMultiple --> BulkChoice{Bulk Action?}
-    
-    BulkChoice -->|Bulk Approve| ConfirmBulkApprove{Confirm Approve All?<br/>Count: X items}
-    ConfirmBulkApprove -->|No| DisplayQueue
-    ConfirmBulkApprove -->|Yes| BulkApproveLoop[For Each Selected:<br/>Update status to approved]
-    BulkApproveLoop --> LogBulkApprove[Log Bulk Approve Action]
-    LogBulkApprove --> SendBulkNotify1[Send Approval Emails<br/>to All Users]
-    SendBulkNotify1 --> ShowToast3[Show Success Toast]
-    ShowToast3 --> RefreshQueue
-    
-    BulkChoice -->|Bulk Reject| EnterBulkReason[Enter Reason for All]
-    EnterBulkReason --> ConfirmBulkReject{Confirm Reject All?}
-    ConfirmBulkReject -->|No| DisplayQueue
-    ConfirmBulkReject -->|Yes| BulkRejectLoop[For Each Selected:<br/>Update status to rejected]
-    BulkRejectLoop --> LogBulkReject[Log Bulk Reject Action]
-    LogBulkReject --> SendBulkNotify2[Send Rejection Emails<br/>to All Users]
-    SendBulkNotify2 --> ShowToast4[Show Success Toast]
-    ShowToast4 --> RefreshQueue
-    
-    %% View Statistics
-    AdminAction -->|View Stats| LoadStats[Load Approval Statistics:<br/>- Total Pending<br/>- Approved Today<br/>- Rejected Today<br/>- Avg Approval Time<br/>- Top Requesting Users]
-    LoadStats --> DisplayStats[Display Statistics Dashboard]
-    DisplayStats --> CloseStats[Close Stats]
-    CloseStats --> DisplayQueue
-    
-    AdminAction -->|Done| End2([Back to Dashboard])
-    
-    style Start fill:#e3f2fd
-    style End1 fill:#c8e6c9
-    style End2 fill:#c8e6c9
-    style ShowEmpty fill:#fff3e0
-    style ShowReasonError fill:#ffcdd2
-    style NotifyUser fill:#ff6d5a,color:#fff
-    style NotifyRejection fill:#ff6d5a,color:#fff
-    style SendBulkNotify1 fill:#ff6d5a,color:#fff
-    style SendBulkNotify2 fill:#ff6d5a,color:#fff
-```
+### Verified Admin Activities (5 Activities)
+1. ✅ **Admin Login & Dashboard** - Role check + statistics (verified against authController, dashboardController)
+2. ✅ **Songs Management** - Approve/Reject/Bulk actions (verified against adminSongsController, adminSongsService)
+3. ✅ **Admin User Management** - Add/Update/Remove admins (verified against adminManageController, adminManageService)
+4. ✅ **System Logs Viewer** - Filter and view logs (verified against adminLogsController, logService)
+5. ✅ **AI Prompts Management** - CRUD prompts (verified against promptController, promptService)
 
----
-
-## 🔄 Activity 5: AI Processing Monitor
-
-```mermaid
-flowchart TD
-    Start([Admin on Dashboard]) --> ClickProcessing[Navigate to Processing Monitor]
-    ClickProcessing --> LoadProcessing[Load Processing Data<br/>FROM SongAIProcessing<br/>JOIN Songs<br/>ORDER BY processing_started_at DESC]
-    
-    LoadProcessing --> DisplayOverview[Display Processing Overview:<br/>- Total Processed<br/>- Currently Processing<br/>- Failed Count<br/>- Avg Processing Time<br/>- Queue Status]
-    
-    DisplayOverview --> TabChoice{Select Tab?}
-    
-    %% Active Processing Tab
-    TabChoice -->|Active| LoadActive[Load Active Processing<br/>WHERE status = processing]
-    LoadActive --> CheckActive{Has Active?}
-    CheckActive -->|No| ShowNoActive[Show: No Active Processing<br/>All queues idle]
-    ShowNoActive --> DisplayOverview
-    
-    CheckActive -->|Yes| DisplayActive[Display Active Jobs Table:<br/>- Song Title & Artist<br/>- Started At<br/>- Duration<br/>- Progress Status<br/>- Actions]
-    DisplayActive --> ActiveAction{Action?}
-    
-    ActiveAction -->|View Details| ViewActiveDetail[View Processing Details:<br/>- Processing Steps<br/>- Current Step<br/>- Logs<br/>- N8N Workflow Status]
-    ViewActiveDetail --> CloseDetail1[Close Details]
-    CloseDetail1 --> DisplayActive
-    
-    ActiveAction -->|Cancel| ConfirmCancel{Confirm Cancel Job?}
-    ConfirmCancel -->|No| DisplayActive
-    ConfirmCancel -->|Yes| CancelJob[UPDATE SongAIProcessing:<br/>status = cancelled]
-    CancelJob --> LogCancel[Log to AuditLogs:<br/>Action: Processing Cancelled]
-    LogCancel --> ShowToast1[Show Toast: Job Cancelled]
-    ShowToast1 --> LoadActive
-    
-    ActiveAction -->|Refresh| RefreshActive[Refresh Active Jobs]
-    RefreshActive --> LoadActive
-    
-    ActiveAction -->|Back| DisplayOverview
-    
-    %% Completed Tab
-    TabChoice -->|Completed| LoadCompleted[Load Completed Processing<br/>WHERE status = completed<br/>ORDER BY completed_at DESC<br/>LIMIT 100]
-    LoadCompleted --> DisplayCompleted[Display Completed Jobs Table:<br/>- Song Info<br/>- Completed At<br/>- Processing Duration<br/>- Result Summary<br/>- Actions]
-    DisplayCompleted --> CompletedAction{Action?}
-    
-    CompletedAction -->|View Results| ViewCompletedDetail[View Processing Results:<br/>- Translation Output<br/>- Mood Percentages<br/>- Summary Text<br/>- Processing Logs]
-    ViewCompletedDetail --> CloseDetail2[Close Details]
-    CloseDetail2 --> DisplayCompleted
-    
-    CompletedAction -->|Reprocess| ConfirmReprocess{Confirm Reprocess?<br/>Will overwrite results}
-    ConfirmReprocess -->|No| DisplayCompleted
-    ConfirmReprocess -->|Yes| TriggerReprocess[UPDATE status = processing<br/>Call N8N Webhook]
-    TriggerReprocess --> LogReprocess[Log Reprocess Action]
-    LogReprocess --> ShowToast2[Show Toast: Reprocessing Started]
-    ShowToast2 --> LoadCompleted
-    
-    CompletedAction -->|Export| ExportCompleted[Export Completed Jobs<br/>to CSV with Results]
-    ExportCompleted --> DownloadCSV1[Download CSV]
-    DownloadCSV1 --> DisplayCompleted
-    
-    CompletedAction -->|Back| DisplayOverview
-    
-    %% Failed Tab
-    TabChoice -->|Failed| LoadFailed[Load Failed Processing<br/>WHERE status = failed<br/>ORDER BY failed_at DESC]
-    LoadFailed --> CheckFailed{Has Failed?}
-    CheckFailed -->|No| ShowNoFailed[Show: No Failed Jobs<br/>All systems operational! ✅]
-    ShowNoFailed --> DisplayOverview
-    
-    CheckFailed -->|Yes| DisplayFailed[Display Failed Jobs Table:<br/>- Song Info<br/>- Failed At<br/>- Error Message<br/>- Retry Count<br/>- Actions]
-    DisplayFailed --> FailedAction{Action?}
-    
-    FailedAction -->|View Error| ViewError[View Detailed Error:<br/>- Error Message<br/>- Stack Trace<br/>- N8N Logs<br/>- Input Data<br/>- Timestamp]
-    ViewError --> CloseDetail3[Close Error Details]
-    CloseDetail3 --> DisplayFailed
-    
-    FailedAction -->|Retry| ConfirmRetry{Confirm Retry?}
-    ConfirmRetry -->|No| DisplayFailed
-    ConfirmRetry -->|Yes| IncrementRetry[Increment retry_count]
-    IncrementRetry --> RetriggerJob[UPDATE status = processing<br/>Call N8N Webhook]
-    RetriggerJob --> LogRetry[Log Retry Action]
-    LogRetry --> ShowToast3[Show Toast: Job Retrying]
-    ShowToast3 --> LoadFailed
-    
-    FailedAction -->|Mark Resolved| ConfirmResolve{Mark as Resolved?<br/>Will remove from failed list}
-    ConfirmResolve -->|No| DisplayFailed
-    ConfirmResolve -->|Yes| UpdateResolve[UPDATE status = resolved]
-    UpdateResolve --> LogResolve[Log Resolved Action]
-    LogResolve --> ShowToast4[Show Toast: Marked Resolved]
-    ShowToast4 --> LoadFailed
-    
-    FailedAction -->|Bulk Retry| SelectMultipleFailed[Select Multiple Failed Jobs]
-    SelectMultipleFailed --> ConfirmBulkRetry{Confirm Retry All?}
-    ConfirmBulkRetry -->|No| DisplayFailed
-    ConfirmBulkRetry -->|Yes| BulkRetryLoop[For Each Selected:<br/>Retry Processing]
-    BulkRetryLoop --> LogBulkRetry[Log Bulk Retry Action]
-    LogBulkRetry --> ShowToast5[Show Toast: Bulk Retry Started]
-    ShowToast5 --> LoadFailed
-    
-    FailedAction -->|Back| DisplayOverview
-    
-    %% Statistics & Charts
-    TabChoice -->|Statistics| LoadCharts[Load Processing Statistics:<br/>- Jobs per Day Chart<br/>- Success Rate Chart<br/>- Avg Duration Trend<br/>- Error Types Breakdown<br/>- Peak Hours Heatmap]
-    LoadCharts --> DisplayCharts[Display Charts & Graphs<br/>using Recharts]
-    DisplayCharts --> ExportStats[Option: Export Statistics]
-    ExportStats --> DownloadStats[Download PDF Report]
-    DownloadStats --> DisplayCharts
-    DisplayCharts --> BackFromCharts[Back to Overview]
-    BackFromCharts --> DisplayOverview
-    
-    %% System Health Check
-    TabChoice -->|Health Check| RunHealthCheck[Run System Health Check:<br/>- Database Connection<br/>- N8N Workflow Status<br/>- MinIO Storage Status<br/>- API Response Times<br/>- Queue Status]
-    RunHealthCheck --> DisplayHealth[Display Health Status:<br/>- Green: All OK<br/>- Yellow: Warnings<br/>- Red: Critical Issues]
-    DisplayHealth --> CheckHealthStatus{All Healthy?}
-    CheckHealthStatus -->|Yes| ShowHealthy[Show: All Systems Operational ✅]
-    ShowHealthy --> DisplayOverview
-    CheckHealthStatus -->|No| ShowIssues[Show Critical Issues:<br/>- Issue Description<br/>- Affected Component<br/>- Suggested Action]
-    ShowIssues --> TakeAction{Take Action?}
-    TakeAction -->|Fix| AttemptFix[Execute Automated Fix<br/>if available]
-    AttemptFix --> RerunHealth[Re-run Health Check]
-    RerunHealth --> RunHealthCheck
-    TakeAction -->|Alert| SendAlert[Send Alert to DevOps<br/>via N8N Email]
-    SendAlert --> LogAlert[Log Alert Action]
-    LogAlert --> DisplayOverview
-    TakeAction -->|Ignore| DisplayOverview
-    
-    TabChoice -->|Done| End([Back to Dashboard])
-    
-    style Start fill:#e3f2fd
-    style End fill:#c8e6c9
-    style ShowNoActive fill:#fff3e0
-    style ShowNoFailed fill:#c8e6c9
-    style ShowHealthy fill:#c8e6c9
-    style ShowIssues fill:#ffcdd2
-    style SendAlert fill:#ff6d5a,color:#fff
-```
-
----
-
-## 📊 Activity 6: System Logs & Audit
-
-```mermaid
-flowchart TD
-    Start([Admin on Dashboard]) --> ClickLogs[Navigate to System Logs]
-    ClickLogs --> LoadLogs[Load Recent Logs<br/>FROM SystemLogs<br/>ORDER BY created_at DESC<br/>LIMIT 500]
-    
-    LoadLogs --> DisplayLogs[Display Logs Dashboard:<br/>- Recent Logs Table<br/>- Filter Options<br/>- Search Bar<br/>- Export Options]
-    
-    DisplayLogs --> LogChoice{Select Log Type?}
-    
-    %% System Logs
-    LogChoice -->|System Logs| LoadSystemLogs[Load SystemLogs Table:<br/>- INFO<br/>- WARNING<br/>- ERROR<br/>- DEBUG]
-    LoadSystemLogs --> FilterSystem{Apply Filters?}
-    
-    FilterSystem -->|Log Level| SelectLevel[Select Level:<br/>- All<br/>- INFO<br/>- WARNING<br/>- ERROR<br/>- DEBUG]
-    SelectLevel --> ApplyLevelFilter[WHERE log_level = selected]
-    ApplyLevelFilter --> DisplaySystemLogs
-    
-    FilterSystem -->|Date Range| SelectSystemDate[Select Date Range]
-    SelectSystemDate --> ApplyDateFilter[WHERE created_at BETWEEN]
-    ApplyDateFilter --> DisplaySystemLogs
-    
-    FilterSystem -->|Search| EnterSystemSearch[Enter Search Query]
-    EnterSystemSearch --> SearchSystemLogs[Search in message, context]
-    SearchSystemLogs --> DisplaySystemLogs
-    
-    FilterSystem -->|No Filter| DisplaySystemLogs[Display System Logs Table:<br/>- Timestamp<br/>- Level<br/>- Message<br/>- Context JSON<br/>- Actions]
-    
-    DisplaySystemLogs --> SystemAction{Action?}
-    SystemAction -->|View Details| ViewSystemDetail[View Full Log Entry:<br/>- Complete Context<br/>- Stack Trace if Error<br/>- Request Info<br/>- User Info]
-    ViewSystemDetail --> CloseSystem[Close Details]
-    CloseSystem --> DisplaySystemLogs
-    
-    SystemAction -->|Export| ExportSystem[Export Filtered Logs<br/>to CSV/JSON]
-    ExportSystem --> DownloadSystem[Download File]
-    DownloadSystem --> DisplaySystemLogs
-    
-    SystemAction -->|Back| DisplayLogs
-    
-    %% Error Logs
-    LogChoice -->|Error Logs| LoadErrorLogs[Load ErrorLogs Table:<br/>- Unhandled Exceptions<br/>- API Errors<br/>- Database Errors<br/>- External Service Errors]
-    LoadErrorLogs --> FilterError{Apply Filters?}
-    
-    FilterError -->|Error Type| SelectErrorType[Select Error Type:<br/>- All<br/>- Server Error<br/>- Client Error<br/>- Database Error<br/>- External API Error]
-    SelectErrorType --> ApplyTypeFilter[WHERE error_type = selected]
-    ApplyTypeFilter --> DisplayErrorLogs
-    
-    FilterError -->|Status| SelectErrorStatus[Select Status:<br/>- Unresolved<br/>- Investigating<br/>- Resolved]
-    SelectErrorStatus --> ApplyStatusFilter[WHERE status = selected]
-    ApplyStatusFilter --> DisplayErrorLogs
-    
-    FilterError -->|Date Range| SelectErrorDate[Select Date Range]
-    SelectErrorDate --> ApplyErrorDateFilter[WHERE occurred_at BETWEEN]
-    ApplyErrorDateFilter --> DisplayErrorLogs
-    
-    FilterError -->|No Filter| DisplayErrorLogs[Display Error Logs Table:<br/>- Timestamp<br/>- Error Type<br/>- Message<br/>- Affected Endpoint<br/>- User if Available<br/>- Status<br/>- Actions]
-    
-    DisplayErrorLogs --> ErrorAction{Action?}
-    
-    ErrorAction -->|View Details| ViewErrorDetail[View Full Error Details:<br/>- Complete Stack Trace<br/>- Request Body<br/>- Request Headers<br/>- Query Parameters<br/>- User Agent<br/>- IP Address]
-    ViewErrorDetail --> CloseError[Close Details]
-    CloseError --> DisplayErrorLogs
-    
-    ErrorAction -->|Update Status| SelectNewStatus[Select New Status:<br/>- Investigating<br/>- Resolved<br/>- Won't Fix]
-    SelectNewStatus --> AddNote[Add Admin Note]
-    AddNote --> UpdateErrorStatus[UPDATE ErrorLogs:<br/>status, admin_note,<br/>updated_by, updated_at]
-    UpdateErrorStatus --> LogErrorUpdate[Log Status Change<br/>to AuditLogs]
-    LogErrorUpdate --> ShowToast1[Show Success Toast]
-    ShowToast1 --> DisplayErrorLogs
-    
-    ErrorAction -->|Group Similar| FindSimilar[Find Similar Errors:<br/>Same error_type & message pattern]
-    FindSimilar --> DisplaySimilar[Display Grouped Errors:<br/>Count & First/Last Occurrence]
-    DisplaySimilar --> BulkResolve{Bulk Resolve All?}
-    BulkResolve -->|Yes| UpdateAllStatus[UPDATE all to Resolved]
-    UpdateAllStatus --> LogBulkResolve[Log Bulk Resolve]
-    LogBulkResolve --> ShowToast2[Show Success Toast]
-    ShowToast2 --> DisplayErrorLogs
-    BulkResolve -->|No| DisplayErrorLogs
-    
-    ErrorAction -->|Export| ExportErrors[Export Filtered Errors<br/>to CSV/JSON]
-    ExportErrors --> DownloadErrors[Download File]
-    DownloadErrors --> DisplayErrorLogs
-    
-    ErrorAction -->|Back| DisplayLogs
-    
-    %% Audit Logs
-    LogChoice -->|Audit Logs| LoadAuditLogs[Load AuditLogs Table:<br/>- Admin Actions<br/>- User Management<br/>- Song Management<br/>- Approval Actions]
-    LoadAuditLogs --> FilterAudit{Apply Filters?}
-    
-    FilterAudit -->|Action Type| SelectActionType[Select Action Type:<br/>- All<br/>- User Created<br/>- User Updated<br/>- User Deleted<br/>- Song Updated<br/>- Song Deleted<br/>- Share Approved<br/>- Share Rejected]
-    SelectActionType --> ApplyActionFilter[WHERE action_type = selected]
-    ApplyActionFilter --> DisplayAuditLogs
-    
-    FilterAudit -->|Admin User| SelectAdmin[Select Admin User]
-    SelectAdmin --> ApplyAdminFilter[WHERE admin_user_id = selected]
-    ApplyAdminFilter --> DisplayAuditLogs
-    
-    FilterAudit -->|Date Range| SelectAuditDate[Select Date Range]
-    SelectAuditDate --> ApplyAuditDateFilter[WHERE created_at BETWEEN]
-    ApplyAuditDateFilter --> DisplayAuditLogs
-    
-    FilterAudit -->|No Filter| DisplayAuditLogs[Display Audit Logs Table:<br/>- Timestamp<br/>- Admin User<br/>- Action Type<br/>- Target Entity<br/>- Changes JSON<br/>- IP Address<br/>- Actions]
-    
-    DisplayAuditLogs --> AuditAction{Action?}
-    
-    AuditAction -->|View Details| ViewAuditDetail[View Full Audit Entry:<br/>- Before/After Comparison<br/>- Complete Changes JSON<br/>- Request Context<br/>- User Agent]
-    ViewAuditDetail --> CloseAudit[Close Details]
-    CloseAudit --> DisplayAuditLogs
-    
-    AuditAction -->|Export| ExportAudit[Export Filtered Audit Logs<br/>for Compliance/Review]
-    ExportAudit --> DownloadAudit[Download File]
-    DownloadAudit --> DisplayAuditLogs
-    
-    AuditAction -->|Generate Report| SelectReportType[Select Report Type:<br/>- Daily Summary<br/>- Weekly Summary<br/>- Monthly Summary<br/>- Custom Date Range]
-    SelectReportType --> GenerateReport[Generate Audit Report<br/>with Statistics & Charts]
-    GenerateReport --> DownloadReport[Download PDF Report]
-    DownloadReport --> DisplayAuditLogs
-    
-    AuditAction -->|Back| DisplayLogs
-    
-    %% Health Check Logs
-    LogChoice -->|Health Checks| LoadHealthLogs[Load HealthCheckStatus Table:<br/>- Database Health<br/>- API Health<br/>- External Services Health]
-    LoadHealthLogs --> DisplayHealthLogs[Display Health Check History:<br/>- Check Time<br/>- Component<br/>- Status OK/Warning/Error<br/>- Response Time<br/>- Details]
-    DisplayHealthLogs --> HealthLogAction{Action?}
-    
-    HealthLogAction -->|View Trend| GenerateHealthTrend[Generate Health Trend Chart:<br/>Response times over time]
-    GenerateHealthTrend --> DisplayTrend[Display Trend Chart]
-    DisplayTrend --> CloseHealthTrend[Close Chart]
-    CloseHealthTrend --> DisplayHealthLogs
-    
-    HealthLogAction -->|Run Check Now| RunManualCheck[Run Manual Health Check]
-    RunManualCheck --> InsertHealthLog[INSERT into HealthCheckStatus]
-    InsertHealthLog --> ShowHealthResult[Show Latest Results]
-    ShowHealthResult --> DisplayHealthLogs
-    
-    HealthLogAction -->|Back| DisplayLogs
-    
-    LogChoice -->|Done| End([Back to Dashboard])
-    
-    style Start fill:#e3f2fd
-    style End fill:#c8e6c9
-    style DisplayErrorLogs fill:#ffcdd2
-    style DisplayAuditLogs fill:#fff9c4
-```
-
----
-
-## 📝 Activity Summary
-
-### Admin Activities Covered
-1. ✅ **Admin Login & Dashboard** - Secure 2FA login, dashboard overview, quick actions
-2. ✅ **User Management** - View, edit, suspend, delete users, bulk actions
-3. ✅ **Song Management** - View, edit, reprocess, delete songs, bulk operations
-4. ✅ **Content Approval** - Review and approve/reject share links, bulk approvals
-5. ✅ **AI Processing Monitor** - Monitor active/completed/failed jobs, health checks
-6. ✅ **System Logs & Audit** - View system logs, error logs, audit trails, reporting
-
-### Key Admin Features
-- **Security**: 2FA required for all admin actions, audit logging
-- **Bulk Operations**: Multi-select actions for efficiency
-- **Real-time Monitoring**: Live status of AI processing jobs
-- **Error Management**: Detailed error tracking and resolution workflow
-- **Audit Trail**: Complete action history with before/after comparison
-- **Health Checks**: Automated system health monitoring
-- **Notifications**: Email notifications via N8N for important events
-- **Reporting**: Export capabilities and PDF report generation
+### Key Findings from Code Inspection
+- **Admin role check at route level** - requireRole(['admin', 'super_admin']) middleware
+- **NO user suspension feature** - only admin role management (add/remove/update)
+- **NO separate share approval** - Song approval in SongAIProcessing table using approvalStatus field
+- **Songs approval updates multiple fields** - approvalStatus, shareStatus, isPublic, approvedBy, approvedAt
+- **Bulk operations return success count + errors array** - partial success handling
+- **Email notifications via N8N** - admin promotion, role update, demotion
+- **Logs filterable by level, category, date, user, search**
+- **Prompts testable via N8N** - admin can test prompt before activating
 
 ### Database Tables Used
-- **Admin Management**: Users (role=admin), AuditLogs, SystemLogs, ErrorLogs
-- **User Management**: Users, Customers, UserSessions, UserSettings
-- **Song Management**: Songs, SongAIProcessing, MinIO storage
-- **Content Approval**: SharedSongs (pending/approved/rejected)
-- **Monitoring**: SongAIProcessing (status tracking), HealthCheckStatus
+- **Users** - role field (customer, admin, super_admin)
+- **SongAIProcessing** - approvalStatus, shareStatus, isPublic, approvedBy, approvedAt, approvalNote
+- **SystemLogs** - level, category, message, details JSONB, user context, error context
+- **Prompts** - promptType (translation/mood/both), promptText, temp, isActive
 
-### External Services Integration
-- **N8N**: Workflow triggers, email notifications, AI processing orchestration
-- **MinIO**: Image deletion when songs are removed
-- **Ollama**: Via N8N for AI reprocessing
-- **Email Service**: User notifications for approvals/rejections/alerts
+### Admin Privileges
+- **View dashboard statistics** - users, songs, sessions, traffic, mood distribution
+- **Approve/Reject songs** - single and bulk operations
+- **Manage admin users** - promote/demote/update roles (email → admin → super_admin)
+- **View system logs** - all levels with advanced filtering
+- **Manage AI prompts** - CRUD operations with testing capability
+- **Edit song lyrics** - restricted to admin/super_admin roles
 
----
-
-## 🔐 Security & Compliance
-
-### Admin Access Controls
-1. **Role-based Access**: Admin role required (checked at route level)
-2. **2FA Enforcement**: Mandatory OTP verification for admin routes
-3. **Session Management**: JWT tokens with admin role claims
-4. **Audit Logging**: All admin actions logged to AuditLogs table
-5. **IP Tracking**: Admin IP addresses recorded for security
-
-### Data Protection
-- **Soft Deletes Available**: Option to mark as deleted without removing data
-- **Transaction Safety**: Critical operations wrapped in database transactions
-- **Confirmation Required**: Destructive actions require explicit confirmation
-- **Backup Notifications**: Email notifications sent before bulk deletions
-
-### Compliance Features
-- **Audit Trail**: Complete history of all administrative actions
-- **Export Capabilities**: Logs exportable for compliance reporting
-- **Before/After Tracking**: Changes tracked with before/after states
-- **Admin Identification**: All actions tied to specific admin user
-- **Timestamp Precision**: All actions timestamped with timezone
-
----
-
-## 🔍 Notes
-
-- All workflows verified against actual admin routes and controllers
-- Error handling and validation included in each flow
-- Security measures (2FA, audit logging) integrated throughout
-- External service integrations (N8N, MinIO) properly sequenced
-- Database operations match actual schema and constraints
-- Bulk operations optimized with transaction boundaries
-- Real-time status updates via polling/refresh mechanisms
+### NO Features Found
+- ❌ User suspension/ban system
+- ❌ Separate SharedSongs table or approval queue
+- ❌ Delete songs feature (not found in routes)
+- ❌ Delete users feature (only remove admin role)
+- ❌ Error logs separate table (uses SystemLogs with level filter)
+- ❌ Audit logs separate table (uses SystemLogs)
+- ❌ Health check monitoring UI (no route found)
 
 **Verification Date:** November 25, 2025  
-**Codebase State:** All admin activities verified against actual implementation  
-**Security Level:** High - 2FA enforced, all actions audited
+**Codebase State:** All admin activities verified against actual routes, controllers, services, and schema  
+**Method:** File inspection + grep search + SQL schema analysis  
+**Admin Routes Verified:** adminSongs, adminManage, adminLogs, adminAnalysis, dashboard, prompts
