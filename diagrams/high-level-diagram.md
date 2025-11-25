@@ -67,7 +67,6 @@ C4Container
         Container(storage, "File Storage", "MinIO", "Images & files (S3-compatible)")
         Container(workflow, "Workflow Engine", "N8N", "AI automation & email")
         Container(ai, "AI Engine", "Ollama", "Local AI models")
-        Container(cache, "Cache", "Redis", "Session & temporary data")
     }
 
     System_Ext(lrclib, "LRCLIB API")
@@ -82,7 +81,6 @@ C4Container
     Rel(api, db, "Queries", "PostgreSQL Protocol")
     Rel(api, storage, "Upload/Download", "S3 API")
     Rel(api, workflow, "Triggers", "Webhook")
-    Rel(api, cache, "Read/Write", "Redis Protocol")
     Rel(workflow, ai, "Analyze", "HTTP")
     
     Rel(api, lrclib, "Fetch lyrics", "REST")
@@ -100,7 +98,6 @@ C4Container
 - **File Storage**: Object storage for images (MinIO)
 - **Workflow Engine**: Automation platform (N8N)
 - **AI Engine**: Local AI processing (Ollama)
-- **Cache**: Session management (Redis - future)
 
 ---
 
@@ -195,8 +192,6 @@ graph TB
     subgraph "Layer 5: Infrastructure Layer"
         DB[(Database<br/>PostgreSQL)]
         STORAGE[(File Storage<br/>MinIO)]
-        CACHE[(Cache<br/>Redis)]
-        QUEUE[(Message Queue<br/>Future: RabbitMQ)]
     end
     
     subgraph "Layer 6: External Services"
@@ -439,7 +434,6 @@ sequenceDiagram
 ### 2. Scalability
 - **Horizontal Scaling**: Multiple frontend/backend instances
 - **Database Replication**: Master-slave PostgreSQL setup
-- **Caching Strategy**: Redis for session/temporary data
 - **CDN Integration**: CloudFlare CDN for global static assets delivery
 
 ### 3. Security First

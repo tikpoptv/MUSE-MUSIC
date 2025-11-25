@@ -431,10 +431,6 @@ graph LR
     
     DB --> REPLICA1[(Read Replica 1)]
     DB --> REPLICA2[(Read Replica 2)]
-    
-    BE1 --> REDIS[Redis Cache]
-    BE2 --> REDIS
-    BE3 --> REDIS
 ```
 
 ### Performance Optimization
@@ -444,7 +440,6 @@ graph LR
   - Indexed queries (see schema indexes)
   - Read replicas for heavy reads
 - **Caching**: 
-  - Redis for session storage
   - CDN for static assets (MinIO + CloudFlare)
 - **API**: 
   - Rate limiting per endpoint
@@ -487,7 +482,6 @@ graph LR
 - **Nginx**: Reverse proxy and load balancing
 - **PostgreSQL**: Primary database with replication support
 - **MinIO**: Object storage for media files
-- **Redis**: Caching layer (planned)
 
 ### Performance Metrics
 - **CDN Cache Hit Rate**: Target 90%+ (CloudFlare)
