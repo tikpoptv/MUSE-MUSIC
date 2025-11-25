@@ -67,9 +67,9 @@ flowchart TD
     CheckSetup -->|Yes| Dashboard[Redirect to /for-you]
     
     %% Setup Flow
-    Setup --> Step1[/setup/step1<br/>Select Favorite Genres]
-    Step1 --> Step2[/setup/step2<br/>Mood Preferences]
-    Step2 --> Step3[/setup/step3<br/>Language Settings]
+    Setup --> Step1["/setup/step1<br/>Select Favorite Genres"]
+    Step1 --> Step2["/setup/step2<br/>Mood Preferences"]
+    Step2 --> Step3["/setup/step3<br/>Language Settings"]
     Step3 --> SaveSetup[POST /api/setup/save<br/>UPDATE Customers<br/>SET preferences]
     SaveSetup --> MarkComplete[UPDATE Users<br/>SET setupCompleted = true]
     MarkComplete --> Dashboard
@@ -151,7 +151,7 @@ flowchart TD
     LoadExisting --> DisplaySong
     CheckProcessed -->|No| CreateProcessing
     
-    DisplaySong[Navigate to /song/[songID]<br/>Display:<br/>- SyncedLyricsPlayer<br/>- Original & Translation<br/>- Mood Radar Chart<br/>- Summary<br/>- Cover Image]
+    DisplaySong["Navigate to /song/:songID<br/>Display:<br/>- SyncedLyricsPlayer<br/>- Original & Translation<br/>- Mood Radar Chart<br/>- Summary<br/>- Cover Image"]
     DisplaySong --> UserActions{User Action?}
     
     UserActions -->|Add Favorite| AddFav[POST /api/favorites/add<br/>INSERT INTO UserFavorites]
@@ -401,7 +401,7 @@ flowchart TD
     ValidatePass -->|No| ShowPassError[Show Validation Errors]
     ShowPassError --> EnterNewPass
     
-    ValidatePass -->|Yes| Submit Reset[POST /api/auth/reset-password<br/>body: token, newPassword]
+    ValidatePass -->|Yes| SubmitReset[POST /api/auth/reset-password<br/>body: token, newPassword]
     SubmitReset --> HashPass[bcrypt.hash newPassword]
     HashPass --> UpdatePassword[UPDATE Users SET<br/>password = hashed<br/>passwordResetToken = NULL<br/>passwordResetTokenExpiry = NULL]
     UpdatePassword --> InvalidateSessions[DELETE FROM UserSessions<br/>WHERE userID<br/>Force re-login]
