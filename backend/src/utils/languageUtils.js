@@ -1,7 +1,7 @@
 const LANGUAGE_CODE_TO_NAME = {
   en: 'English',
   th: 'Thai',
-  lo: 'Lao',
+  lo: 'Laos',
   ko: 'Korean',
   ja: 'Japanese',
   zh: 'Chinese',
@@ -20,7 +20,7 @@ const LANGUAGE_CODE_TO_NAME = {
 const LANGUAGE_NAME_TO_CODE = {
   'English': 'en',
   'Thai': 'th',
-  'Lao': 'lo',
+  'Laos': 'lo',
   'Korean': 'ko',
   'Japanese': 'ja',
   'Chinese': 'zh',
