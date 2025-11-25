@@ -1137,11 +1137,16 @@ graph TB
 
 ---
 
-## UC18: Report System
+## UC18: Report System ⚠️ **FUTURE FEATURE**
+
+> **Status**: 🚧 Not Yet Implemented  
+> **Database**: ✅ Table exists (Reports)  
+> **Backend**: ❌ Routes/Services not implemented  
+> **Frontend**: ❌ Components not implemented
 
 ```mermaid
 graph TB
-    subgraph "Frontend Components"
+    subgraph "Frontend Components - PLANNED"
         ANALYSISPAGE[Analysis Page]
         REPORTBTN[Report Button]
         REPORTMODAL[Report Modal<br/>Reason + Description]
@@ -1149,20 +1154,20 @@ graph TB
         REPORTTABLE[Reports Table]
     end
     
-    subgraph "Frontend Services"
+    subgraph "Frontend Services - PLANNED"
         REPORTSVC_F[Report Service<br/>reportService.ts]
         ADMINSVC_F[Admin Service]
         APISVC_F[API Service]
     end
     
-    subgraph "Backend API"
+    subgraph "Backend API - PLANNED"
         REPORTROUTE[Report Routes<br/>report.js]
         REPORTCTRL[Report Controller<br/>reportController.js]
         REPORTSVC_B[Report Service<br/>reportService.js]
         NOTIFSVC[Notification Service]
     end
     
-    subgraph "Database"
+    subgraph "Database - EXISTS"
         REPORTS[(Reports)]
         NOTIFICATIONS[(Notifications)]
     end
@@ -1187,12 +1192,13 @@ graph TB
     APISVC_F --> REPORTTABLE
 ```
 
-**Key Components:**
-- `frontend/src/services/reportService.ts` - Report submission API
-- `frontend/src/app/admin/reports/page.tsx` - Admin report management (future)
-- `backend/src/routes/report.js` - Report routes
-- `backend/src/controllers/reportController.js` - Report handler
-- `backend/src/services/reportService.js` - Report CRUD
+**Planned Components** (Not Yet Implemented):
+- ❌ `frontend/src/services/reportService.ts` - Report submission API (planned)
+- ❌ `frontend/src/app/admin/reports/page.tsx` - Admin report management (planned)
+- ❌ `backend/src/routes/report.js` - Report routes (planned)
+- ❌ `backend/src/controllers/reportController.js` - Report handler (planned)
+- ❌ `backend/src/services/reportService.js` - Report CRUD (planned)
+- ✅ `backend/database/migrations/001_create_initial_schema.sql` - Reports table (exists)
 
 ---
 
@@ -1396,17 +1402,22 @@ graph TB
 | UC7 | Share Analysis (Public) | ✅ Complete | Line 491 |
 | UC8 | Favorites & Archive | ✅ Complete | Line 561 |
 | UC9 | For You (Personalized Feed) | ✅ Complete | Line 630 |
-| UC10 | Admin - Approve Analysis | ✅ Complete | Line 715 |
-| UC11 | Admin - Manage Songs | ✅ Complete | Line 780 |
-| UC12 | Two-Factor Authentication (2FA) | ✅ Complete | Line 830 |
-| UC13 | Playlist Management | ✅ Complete | Line 820 |
-| UC14 | View Song Detail & Lyrics Player | ✅ Complete | Line 877 |
-| UC15 | Password Reset Flow | ✅ Complete | Line 929 |
-| UC16 | User Profile & Settings | ✅ Complete | Line 986 |
-| UC17 | Notification System | ✅ Complete | Line 1053 |
-| UC18 | Report System | ✅ Complete | Line 1115 |
-| UC19 | Admin - System Logs & Monitoring | ✅ Complete | Line 1174 |
-| UC20 | Admin - AI Prompts Management | ✅ Complete | Line 1234 |
-| UC21 | History & Activity Tracking | ✅ Complete | Line 1284 |
+| UC10 | Admin - Approve Analysis | ✅ Implemented | Line 715 |
+| UC11 | Admin - Manage Songs | ✅ Implemented | Line 780 |
+| UC12 | Two-Factor Authentication (2FA) | ✅ Implemented | Line 830 |
+| UC13 | Playlist Management | 🚧 **Future** | Line 820 |
+| UC14 | View Song Detail & Lyrics Player | ✅ Implemented | Line 877 |
+| UC15 | Password Reset Flow | ✅ Implemented | Line 929 |
+| UC16 | User Profile & Settings | ✅ Implemented | Line 986 |
+| UC17 | Notification System | 🚧 **Future** | Line 1053 |
+| UC18 | Report System | 🚧 **Future** | Line 1115 |
+| UC19 | Admin - System Logs & Monitoring | ✅ Implemented | Line 1174 |
+| UC20 | Admin - AI Prompts Management | ✅ Implemented | Line 1234 |
+| UC21 | History & Activity Tracking | ✅ Implemented | Line 1284 |
 
 **Total: 21 Use Case Component Diagrams**
+- **✅ Implemented**: 18 use cases (fully functional)
+- **🚧 Future Features**: 3 use cases (database ready, implementation pending)
+  - UC13: Playlist Management
+  - UC17: Notification System
+  - UC18: Report System
