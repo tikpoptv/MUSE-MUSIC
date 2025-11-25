@@ -297,8 +297,16 @@ export default function TermsOfServicePage() {
                 <strong>Project:</strong> MUSE MUSIC
               </p>
               <p className="text-gray-700">
-                <strong>Developer:</strong> Jedsadaporn Pannok
+                <strong>Developer:</strong> F5 Team
               </p>
+              <ul className="list-disc list-inside text-gray-700 ml-4 mt-1 space-y-1">
+                <li>Jedsadaporn Pannok</li>
+                <li>Phattharapong Duangkham</li>
+                <li>Warisara Buddeekam</li>
+                <li>Chanikan Katti</li>
+                <li>Puwanut Theeranulak</li>
+                <li>Simon Auguste Lemaire</li>
+              </ul>
               <p className="text-gray-700">
                 <strong>Contact Email:</strong> <a href="mailto:contact@phitik.com" className="text-[#7B61FF] hover:underline">contact@phitik.com</a> or <a href="mailto:jedsadaporn.pannok@gmail.com" className="text-[#7B61FF] hover:underline">jedsadaporn.pannok@gmail.com</a>
               </p>
