@@ -37,6 +37,7 @@ interface SyncedLyricsPlayerProps {
   initialSyncConfirmed?: boolean;
   initialSongStartTime?: number | null;
   onSyncSettingsChange?: (syncConfirmed: boolean, songStartTime: number | null) => void;
+  onYoutubeVideoIdChange?: (youtubeVideoId: string) => void;
   isApproved?: boolean;
   isAdmin?: boolean;
 }
@@ -88,6 +89,7 @@ export default function SyncedLyricsPlayer({
   initialSyncConfirmed = false,
   initialSongStartTime = null,
   onSyncSettingsChange,
+  onYoutubeVideoIdChange,
   isApproved = false,
   isAdmin = false
 }: SyncedLyricsPlayerProps) {
@@ -215,6 +217,11 @@ export default function SyncedLyricsPlayer({
         try {
           await songService.updateYouTubeVideoId(processingID, videoId);
           toast.success('YouTube video ID saved!');
+          
+          // Notify parent component that videoId has changed
+          if (onYoutubeVideoIdChange) {
+            onYoutubeVideoIdChange(videoId);
+          }
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : 'Failed to save YouTube video ID';
           toast.error(errorMessage);
@@ -224,7 +231,7 @@ export default function SyncedLyricsPlayer({
       const timeoutId = setTimeout(saveVideoId, 1000);
       return () => clearTimeout(timeoutId);
     }
-  }, [videoId, processingID, initialYoutubeVideoId, readonly]);
+  }, [videoId, processingID, initialYoutubeVideoId, readonly, onYoutubeVideoIdChange]);
 
   useEffect(() => {
     if (!syncedLyrics) return;

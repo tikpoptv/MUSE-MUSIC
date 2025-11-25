@@ -67,6 +67,7 @@ export default function LyricsTranslationViewerFullscreen({
   const isPlayingRef = useRef(isPlaying);
   const hasAppliedInitialSeekRef = useRef(false);
   const isInitializingRef = useRef(false);
+  const currentVideoIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     currentTimeRef.current = currentTime;
@@ -235,14 +236,8 @@ export default function LyricsTranslationViewerFullscreen({
 
   // Create separate YouTube player for fullscreen (muted, synced with main player)
   useEffect(() => {
-    if (!youtubeVideoId) return;
-    let isMounted = true;
-    const containerElement = videoContainerRef.current;
-
-    const setupPlayer = async () => {
-      await loadYouTubeIframeAPI();
-      if (!isMounted || !containerElement) return;
-
+    if (!youtubeVideoId) {
+      // ถ้าไม่มี videoId ให้ทำลาย player และ reset state
       if (fullscreenPlayerRef.current) {
         try {
           fullscreenPlayerRef.current.destroy();
@@ -250,6 +245,45 @@ export default function LyricsTranslationViewerFullscreen({
           // ignore
         }
         fullscreenPlayerRef.current = null;
+      }
+      setIsFullscreenPlayerReady(false);
+      hasAppliedInitialSeekRef.current = false;
+      isInitializingRef.current = false;
+      currentVideoIdRef.current = null;
+      return;
+    }
+
+    // ตรวจสอบว่า videoId เปลี่ยนหรือไม่
+    const videoIdChanged = currentVideoIdRef.current !== youtubeVideoId;
+    currentVideoIdRef.current = youtubeVideoId;
+
+    let isMounted = true;
+    const containerElement = videoContainerRef.current;
+
+    const setupPlayer = async () => {
+      await loadYouTubeIframeAPI();
+      if (!isMounted || !containerElement) return;
+
+      // ถ้า videoId เปลี่ยน ให้ทำลาย player เก่าก่อน
+      if (fullscreenPlayerRef.current && videoIdChanged) {
+        try {
+          fullscreenPlayerRef.current.destroy();
+        } catch {
+          // ignore
+        }
+        fullscreenPlayerRef.current = null;
+        setIsFullscreenPlayerReady(false);
+        hasAppliedInitialSeekRef.current = false;
+        isInitializingRef.current = false;
+        
+        // รอสักครู่เพื่อให้ DOM ทำการ cleanup
+        await new Promise(resolve => setTimeout(resolve, 100));
+        if (!isMounted) return;
+      }
+
+      // ถ้ามี player อยู่แล้วและ videoId ไม่เปลี่ยน ไม่ต้องสร้างใหม่
+      if (fullscreenPlayerRef.current && !videoIdChanged) {
+        return;
       }
 
       const playerId = `youtube-fullscreen-${youtubeVideoId}-${Date.now()}`;
@@ -378,22 +412,10 @@ export default function LyricsTranslationViewerFullscreen({
 
     return () => {
       isMounted = false;
-      if (fullscreenPlayerRef.current) {
-        try {
-          fullscreenPlayerRef.current.destroy();
-        } catch {
-          // Ignore
-        }
-        fullscreenPlayerRef.current = null;
-      }
-      if (containerElement) {
-        containerElement.id = '';
-      }
-      setIsFullscreenPlayerReady(false);
-      hasAppliedInitialSeekRef.current = false;
-      isInitializingRef.current = false;
+      // ไม่ต้องทำลาย player ในขณะที่ component ยัง mount อยู่
+      // ให้ทำลายเฉพาะเมื่อ component unmount หรือ videoId เปลี่ยน
     };
-  }, [youtubeVideoId]);
+  }, [youtubeVideoId]); // Dependency: youtubeVideoId เพื่อให้ re-run เมื่อเปลี่ยน
 
   // Sync fullscreen player with main player's currentTime
   useEffect(() => {
@@ -477,6 +499,28 @@ export default function LyricsTranslationViewerFullscreen({
   }, [youtubeVideoId, isFullscreenPlayerReady, isPlaying]);
 
   // Removed the syncOnReady effect - initialization is now handled in the onReady callback
+
+  // Cleanup player on component unmount
+  useEffect(() => {
+    return () => {
+      if (fullscreenPlayerRef.current) {
+        try {
+          fullscreenPlayerRef.current.destroy();
+        } catch {
+          // Ignore
+        }
+        fullscreenPlayerRef.current = null;
+      }
+      const containerElement = videoContainerRef.current;
+      if (containerElement) {
+        containerElement.id = '';
+      }
+      setIsFullscreenPlayerReady(false);
+      hasAppliedInitialSeekRef.current = false;
+      isInitializingRef.current = false;
+      currentVideoIdRef.current = null;
+    };
+  }, []); // Empty dependency = run only on unmount
 
   useEffect(() => {
     // Prevent zoom on mobile

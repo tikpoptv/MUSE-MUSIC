@@ -1532,6 +1532,14 @@ export default function SongDetailPage() {
                       });
                     }
                   }) : undefined}
+                  onYoutubeVideoIdChange={(youtubeVideoId) => {
+                    if (processingData) {
+                      setProcessingData({
+                        ...processingData,
+                        youtubeVideoId
+                      });
+                    }
+                  }}
                   isApproved={processingData?.approvalStatus === 'approved' && processingData?.shareStatus === 'public_approved'}
                   isAdmin={isAdmin}
                 />
