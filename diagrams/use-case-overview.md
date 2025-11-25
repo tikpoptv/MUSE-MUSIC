@@ -3,74 +3,104 @@
 The diagram below summarizes the primary actors and interactions supported by the MUSE MUSIC platform, spanning both customer-facing and administrative flows.
 
 ```mermaid
-usecaseDiagram
-  actor Visitor as V
-  actor "Registered User" as U
-  actor Admin as A
-  actor "Content Reviewer" as CR
-  actor "Lyrics / LRCLIB API" as L
-  actor "YouTube Transcript API" as Y
-  actor "Email / Notification Service" as NS
-  actor "Payment / Premium (future)" as PM
+graph TB
+    %% Actors
+    V[👤 Visitor]
+    U[👤 Registered User]
+    A[👤 Admin]
+    CR[👤 Content Reviewer]
+    L[🌐 Lyrics/LRCLIB API]
+    Y[🌐 YouTube Transcript API]
+    NS[📧 Email/Notification Service]
+    PM[💳 Payment/Premium future]
 
-  rectangle "Public Web (Next.js, CDN)" as PUB {
-    usecase "Browse landing content" as UC1
-    usecase "View public share link" as UC8a
-  }
-  rectangle "Auth & Profile" as AUTH {
-    usecase "Register / Login / 2FA" as UC2
-    usecase "Reset password" as UC2a
-    usecase "Complete onboarding steps" as UC2b
-  }
-  rectangle "Music Interaction" as MUSIC {
-    usecase "Search catalog / upload songs" as UC3
-    usecase "Run AI analysis (summary, translation, mood)" as UC4
-    usecase "View lyrics, translations & mood insights" as UC5
-    usecase "Manage favorites & history" as UC6
-    usecase "\"For You\" personalized recommendations" as UC7
-    usecase "Generate share links" as UC8
-    usecase "Submit feedback / ratings" as UC9
-  }
-  rectangle "Administration" as ADMIN {
-    usecase "Approve shared content" as UC10
-    usecase "Manage catalog & users" as UC11
-    usecase "Monitor AI jobs / quotas" as UC12
-    usecase "Audit logs & incidents" as UC12a
-  }
+    %% Public Web Zone
+    subgraph PUB[Public Web Next.js, CDN]
+        UC1((UC1: Browse<br/>landing content))
+        UC8a((UC8a: View public<br/>share link))
+    end
 
-  V --> UC1
-  V --> UC2
-  V --> UC8a
+    %% Auth & Profile Zone
+    subgraph AUTH[Auth & Profile]
+        UC2((UC2: Register/Login<br/>2FA))
+        UC2a((UC2a: Reset<br/>password))
+        UC2b((UC2b: Complete<br/>onboarding))
+        UC15((UC15: OTP/2FA<br/>validation))
+    end
 
-  U --> UC2
-  U --> UC2a
-  U --> UC2b
-  U --> UC3
-  U --> UC4
-  U --> UC5
-  U --> UC6
-  U --> UC7
-  U --> UC8
-  U --> UC9
+    %% Music Interaction Zone
+    subgraph MUSIC[Music Interaction]
+        UC3((UC3: Search catalog<br/>upload songs))
+        UC4((UC4: Run AI analysis<br/>mood, translation))
+        UC5((UC5: View lyrics<br/>translations, mood))
+        UC6((UC6: Manage favorites<br/>& history))
+        UC7((UC7: For You<br/>recommendations))
+        UC8((UC8: Generate<br/>share links))
+        UC9((UC9: Submit feedback<br/>& ratings))
+    end
 
-  A --> UC10
-  A --> UC11
-  A --> UC12
-  A --> UC12a
-  CR --> UC10
+    %% Administration Zone
+    subgraph ADMIN[Administration]
+        UC10((UC10: Approve<br/>shared content))
+        UC11((UC11: Manage catalog<br/>& users))
+        UC12((UC12: Monitor AI jobs<br/>& quotas))
+        UC12a((UC12a: Audit logs<br/>& incidents))
+    end
 
-  UC4 --> UC13 : <<include>>
-  UC4 --> UC14 : <<include>>
-  UC2 --> UC15 : <<include>>
-  UC2a --> NS : <<include>>
-  UC8 --> UC10 : <<include>>
-  UC7 --> UC6 : <<extend>>
-  UC3 --> UC4 : <<extend>>
-  UC12 --> NS : <<extend>>
-  UC2b --> PM : <<extend>>
+    %% External Use Cases
+    UC13((UC13: Fetch lyrics<br/>from LRCLIB))
+    UC14((UC14: YouTube<br/>transcript ingestion))
 
-  usecase "OTP / 2FA validation" as UC15
-  UC15 --> NS
+    %% Visitor connections
+    V --> UC1
+    V --> UC2
+    V --> UC8a
+
+    %% Registered User connections
+    U --> UC2
+    U --> UC2a
+    U --> UC2b
+    U --> UC3
+    U --> UC4
+    U --> UC5
+    U --> UC6
+    U --> UC7
+    U --> UC8
+    U --> UC9
+
+    %% Admin connections
+    A --> UC10
+    A --> UC11
+    A --> UC12
+    A --> UC12a
+    CR --> UC10
+
+    %% Include relationships
+    UC4 -.include.-> UC13
+    UC4 -.include.-> UC14
+    UC2 -.include.-> UC15
+    UC2a -.include.-> NS
+    UC8 -.include.-> UC10
+
+    %% Extend relationships
+    UC7 -.extend.-> UC6
+    UC3 -.extend.-> UC4
+    UC12 -.extend.-> NS
+    UC2b -.extend.-> PM
+
+    %% External service connections
+    UC15 --> NS
+    UC13 --> L
+    UC14 --> Y
+
+    %% Styling
+    classDef actor fill:#e1f5ff,stroke:#01579b,stroke-width:2px
+    classDef usecase fill:#fff9c4,stroke:#f57f17,stroke-width:2px
+    classDef external fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+
+    class V,U,A,CR actor
+    class UC1,UC2,UC2a,UC2b,UC3,UC4,UC5,UC6,UC7,UC8,UC8a,UC9,UC10,UC11,UC12,UC12a,UC15 usecase
+    class L,Y,NS,PM,UC13,UC14 external
 ```
 
 ### Actor Highlights

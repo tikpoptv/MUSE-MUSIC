@@ -16,12 +16,14 @@ C4Context
     
     System(museApp, "MUSE MUSIC", "Web application for lyrics analysis with AI")
     
+    System_Ext(cloudflare, "CloudFlare", "CDN, WAF, DDoS Protection, DNS")
     System_Ext(lrclib, "LRCLIB API", "External lyrics database")
     System_Ext(youtube, "YouTube Transcript API", "Video transcript service")
     System_Ext(oauth, "OAuth Providers", "Google, GitHub authentication")
     System_Ext(email, "Email Service", "SendGrid/SMTP")
     
-    Rel(user, museApp, "Uses", "HTTPS")
+    Rel(user, cloudflare, "Uses", "HTTPS")
+    Rel(cloudflare, museApp, "Routes to", "HTTPS")
     Rel(admin, museApp, "Manages", "HTTPS")
     Rel(museApp, lrclib, "Fetches lyrics", "REST API")
     Rel(museApp, youtube, "Fetches transcripts", "REST API")
@@ -342,10 +344,11 @@ graph TB
 ```mermaid
 graph TB
     subgraph "Security Layers"
-        subgraph "Network Layer"
-            FIREWALL[Firewall Rules]
-            SSL[SSL/TLS Certificates]
-            DDOS[DDoS Protection]
+        subgraph "Network Layer - CloudFlare"
+            FIREWALL[CloudFlare Firewall Rules]
+            SSL[CloudFlare SSL/TLS]
+            WAF[CloudFlare WAF]
+            DDOS[CloudFlare DDoS Protection]
         end
         
         subgraph "Application Layer"
@@ -370,8 +373,10 @@ graph TB
     end
     
     USERS[Users] --> FIREWALL
-    FIREWALL --> SSL
-    SSL --> RATELIMIT_SEC
+    FIREWALL --> WAF
+    WAF --> SSL
+    SSL --> DDOS
+    DDOS --> RATELIMIT_SEC
     RATELIMIT_SEC --> CORS_SEC
     CORS_SEC --> AUTH
     AUTH --> RBAC
@@ -379,6 +384,14 @@ graph TB
 ```
 
 ### Security Features
+
+- **CloudFlare Protection**:
+  - **CDN**: Global content delivery network
+  - **WAF**: Web Application Firewall with custom rules
+  - **DDoS Protection**: Automatic mitigation of large-scale attacks
+  - **SSL/TLS**: Universal SSL with TLS 1.3 support
+  - **Bot Management**: Automated bot detection and blocking
+  - **DNS Management**: Secure DNS resolution
 
 - **Authentication**: JWT tokens + OAuth 2.0 (Google, GitHub)
 - **Authorization**: Role-based access control (Customer, Admin, Super Admin)
@@ -401,7 +414,9 @@ graph TB
 
 ```mermaid
 graph LR
-    LB[Load Balancer] --> BE1[Backend Instance 1]
+    CF[CloudFlare CDN/WAF] --> LB[Load Balancer<br/>Nginx]
+    
+    LB --> BE1[Backend Instance 1]
     LB --> BE2[Backend Instance 2]
     LB --> BE3[Backend Instance 3]
     
@@ -459,6 +474,25 @@ graph LR
 
 ---
 
+## 🚀 Infrastructure & Performance
+
+### Current Setup
+- **CloudFlare**: CDN, WAF, DDoS Protection, SSL/TLS management, DNS
+- **Coolify**: Container orchestration and deployment
+- **Nginx**: Reverse proxy and load balancing
+- **PostgreSQL**: Primary database with replication support
+- **MinIO**: Object storage for media files
+- **Redis**: Caching layer (planned)
+
+### Performance Metrics
+- **CDN Cache Hit Rate**: Target 90%+ (CloudFlare)
+- **API Response Time**: < 200ms average
+- **Database Query Time**: < 50ms average
+- **Page Load Time**: < 2s (First Contentful Paint)
+- **Uptime**: 99.9% SLA target
+
+---
+
 ## 🔮 Future Enhancements
 
 - **Real-time Features**: WebSocket for live updates
@@ -467,6 +501,6 @@ graph LR
 - **Premium Features**: Subscription management
 - **Analytics**: User behavior tracking with Mixpanel
 - **Monitoring**: Grafana + Prometheus dashboards
-- **CDN**: CloudFlare for global distribution
+- **CloudFlare Analytics**: Advanced analytics and insights
 - **Microservices**: Split monolith into services (if scale requires)
 

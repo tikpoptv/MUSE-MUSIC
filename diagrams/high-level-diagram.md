@@ -241,8 +241,8 @@ graph TB
 graph TB
     subgraph "Security Perimeter"
         subgraph "Network Security"
-            FIREWALL[🔥 Firewall<br/>IP Whitelisting<br/>DDoS Protection]
-            SSL[🔒 SSL/TLS<br/>HTTPS Encryption<br/>Certificate Management]
+            FIREWALL[🔥 CloudFlare WAF<br/>Web Application Firewall<br/>DDoS Protection<br/>Bot Management<br/>IP Filtering]
+            SSL[🔒 CloudFlare SSL/TLS<br/>Universal SSL<br/>TLS 1.3<br/>Auto-renewal]
         end
         
         subgraph "Application Security"
@@ -289,7 +289,10 @@ graph TB
 graph TB
     subgraph "Internet"
         USERS[🌍 Users Worldwide]
-        CDN[☁️ CDN<br/>CloudFlare<br/>Static Assets<br/>Image Cache]
+    end
+    
+    subgraph "CloudFlare Edge Network"
+        CF[☁️ CloudFlare<br/>CDN + WAF + DDoS Protection<br/>SSL/TLS Management<br/>Static Assets Cache<br/>DNS Management]
     end
     
     subgraph "Edge Layer"
@@ -328,8 +331,8 @@ graph TB
         ALERTS[🔔 Alerts<br/>Future: Grafana]
     end
     
-    USERS --> CDN
-    CDN --> LB
+    USERS --> CF
+    CF --> LB
     LB --> FE1
     LB --> FE2
     FE1 --> BE1
@@ -437,7 +440,7 @@ sequenceDiagram
 - **Horizontal Scaling**: Multiple frontend/backend instances
 - **Database Replication**: Master-slave PostgreSQL setup
 - **Caching Strategy**: Redis for session/temporary data
-- **CDN Integration**: Static assets served globally
+- **CDN Integration**: CloudFlare CDN for global static assets delivery
 
 ### 3. Security First
 - **Defense in Depth**: Multiple security layers
@@ -476,35 +479,9 @@ sequenceDiagram
 - **API Response**: < 500ms (average)
 - **AI Analysis**: < 30 seconds (full processing)
 - **Database Query**: < 100ms (simple), < 500ms (complex)
+- **CloudFlare CDN Cache Hit Rate**: > 90%
+- **CloudFlare Edge Response**: < 50ms
 - **Uptime**: 99.5% availability
-
----
-
-## 🔮 Future Architecture Enhancements
-
-### Phase 1: Performance (Q1 2025)
-- [ ] Implement Redis caching layer
-- [ ] Add CDN for static assets
-- [ ] Optimize database queries with materialized views
-- [ ] Implement API response caching
-
-### Phase 2: Scalability (Q2 2025)
-- [ ] Kubernetes deployment
-- [ ] Auto-scaling based on load
-- [ ] Database sharding strategy
-- [ ] Message queue (RabbitMQ/Kafka)
-
-### Phase 3: Advanced Features (Q3 2025)
-- [ ] Real-time notifications (WebSocket)
-- [ ] GraphQL API alongside REST
-- [ ] Microservices architecture (if needed)
-- [ ] Advanced analytics dashboard
-
-### Phase 4: Global Expansion (Q4 2025)
-- [ ] Multi-region deployment
-- [ ] GeoDNS routing
-- [ ] Regional data compliance
-- [ ] Mobile apps (React Native)
 
 ---
 
@@ -564,4 +541,13 @@ sequenceDiagram
 - **Self-hosted**: Full control over file storage
 - **Scalable**: Distributed storage support
 - **Cost-effective**: No storage API costs
+
+### Why CloudFlare?
+- **Global CDN**: Edge caching in 300+ cities worldwide
+- **DDoS Protection**: Automatic mitigation of attacks
+- **WAF**: Web Application Firewall with custom rules
+- **SSL/TLS**: Free Universal SSL with auto-renewal
+- **DNS**: Fast, secure DNS resolution
+- **Analytics**: Real-time traffic insights
+- **Zero Trust**: Additional security layer for admin access
 
