@@ -22,7 +22,7 @@ graph TB
             PAGE_FORYOU[For You<br/>for-you/page.tsx]
             PAGE_ACCOUNT[Account Settings<br/>account/page.tsx]
             PAGE_SETUP[Setup Wizard<br/>setup/step1-3]
-            PAGE_SHARE[Share Link<br/>share/[shortLink]]
+            PAGE_SHARE[Share Link<br/>share/:shortLink]
             PAGE_ADMIN[Admin Dashboard<br/>admin/*]
         end
         
