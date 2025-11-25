@@ -19,7 +19,7 @@ C4Context
     System_Ext(cloudflare, "CloudFlare", "CDN, WAF, DDoS Protection, DNS")
     System_Ext(lrclib, "LRCLIB API", "External lyrics database")
     System_Ext(youtube, "YouTube Transcript API", "Video transcript service")
-    System_Ext(oauth, "OAuth Providers", "Google, GitHub (active)<br/>Facebook, Apple (planned)")
+    System_Ext(oauth, "OAuth Providers", "Google (active)<br/>GitHub, Facebook, Apple (planned)")
     System_Ext(email, "Email Service", "SendGrid/SMTP")
     
     Rel(user, cloudflare, "Uses", "HTTPS")
@@ -398,7 +398,7 @@ graph TB
   - **Bot Management**: Automated bot detection and blocking
   - **DNS Management**: Secure DNS resolution
 
-- **Authentication**: JWT tokens + OAuth 2.0 (Google, GitHub)
+- **Authentication**: JWT tokens + OAuth 2.0 (Google only; GitHub/Facebook/Apple planned)
 - **Authorization**: Role-based access control (Customer, Admin, Super Admin)
 - **2FA**: TOTP-based two-factor authentication
 - **Rate Limiting**: Per-endpoint request throttling

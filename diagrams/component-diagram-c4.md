@@ -212,11 +212,12 @@ graph TB
 
 | Database | Tables | Purpose |
 |----------|--------|---------|
-| **Users DB** | Users, Customers, UserSessions, UserSettings | Authentication and user preferences |
-| **Songs DB** | Songs, LyricsSearchResults, SharedSongs | Song metadata and lyrics cache |
-| **AI Processing DB** | SongAIProcessing, Prompts | Translation results and AI prompts |
-| **User Activity DB** | UserFavorites, UserHistory, UserRatings | User interactions and feedback |
-| **System Logs DB** | SystemLogs, ErrorLogs, AuditLogs, HealthCheckStatus | Monitoring and auditing |
+| **Users DB** | Users, Customers, UserSessions, UserTwoFactorAuth | Authentication, user preferences, 2FA |
+| **Songs DB** | Songs, LyricsSearchResults | Song metadata and lyrics cache |
+| **AI Processing DB** | SongAIProcessing, Prompts | Translation results, sharing via shortlink field, AI prompts |
+| **User Activity DB** | UserFavorites, History, AIProcessingRatings | User interactions and feedback |
+| **System Logs DB** | SystemLogs, HealthCheckStatus | Monitoring and system health |
+| **Future Tables** | Playlists, PlaylistSongs, Notifications, Reports | Planned features (not yet implemented) |
 
 ### External Services
 

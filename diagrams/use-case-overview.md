@@ -13,7 +13,7 @@ graph TB
     Y[🌐 YouTube Transcript API]
     NS[📧 Email/Notification Service]
     PM[💳 Payment/Premium future]
-    OAUTH[🔐 OAuth Providers<br/>Google, GitHub<br/>Facebook, Apple future]
+    OAUTH[🔐 OAuth Providers<br/>Google active<br/>GitHub, Facebook, Apple future]
 
     %% Public Web Zone
     subgraph PUB[Public Web Next.js, CDN]
@@ -117,7 +117,7 @@ graph TB
 | ID   | Description | Key Components / References |
 |------|-------------|-----------------------------|
 | UC1  | Public visitors browse marketing sections, pricing, features before signup | `frontend/src/app/page.tsx`, `Navbar`, `Footer` |
-| UC2  | Account lifecycle: register, login, 2FA check (OTP), OAuth (Google, GitHub currently; Facebook, Apple planned) | `frontend/src/app/login`, `backend/src/controllers/authController.js`, `User` model, `googleAuthService.js` |
+| UC2  | Account lifecycle: register, login, 2FA check (OTP), OAuth (Google only; GitHub, Facebook, Apple planned) | `frontend/src/app/login`, `backend/src/controllers/authController.js`, `User` model, `googleAuthService.js` |
 | UC2a | Forgot-password + reset flow (email link) | `frontend/src/app/reset-password`, `backend/src/services/emailService.js` |
 | UC2b | Multi-step onboarding/setup wizard (profile, preferences) | `frontend/src/app/setup/step*/page.tsx`, `SetupRedirect` |
 | UC3  | Search catalog, import via lyrics search, upload songs | `backend/src/services/songService.js`, `lyricsSearchResults`, `frontend search components` |

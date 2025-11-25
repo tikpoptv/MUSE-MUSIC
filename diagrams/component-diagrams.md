@@ -97,8 +97,13 @@ graph TB
     end
     
     subgraph "External Services"
-        GOOGLE[Google OAuth]
-        GITHUB[GitHub OAuth]
+        GOOGLE[Google OAuth<br/>Active]
+    end
+    
+    subgraph "Future OAuth"
+        GITHUB[GitHub OAuth<br/>Planned]
+        FACEBOOK[Facebook OAuth<br/>Planned]
+        APPLE[Apple OAuth<br/>Planned]
     end
     
     subgraph "Database"
@@ -125,7 +130,9 @@ graph TB
     OAUTHROUTE --> OAUTHCTRL
     OAUTHCTRL --> OAUTHSVC
     OAUTHSVC --> GOOGLE
-    OAUTHSVC --> GITHUB
+    OAUTHSVC -.future.-> GITHUB
+    OAUTHSVC -.future.-> FACEBOOK
+    OAUTHSVC -.future.-> APPLE
     OAUTHSVC --> AUTHSVC_B
     
     AUTHSVC_B --> USERS
@@ -139,7 +146,7 @@ graph TB
 - `frontend/src/app/login/page.tsx` - Login page with local & OAuth
 - `frontend/src/components/AuthGuard.tsx` - Route protection
 - `backend/src/routes/auth.js` - Local auth routes
-- `backend/src/routes/oauth.js` - OAuth routes (Google, GitHub)
+- `backend/src/routes/auth.js` - OAuth routes (Google only, GitHub/Facebook/Apple planned)
 - `backend/src/services/authService.js` - JWT token management
 - `backend/src/services/sessionService.js` - Session lifecycle
 - `backend/src/middleware/authMiddleware.js` - Token verification

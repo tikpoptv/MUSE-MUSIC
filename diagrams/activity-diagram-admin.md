@@ -310,76 +310,60 @@ flowchart TD
 ```mermaid
 flowchart TD
     Start([Admin on Dashboard]) --> Navigate[Navigate to /admin/prompts]
-    Navigate --> LoadPrompts[GET /api/prompts<br/>PromptController]
-    LoadPrompts --> QueryPrompts[PromptService:<br/>SELECT FROM Prompts<br/>ORDER BY createdAt DESC]
-    QueryPrompts --> DisplayPrompts[Display Prompts List:<br/>- Prompt ID<br/>- Prompt Type badge<br/>  translation/mood/both<br/>- Prompt Text preview<br/>- Is Active toggle<br/>- Created At<br/>- Actions]
+    Navigate --> ViewEditor[Display Prompt Editor Page]
+    ViewEditor --> LoadCurrent[Load Current Active Prompt<br/>from N8N workflow]
+    LoadCurrent --> DisplayEditor[Display Editor:<br/>- Prompt Text textarea<br/>- Character count<br/>- Save button]
     
-    DisplayPrompts --> PromptAction{Select Action?}
+    DisplayEditor --> AdminAction{Admin Action?}
     
-    %% Add New Prompt
-    PromptAction -->|Add Prompt| ClickAdd[Click Add Prompt Button]
-    ClickAdd --> OpenAdd[Open Add Prompt Modal]
-    OpenAdd --> FillPrompt[Fill Form:<br/>- promptType select<br/>  translation/mood/both<br/>- promptText textarea<br/>- temp optional<br/>- isActive checkbox]
-    FillPrompt --> ValidatePrompt{Valid?}
-    ValidatePrompt -->|No| ShowPromptError[Show Validation Errors]
-    ShowPromptError --> FillPrompt
-    ValidatePrompt -->|Yes| SubmitAdd[POST /api/prompts<br/>body: promptData]
-    SubmitAdd --> InsertPrompt[INSERT INTO Prompts<br/>- promptID UUID<br/>- promptType<br/>- promptText<br/>- temp<br/>- isActive<br/>- createdAt NOW]
-    InsertPrompt --> ShowToast1[Show Success Toast]
-    ShowToast1 --> RefreshPrompts[Refresh Prompts List]
-    RefreshPrompts --> DisplayPrompts
+    %% Edit and Save Prompt
+    AdminAction -->|Edit Prompt| EditPrompt[Edit Prompt Text<br/>in textarea]
+    EditPrompt --> ValidatePrompt{Prompt not empty?}
+    ValidatePrompt -->|No| ShowError[Show Validation Error:<br/>Prompt cannot be empty]
+    ShowError --> EditPrompt
     
-    %% Edit Prompt
-    PromptAction -->|Edit| SelectEdit[Select Prompt to Edit]
-    SelectEdit --> OpenEdit[Open Edit Prompt Modal]
-    OpenEdit --> EditFields[Edit Fields:<br/>- promptType<br/>- promptText<br/>- temp<br/>- isActive]
-    EditFields --> ValidateEdit{Valid?}
-    ValidateEdit -->|No| ShowEditError[Show Validation Errors]
-    ShowEditError --> EditFields
-    ValidateEdit -->|Yes| SubmitEdit[PUT /api/prompts/:promptID<br/>body: updated data]
-    SubmitEdit --> UpdatePrompt[UPDATE Prompts<br/>SET fields<br/>updatedAt = NOW<br/>WHERE promptID]
-    UpdatePrompt --> ShowToast2[Show Success Toast]
-    ShowToast2 --> RefreshPrompts
+    ValidatePrompt -->|Yes| ClickSave[Click Save Button]
+    ClickSave --> SubmitSave[POST /api/prompts/save<br/>body: promptText string]
+    SubmitSave --> UpdateN8N[Step 1: PromptService<br/>Update N8N Production Workflow<br/>PUT to N8N API<br/>Update AI Agent node parameter]
+    UpdateN8N --> CheckN8NSuccess{N8N Update Success?}
     
-    %% Toggle Active
-    PromptAction -->|Toggle Active| SelectToggle[Click isActive Toggle]
-    SelectToggle --> UpdateActive[PUT /api/prompts/:promptID<br/>body: isActive boolean]
-    UpdateActive --> UpdateDB[UPDATE Prompts<br/>SET isActive<br/>WHERE promptID]
-    UpdateDB --> ShowToast3[Show Toggle Toast]
-    ShowToast3 --> RefreshPrompts
+    CheckN8NSuccess -->|No| ShowN8NError[Show Error:<br/>Failed to update workflow]
+    ShowN8NError --> DisplayEditor
     
-    %% Delete Prompt
-    PromptAction -->|Delete| SelectDelete[Select Prompt to Delete]
-    SelectDelete --> ConfirmDelete{Confirm Delete?<br/>⚠️ Cannot be undone}
-    ConfirmDelete -->|No| DisplayPrompts
-    ConfirmDelete -->|Yes| SubmitDelete[DELETE /api/prompts/:promptID]
-    SubmitDelete --> DeleteDB[DELETE FROM Prompts<br/>WHERE promptID]
-    DeleteDB --> ShowToast4[Show Success Toast]
-    ShowToast4 --> RefreshPrompts
+    CheckN8NSuccess -->|Yes| SaveToDB[Step 2: Save to Database<br/>INSERT INTO Prompts<br/>- promptID UUID<br/>- promptText<br/>- isActive TRUE<br/>- updatedBy adminUserID]
+    SaveToDB --> ShowSuccess[Show Success Toast:<br/>Prompt saved & deployed]
+    ShowSuccess --> RefreshEditor[Reload Editor with new prompt]
+    RefreshEditor --> DisplayEditor
     
     %% Test Prompt
-    PromptAction -->|Test| SelectTest[Select Prompt to Test]
-    SelectTest --> OpenTest[Open Test Prompt Modal]
-    OpenTest --> EnterTest[Enter Test Lyrics Text]
-    EnterTest --> SubmitTest[POST /api/prompts/test<br/>body: promptID, testText]
-    SubmitTest --> CallN8N[Call N8N with test prompt<br/>Send to Ollama AI]
-    CallN8N --> WaitTest[Wait for Response]
-    WaitTest --> DisplayResult[Display Test Results:<br/>- Translation<br/>- Mood Analysis<br/>- Processing Time]
-    DisplayResult --> CloseTest[Close Test Modal]
-    CloseTest --> DisplayPrompts
+    AdminAction -->|Test Prompt| NavTest[Navigate to Test Page]
+    NavTest --> EnterTest[Enter Test Lyrics Text]
+    EnterTest --> SubmitTest[POST /api/prompt-test/test<br/>body: promptText, testLyrics]
+    SubmitTest --> CallN8N[Call N8N Test Workflow<br/>Send to Ollama AI<br/>timeout 120s]
+    CallN8N --> WaitResponse[Wait for Response]
+    WaitResponse --> CheckSuccess{Success?}
     
-    %% View Prompt Details
-    PromptAction -->|View Details| ClickView[Click Prompt Row]
-    ClickView --> OpenView[Open Detail Modal:<br/>- Full Prompt Text<br/>- Temp Text if any<br/>- Type & Status<br/>- Created/Updated dates<br/>- Usage statistics optional]
-    OpenView --> CloseView[Close Modal]
-    CloseView --> DisplayPrompts
+    CheckSuccess -->|No| ShowTestError[Show Error:<br/>Test failed or timeout]
+    ShowTestError --> EnterTest
     
-    PromptAction -->|Done| End([Back to Dashboard])
+    CheckSuccess -->|Yes| DisplayResult[Display Test Results:<br/>- Translation<br/>- Mood Analysis<br/>- Processing Time<br/>- Token count]
+    DisplayResult --> TestAction{Next Action?}
+    TestAction -->|Retry| EnterTest
+    TestAction -->|Back| Navigate
+    
+    AdminAction -->|View History| LoadHistory[GET prompt history<br/>from Prompts table<br/>ORDER BY createdAt DESC]
+    LoadHistory --> DisplayHistory[Show Prompt History:<br/>- Prompt Text preview<br/>- Updated By<br/>- Updated At<br/>- isActive status]
+    DisplayHistory --> CloseHistory[Close History]
+    CloseHistory --> DisplayEditor
+    
+    AdminAction -->|Done| End([Back to Dashboard])
     
     style Start fill:#e3f2fd
     style End fill:#c8e6c9
-    style ShowPromptError fill:#ffcdd2
-    style ShowEditError fill:#ffcdd2
+    style ShowError fill:#ffcdd2
+    style ShowN8NError fill:#ffcdd2
+    style ShowTestError fill:#ffcdd2
+    style UpdateN8N fill:#ff6d5a,color:#fff
     style CallN8N fill:#ff6d5a,color:#fff
 ```
 
@@ -392,7 +376,7 @@ flowchart TD
 2. ✅ **Songs Management** - Approve/Reject/Bulk actions (verified against adminSongsController, adminSongsService)
 3. ✅ **Admin User Management** - Add/Update/Remove admins (verified against adminManageController, adminManageService)
 4. ✅ **System Logs Viewer** - Filter and view logs (verified against adminLogsController, logService)
-5. ✅ **AI Prompts Management** - CRUD prompts (verified against promptController, promptService)
+5. ✅ **AI Prompts Management** - Save/Test prompts with N8N integration (verified against promptController, promptService)
 
 ### Key Findings from Code Inspection
 - **Admin role check at route level** - requireRole(['admin', 'super_admin']) middleware
@@ -402,20 +386,21 @@ flowchart TD
 - **Bulk operations return success count + errors array** - partial success handling
 - **Email notifications via N8N** - admin promotion, role update, demotion
 - **Logs filterable by level, category, date, user, search**
-- **Prompts testable via N8N** - admin can test prompt before activating
+- **Prompts saved to N8N workflow** - updates production workflow AI Agent node, then saves to DB
+- **Prompts testable via separate route** - POST /api/prompt-test/test (not /api/prompts/test)
 
 ### Database Tables Used
 - **Users** - role field (customer, admin, super_admin)
 - **SongAIProcessing** - approvalStatus, shareStatus, isPublic, approvedBy, approvedAt, approvalNote
 - **SystemLogs** - level, category, message, details JSONB, user context, error context
-- **Prompts** - promptType (translation/mood/both), promptText, temp, isActive
+- **Prompts** - promptID UUID, promptText TEXT, isActive BOOLEAN (NO promptType field in actual schema)
 
 ### Admin Privileges
 - **View dashboard statistics** - users, songs, sessions, traffic, mood distribution
 - **Approve/Reject songs** - single and bulk operations
 - **Manage admin users** - promote/demote/update roles (email → admin → super_admin)
 - **View system logs** - all levels with advanced filtering
-- **Manage AI prompts** - CRUD operations with testing capability
+- **Manage AI prompts** - Save prompt (updates N8N workflow + DB), test prompt with sample lyrics
 - **Edit song lyrics** - restricted to admin/super_admin roles
 
 ### NO Features Found

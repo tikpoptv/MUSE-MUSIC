@@ -67,12 +67,13 @@ flowchart TD
     CheckSetup -->|Yes| Dashboard[Redirect to /for-you]
     
     %% Setup Flow
-    Setup --> Step1["/setup/step1<br/>Select Favorite Genres"]
-    Step1 --> Step2["/setup/step2<br/>Mood Preferences"]
-    Step2 --> Step3["/setup/step3<br/>Language Settings"]
-    Step3 --> SaveSetup[POST /api/setup/save<br/>UPDATE Customers<br/>SET preferences]
-    SaveSetup --> MarkComplete[UPDATE Users<br/>SET setupCompleted = true]
-    MarkComplete --> Dashboard
+    Setup --> Step1["/setup/step1<br/>Password Setup"]
+    Step1 --> Step2["/setup/step2<br/>2FA Setup optional"]
+    Step2 --> Step3["/setup/step3<br/>Birthday DOB"]
+    Step3 --> Step4["/setup/step4<br/>Country, Timezone, Language"]
+    Step4 --> Step5["/setup/step5<br/>Music Genres Interests"]
+    Step5 --> CompleteSetup[POST /api/setup/complete<br/>UPDATE Users<br/>SET setupCompleted = true]
+    CompleteSetup --> Dashboard
     
     Dashboard --> End([User Logged In])
     
@@ -154,14 +155,14 @@ flowchart TD
     DisplaySong["Navigate to /song/:songID<br/>Display:<br/>- SyncedLyricsPlayer<br/>- Original & Translation<br/>- Mood Radar Chart<br/>- Summary<br/>- Cover Image"]
     DisplaySong --> UserActions{User Action?}
     
-    UserActions -->|Add Favorite| AddFav[POST /api/favorites/add<br/>INSERT INTO UserFavorites]
+    UserActions -->|Add Favorite| AddFav[POST /api/favorites<br/>body: processingID<br/>INSERT INTO UserFavorites<br/>UNIQUE userID,processingID]
     AddFav --> ShowToast1[Show Success Toast]
     ShowToast1 --> UserActions
     
     UserActions -->|Share| ShareFlow[Go to Activity 3: Share]
     
     UserActions -->|Rate| OpenFeedback[Open Feedback Form]
-    OpenFeedback --> SubmitRating[POST /api/ratings<br/>rating 1-5 + comment]
+    OpenFeedback --> SubmitRating[POST /api/ratings/:processingID<br/>body: rating 1-5, comment optional]
     SubmitRating --> UpsertRating[INSERT/UPDATE<br/>AIProcessingRatings<br/>UNIQUE processingID,userID]
     UpsertRating --> TriggerUpdate[Trigger: update_rating_stats<br/>UPDATE SongAIProcessing<br/>- totalRatings<br/>- averageRating<br/>- starCount]
     TriggerUpdate --> ShowToast2[Show Thank You]
@@ -250,7 +251,7 @@ flowchart TD
     
     FavAction -->|Remove| ConfirmRemove{Confirm?}
     ConfirmRemove -->|No| DisplayFav
-    ConfirmRemove -->|Yes| RemoveFav[POST /api/favorites/remove<br/>DELETE FROM UserFavorites<br/>WHERE favoriteID]
+    ConfirmRemove -->|Yes| RemoveFav[DELETE /api/favorites<br/>body: processingID<br/>DELETE FROM UserFavorites<br/>WHERE userID AND processingID]
     RemoveFav --> RefreshFav[Refresh List]
     RefreshFav --> DisplayFav
     

@@ -22,7 +22,7 @@ graph TB
     subgraph "External Services"
         LRCLIB[📚 LRCLIB API<br/>Lyrics Database]
         YOUTUBE[📺 YouTube Transcript API<br/>Video Transcripts]
-        OAUTH[🔐 OAuth Providers<br/>Google, GitHub]
+        OAUTH[🔐 OAuth Providers<br/>Google only<br/>GitHub/Facebook/Apple planned]
         EMAIL[✉️ Email Service<br/>Notifications]
         AI[🤖 AI Models<br/>Ollama/OpenRouter]
     end
