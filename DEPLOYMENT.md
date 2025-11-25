@@ -1047,7 +1047,7 @@ psql -h your-host -U muse_user -d muse_music -c "\dt"
 
 ### Step 7: Deploy!
 
-#### For v1.2.0 Release:
+#### For v1.3.0 Release:
 
 ```bash
 # 1. Ensure you're on develop branch
@@ -1057,25 +1057,25 @@ git pull origin develop
 # 2. Merge to main
 git checkout main
 git pull origin main
-git merge develop --no-ff -m "Release v1.2.0: Merge develop to main"
+git merge develop --no-ff -m "Release v1.3.0: Merge develop to main"
 
 # 3. Push to main (triggers Jenkins)
 git push origin main
 
 # 4. Create and push tag
-git tag -a 1.2.0 -m "Release v1.2.0
+git tag -a 1.3.0 -m "Release v1.3.0 - Seamless Journey ✨
 
-22 new features, 22+ bug fixes, 198 commits since v1.1.0
+56 new features, 33 bug fixes, 265 commits since v1.2.0
 
 Key features:
-- For You personalized recommendations
-- System logging with admin UI
-- Admin management system
-- SEO enhancements
-- 2FA and security improvements
-- 122 new tests added
+- YouTube Transcript Integration (auto-fetch lyrics)
+- Fullscreen Player Enhancements (real-time updates)
+- Favorites & History System (complete tracking)
+- Privacy & Legal Pages (Terms + Privacy Policy)
+- 15 Architecture Diagrams (7,566 lines)
+- Performance optimizations and infinite scroll
 "
-git push origin 1.2.0
+git push origin 1.3.0
 
 # 5. Monitor Jenkins
 # - Watch build progress
