@@ -1,11 +1,12 @@
 'use client';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { Smile, Clock, RefreshCcw } from 'lucide-react';
 import MusicCard from '@/components/MusicCard';
 import MoodCard from '@/components/MoodCard';
 import SkeletonCard from '@/components/SkeletonCard';
 import { fetchForYouContent } from '@/services/forYouService';
 import type { ForYouResponse } from '@/types/forYou';
+import AuthGuard from '@/components/AuthGuard';
 
 export default function ForYouPage() {
   const [data, setData] = useState<ForYouResponse | null>(null);
@@ -13,6 +14,17 @@ export default function ForYouPage() {
   const [loadingMore, setLoadingMore] = useState<boolean>(false);
   const [offset, setOffset] = useState<number>(0);
   const [hasMore, setHasMore] = useState<boolean>(true);
+
+  const topMood = useMemo(() => {
+    if (!data?.moods || data.moods.length === 0) return null;
+    return [...data.moods]
+      .sort((a, b) => {
+        if (b.count === a.count) {
+          return b.percentage - a.percentage;
+        }
+        return b.count - a.count;
+      })[0];
+  }, [data?.moods]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -98,7 +110,8 @@ export default function ForYouPage() {
   }, [loadMore, loadingMore, hasMore]);
 
   return (
-    <main className="min-h-screen bg-white">
+    <AuthGuard redirectTo="/login">
+      <main className="min-h-screen bg-white">
       <section className="mx-auto max-w-6xl px-6 pt-12 pb-6">
         <h1 className="text-[32px] md:text-[40px] font-bold text-black text-center mb-6">
           Your vibe! Your feeling!
@@ -116,10 +129,10 @@ export default function ForYouPage() {
               <div className="w-full max-w-[75%]">
                 {loading ? (
                   <SkeletonCard />
-                ) : data?.moods && data.moods.length > 0 ? (
+                ) : topMood ? (
                   <MoodCard
-                    moodType={data.moods[0].moodType}
-                    percentage={data.moods[0].percentage}
+                    moodType={topMood.moodType}
+                    percentage={topMood.percentage}
                   />
                 ) : (
                   <p className="text-sm text-gray-500">No mood data available</p>
@@ -270,6 +283,7 @@ export default function ForYouPage() {
         )}
       </section>
     </main>
+    </AuthGuard>
   );
 }
 
