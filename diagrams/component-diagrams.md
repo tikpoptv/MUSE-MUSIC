@@ -813,11 +813,16 @@ MinIO Service → MinIO Storage (S3-compatible)
 
 ---
 
-## UC13: Playlist Management
+## UC13: Playlist Management ⚠️ **FUTURE FEATURE**
+
+> **Status**: 🚧 Not Yet Implemented  
+> **Database**: ✅ Tables exist (Playlists, PlaylistSongs)  
+> **Backend**: ❌ Routes/Services not implemented  
+> **Frontend**: ❌ Components not implemented
 
 ```mermaid
 graph TB
-    subgraph "Frontend Components"
+    subgraph "Frontend Components - PLANNED"
         HOMEPAGE[Home Page]
         CREATEBTN[Create Playlist Button]
         PLAYLISTMODAL[Playlist Create Modal]
@@ -826,18 +831,18 @@ graph TB
         PLAYLISTGRID[Playlist Grid]
     end
     
-    subgraph "Frontend Services"
+    subgraph "Frontend Services - PLANNED"
         PLAYLISTSVC_F[Playlist Service<br/>playlistService.ts]
         APISVC_F[API Service]
     end
     
-    subgraph "Backend API"
+    subgraph "Backend API - PLANNED"
         PLAYLISTROUTE[Playlist Routes<br/>playlist.js]
         PLAYLISTCTRL[Playlist Controller<br/>playlistController.js]
         PLAYLISTSVC_B[Playlist Service<br/>playlistService.js]
     end
     
-    subgraph "Database"
+    subgraph "Database - EXISTS"
         PLAYLISTS[(Playlists)]
         PLAYLISTSONGS[(PlaylistSongs)]
         SONGS[(Songs)]
@@ -865,12 +870,13 @@ graph TB
     PLAYLISTPAGE --> PLAYLISTGRID
 ```
 
-**Key Components:**
-- `frontend/src/components/SongActionButtons.tsx` - Add to playlist action
-- `frontend/src/services/playlistService.ts` - Playlist API
-- `backend/src/routes/playlist.js` - Playlist routes
-- `backend/src/controllers/playlistController.js` - Playlist handler
-- `backend/src/services/playlistService.js` - Playlist CRUD logic
+**Planned Components** (Not Yet Implemented):
+- ❌ `frontend/src/components/SongActionButtons.tsx` - Add to playlist action (planned)
+- ❌ `frontend/src/services/playlistService.ts` - Playlist API (planned)
+- ❌ `backend/src/routes/playlist.js` - Playlist routes (planned)
+- ❌ `backend/src/controllers/playlistController.js` - Playlist handler (planned)
+- ❌ `backend/src/services/playlistService.js` - Playlist CRUD logic (planned)
+- ✅ `backend/database/migrations/001_create_initial_schema.sql` - Playlists & PlaylistSongs tables (exists)
 
 ---
 
@@ -1066,35 +1072,40 @@ graph TB
 
 ---
 
-## UC17: Notification System
+## UC17: Notification System ⚠️ **FUTURE FEATURE**
+
+> **Status**: 🚧 Not Yet Implemented  
+> **Database**: ✅ Table exists (Notifications)  
+> **Backend**: ❌ Routes/Services not implemented  
+> **Frontend**: ❌ Components not implemented
 
 ```mermaid
 graph TB
-    subgraph "Frontend Components"
+    subgraph "Frontend Components - PLANNED"
         NAVBAR[Navbar<br/>Notification Bell]
         NOTIFPANEL[Notification Panel<br/>Dropdown]
         NOTIFLIST[Notification List]
         NOTIFITEM[Notification Item]
     end
     
-    subgraph "Frontend Services"
+    subgraph "Frontend Services - PLANNED"
         NOTIFSVC_F[Notification Service<br/>notificationService.ts]
         APISVC_F[API Service]
     end
     
-    subgraph "Backend API"
+    subgraph "Backend API - PLANNED"
         NOTIFROUTE[Notification Routes<br/>notification.js]
         NOTIFCTRL[Notification Controller<br/>notificationController.js]
         NOTIFSVC_B[Notification Service<br/>notificationService.js]
     end
     
-    subgraph "Triggers"
+    subgraph "Triggers - PLANNED"
         ADMINSVC[Admin Service<br/>Approval events]
         SHARESVC[Share Service<br/>Share approval]
         RATINGSVC[Rating Service<br/>New ratings]
     end
     
-    subgraph "Database"
+    subgraph "Database - EXISTS"
         NOTIFICATIONS[(Notifications)]
     end
     
@@ -1116,12 +1127,13 @@ graph TB
     RATINGSVC -->|Create notification| NOTIFSVC_B
 ```
 
-**Key Components:**
-- `frontend/src/components/Navbar.tsx` - Notification bell icon
-- `frontend/src/services/notificationService.ts` - Notification API
-- `backend/src/routes/notification.js` - Notification routes
-- `backend/src/controllers/notificationController.js` - Notification handler
-- `backend/src/services/notificationService.js` - Notification CRUD & triggers
+**Planned Components** (Not Yet Implemented):
+- ❌ `frontend/src/components/Navbar.tsx` - Notification bell icon (planned)
+- ❌ `frontend/src/services/notificationService.ts` - Notification API (planned)
+- ❌ `backend/src/routes/notification.js` - Notification routes (planned)
+- ❌ `backend/src/controllers/notificationController.js` - Notification handler (planned)
+- ❌ `backend/src/services/notificationService.js` - Notification CRUD & triggers (planned)
+- ✅ `backend/database/migrations/001_create_initial_schema.sql` - Notifications table (exists)
 
 ---
 
