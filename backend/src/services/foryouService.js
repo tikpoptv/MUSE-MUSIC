@@ -329,6 +329,7 @@ class ForYouService {
             p.averagerating,
             p.coverimage,
             p.moodtype,
+            p.createdat,
             s.songname,
             s.artistname,
             ROW_NUMBER() OVER (
@@ -352,7 +353,10 @@ class ForYouService {
           artistname as artist,
           COALESCE(coverimage, '') as image,
           processingid as processingid,
-          moodtype as moodtype
+          moodtype as moodtype,
+          totalratings,
+          averagerating,
+          createdat
         FROM RankedProcessing
         WHERE rn = 1
         ORDER BY 
