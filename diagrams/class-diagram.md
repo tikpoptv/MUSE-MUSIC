@@ -1,7 +1,7 @@
 # MUSE MUSIC - Class Diagram
 
 ## Overview
-Class diagram แสดงโครงสร้างข้อมูล (Database Schema) และความสัมพันธ์ของ entities หลักในระบบ MUSE MUSIC
+Class diagram showing the data structure (Database Schema) and relationships of main entities in the MUSE MUSIC system
 
 ## Entity Relationship Diagram
 

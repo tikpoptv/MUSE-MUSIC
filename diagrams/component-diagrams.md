@@ -1,7 +1,7 @@
 # MUSE MUSIC - Component Diagrams by Use Case
 
 ## Overview
-Component diagrams แสดงโครงสร้างและความสัมพันธ์ของ components ในแต่ละ use case หลักของระบบ
+Component diagrams showing the structure and relationships of components in each main use case of the system
 
 ---
 
@@ -276,9 +276,9 @@ graph TB
 ```mermaid
 graph TB
     subgraph "Frontend Components"
-        SONGPAGE[Song Detail Page<br/>song/[songID]/page.tsx]
+        SONGPAGE[Song Detail Page<br/>song/songID/page.tsx]
         ANALYZEBTN[Analyze Button]
-        ANALYSISPAGE[Analysis Page<br/>analysis/[processingID]/page.tsx]
+        ANALYSISPAGE[Analysis Page<br/>analysis/processingID/page.tsx]
         MOODCARD[Mood Card]
         TRANSLATIONCARD[Translation Card]
         SUMMARYCARD[Summary Card]
@@ -412,7 +412,7 @@ graph TB
         SHAREBTN[Share Button<br/>SongActionButtons.tsx]
         SHAREMODAL[Share Modal]
         SHARELINK[Share Link Display]
-        PUBLICPAGE[Public Share Page<br/>share/[shortLink]/page.tsx]
+        PUBLICPAGE[Public Share Page<br/>share/shortLink/page.tsx]
     end
     
     subgraph "Frontend Services"
@@ -821,7 +821,7 @@ graph TB
         HOMEPAGE[Home Page]
         CREATEBTN[Create Playlist Button]
         PLAYLISTMODAL[Playlist Create Modal]
-        PLAYLISTPAGE[Playlist Page<br/>playlist/[id]/page.tsx]
+        PLAYLISTPAGE[Playlist Page<br/>playlist/id/page.tsx]
         ADDTOPLAYLISTBTN[Add to Playlist Button<br/>SongActionButtons.tsx]
         PLAYLISTGRID[Playlist Grid]
     end
@@ -879,7 +879,7 @@ graph TB
 ```mermaid
 graph TB
     subgraph "Frontend Components"
-        SONGPAGE[Song Detail Page<br/>song/[songID]/page.tsx]
+        SONGPAGE[Song Detail Page<br/>song/songID/page.tsx]
         SONGHEADER[Song Header<br/>Title, Artist, Genre]
         LYRICSPLAYER[Synced Lyrics Player<br/>SyncedLyricsPlayer.tsx]
         ACTIONBUTTONS[Action Buttons<br/>Favorite, Share, Analyze]

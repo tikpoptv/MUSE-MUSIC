@@ -1,7 +1,7 @@
 # MUSE MUSIC - High-Level System Diagram
 
 ## Overview
-High-level diagram แสดงภาพรวมระบบ MUSE MUSIC ในระดับสูง เน้นการไหลของข้อมูลและความสัมพันธ์ระหว่าง major components
+High-level diagram showing the overall MUSE MUSIC system at a high level, focusing on data flow and relationships between major components
 
 ---
 

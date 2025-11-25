@@ -1,7 +1,7 @@
 # MUSE MUSIC - Architecture Design
 
 ## Overview
-System architecture แสดงโครงสร้างภาพรวมของระบบ MUSE MUSIC ประกอบด้วย Frontend, Backend, Database, External Services และ Infrastructure
+System architecture showing the overall structure of the MUSE MUSIC system, including Frontend, Backend, Database, External Services, and Infrastructure
 
 ---
 
