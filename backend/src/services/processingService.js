@@ -57,7 +57,7 @@ class ProcessingService {
         throw new Error('processingID is required');
       }
 
-      // ตรวจสอบ approval status ก่อนอัปเดต
+      // Check approval status before updating
       const checkQuery = `
         SELECT approvalstatus, sharestatus
         FROM songaiprocessing
@@ -72,7 +72,7 @@ class ProcessingService {
       const processing = checkResult.rows[0];
       const isApproved = processing.approvalstatus === 'approved' && processing.sharestatus === 'public_approved';
 
-      // เพิ่มกฎ: เพลงต้องไม่ได้รับการอนุมัติ หรือผู้ใช้ต้องเป็นแอดมิน
+      // Add rule: Song must not be approved, or user must be admin
       if (isApproved && !isAdmin) {
         throw new Error('Cannot edit cover image: This processing has been approved. Only admin can edit approved songs.');
       }
@@ -120,7 +120,7 @@ class ProcessingService {
         throw new Error('songStartTime must be a number or null');
       }
 
-      // ตรวจสอบ approval status ก่อนอัปเดต
+      // Check approval status before updating
       const checkQuery = `
         SELECT approvalstatus, sharestatus
         FROM songaiprocessing
@@ -135,7 +135,7 @@ class ProcessingService {
       const processing = checkResult.rows[0];
       const isApproved = processing.approvalstatus === 'approved' && processing.sharestatus === 'public_approved';
 
-      // เพิ่มกฎ: เพลงต้องไม่ได้รับการอนุมัติ หรือผู้ใช้ต้องเป็นแอดมิน
+      // Add rule: Song must not be approved, or user must be admin
       if (isApproved && !isAdmin) {
         throw new Error('Cannot edit sync settings: This processing has been approved. Only admin can edit approved songs.');
       }

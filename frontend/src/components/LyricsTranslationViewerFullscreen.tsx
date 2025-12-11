@@ -153,7 +153,7 @@ export default function LyricsTranslationViewerFullscreen({
   useEffect(() => {
     lineTimeCache.current = buildLineTimeCache(pairs, syncedLyricsLines);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [translation, syncedLyricsLines]); // ใช้ translation แทน pairs เพื่อลด re-render
+  }, [translation, syncedLyricsLines]); // Use translation instead of pairs to reduce re-renders
   
   const getLineTime = (pairIndex: number): number | null => {
     return getLineTimeUtil(pairIndex, lineTimeCache.current);
@@ -237,7 +237,7 @@ export default function LyricsTranslationViewerFullscreen({
   // Create separate YouTube player for fullscreen (muted, synced with main player)
   useEffect(() => {
     if (!youtubeVideoId) {
-      // ถ้าไม่มี videoId ให้ทำลาย player และ reset state
+      // If no videoId, destroy player and reset state
       if (fullscreenPlayerRef.current) {
         try {
           fullscreenPlayerRef.current.destroy();
@@ -253,7 +253,7 @@ export default function LyricsTranslationViewerFullscreen({
       return;
     }
 
-    // ตรวจสอบว่า videoId เปลี่ยนหรือไม่
+    // Check if videoId has changed
     const videoIdChanged = currentVideoIdRef.current !== youtubeVideoId;
     currentVideoIdRef.current = youtubeVideoId;
 
@@ -264,7 +264,7 @@ export default function LyricsTranslationViewerFullscreen({
       await loadYouTubeIframeAPI();
       if (!isMounted || !containerElement) return;
 
-      // ถ้า videoId เปลี่ยน ให้ทำลาย player เก่าก่อน
+      // If videoId changed, destroy old player first
       if (fullscreenPlayerRef.current && videoIdChanged) {
         try {
           fullscreenPlayerRef.current.destroy();
@@ -272,16 +272,16 @@ export default function LyricsTranslationViewerFullscreen({
           // ignore
         }
         fullscreenPlayerRef.current = null;
-        setIsFullscreenPlayerReady(false);
-        hasAppliedInitialSeekRef.current = false;
-        isInitializingRef.current = false;
-        
-        // รอสักครู่เพื่อให้ DOM ทำการ cleanup
-        await new Promise(resolve => setTimeout(resolve, 100));
+      setIsFullscreenPlayerReady(false);
+      hasAppliedInitialSeekRef.current = false;
+      isInitializingRef.current = false;
+
+        // Wait a moment for DOM cleanup
+      await new Promise(resolve => setTimeout(resolve, 100));
         if (!isMounted) return;
       }
 
-      // ถ้ามี player อยู่แล้วและ videoId ไม่เปลี่ยน ไม่ต้องสร้างใหม่
+      // If player already exists and videoId hasn't changed, don't create a new one
       if (fullscreenPlayerRef.current && !videoIdChanged) {
         return;
       }
@@ -412,15 +412,15 @@ export default function LyricsTranslationViewerFullscreen({
 
     return () => {
       isMounted = false;
-      // ไม่ต้องทำลาย player ในขณะที่ component ยัง mount อยู่
-      // ให้ทำลายเฉพาะเมื่อ component unmount หรือ videoId เปลี่ยน
+      // Don't destroy player while component is still mounted
+      // Only destroy when component unmounts or videoId changes
     };
-  }, [youtubeVideoId]); // Dependency: youtubeVideoId เพื่อให้ re-run เมื่อเปลี่ยน
+  }, [youtubeVideoId]); // Dependency: youtubeVideoId to re-run when changed
 
   // Sync fullscreen player with main player's currentTime
   useEffect(() => {
     if (!youtubeVideoId || !fullscreenPlayerRef.current || !isFullscreenPlayerReady) return;
-    // รอให้ทำ initial seek ครั้งแรกให้เสร็จก่อน ค่อยเริ่ม sync ตามเวลาหลัก
+    // Wait for initial seek to complete before starting sync with main time
     if (!hasAppliedInitialSeekRef.current || isInitializingRef.current) return;
 
     const syncTime = () => {
@@ -432,7 +432,7 @@ export default function LyricsTranslationViewerFullscreen({
           return;
         }
 
-        // ไม่ควร seek ขณะกำลัง buffering (state 3)
+        // Should not seek while buffering (state 3)
         const playerState = fullscreenPlayerRef.current.getPlayerState?.();
         if (playerState === 3) {
           return;
@@ -442,7 +442,7 @@ export default function LyricsTranslationViewerFullscreen({
         const targetTime = currentTimeRef.current;
         const diff = Math.abs(playerTime - targetTime);
 
-        // ถ้าคลาดเคลื่อนเล็กน้อย (< 1s) ปล่อยผ่านไป - เพิ่ม tolerance
+        // If small deviation (< 1s), skip - increased tolerance
         if (diff <= 1) return;
 
         fullscreenPlayerRef.current.seekTo(targetTime);
@@ -458,14 +458,14 @@ export default function LyricsTranslationViewerFullscreen({
     }
 
     syncTime();
-    const intervalId = setInterval(syncTime, 1000); // ช้าลง จาก 500ms เป็น 1000ms
+    const intervalId = setInterval(syncTime, 1000); // Slowed down from 500ms to 1000ms
     return () => clearInterval(intervalId);
   }, [youtubeVideoId, isFullscreenPlayerReady, isPlaying]);
 
   // Sync fullscreen player with main player's isPlaying
   useEffect(() => {
     if (!youtubeVideoId || !fullscreenPlayerRef.current || !isFullscreenPlayerReady) return;
-    // รอให้ initialization เสร็จก่อน
+    // Wait for initialization to complete first
     if (!hasAppliedInitialSeekRef.current || isInitializingRef.current) return;
 
     const syncPlayState = () => {
@@ -852,7 +852,7 @@ export default function LyricsTranslationViewerFullscreen({
 
       {onPlayPause && (
           <div className="flex flex-col bg-black/60 backdrop-blur-md">
-            {/* Song Progress Bar - อยู่ด้านบนของ control bar */}
+            {/* Song Progress Bar - Located above the control bar */}
             <div 
               className="w-full h-2 sm:h-1.5 bg-black/50 relative cursor-pointer group touch-none"
               onClick={handleProgressBarClick}

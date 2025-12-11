@@ -4,7 +4,15 @@
   "description": "MUSE Music website coming soon 🎵",
   "main": "index.js",
   "scripts": {
-    "dev": "concurrently \"npm run dev --prefix backend\" \"npm run dev --prefix frontend\"",
+    "dev": "concurrently --names \"BE,FE\" --prefix-colors \"blue,green\" \"npm run dev --prefix backend\" \"npm run dev --prefix frontend\"",
+    "dev:be": "npm run dev --prefix backend",
+    "dev:fe": "npm run dev --prefix frontend",
+    "db:seed": "npm run db:seed --prefix backend",
+    "db:seed:dev": "npm run db:seed:dev --prefix backend",
+    "db:seed:prod": "npm run db:seed:prod --prefix backend",
+    "migrate": "npm run migrate --prefix backend",
+    "migrate:dev": "npm run migrate:dev --prefix backend",
+    "migrate:prod": "npm run migrate:prod --prefix backend",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

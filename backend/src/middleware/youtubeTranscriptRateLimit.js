@@ -1,13 +1,13 @@
 // youtubeTranscriptThrottle.js
 // Request throttling for YouTube transcript API endpoints
-// จำกัดความถี่เพื่อเลี่ยงโดน YouTube แบน
+// Rate limiting to avoid YouTube bans
 
 let lastRequestStartTime = 0;
 const requestQueue = [];
 let isProcessing = false;
 
-const MIN_DELAY_MS = 3000;        // ไม่ให้ยิงบ่อยกว่า 1 ครั้ง / 3 วินาที
-const QUEUE_TIMEOUT_MS = 30000;   // ถ้ารอคิวนานเกิน 30 วิ ตอบ 503
+const MIN_DELAY_MS = 3000;        // Don't make requests more than once per 3 seconds
+const QUEUE_TIMEOUT_MS = 30000;   // If queue wait exceeds 30 seconds, return 503
 
 async function processQueue() {
   if (isProcessing || requestQueue.length === 0) return;
@@ -43,14 +43,14 @@ function enqueueRequest() {
   return new Promise((resolve, reject) => {
     let settled = false;
 
-    // ประกาศ id ก่อนใช้ (ปรับตามคำวิจารณ์)
+    // Declare id before use (adjusted per review)
     const id = Symbol('queueItem');
 
     const timeout = setTimeout(() => {
       if (settled) return;
       settled = true;
 
-      // ถ้ายังอยู่ในคิว ให้ลบออกเพื่อไม่ให้คิวบวม
+      // If still in queue, remove it to prevent queue buildup
       const idx = requestQueue.findIndex((item) => item && item._id === id);
       if (idx !== -1) requestQueue.splice(idx, 1);
 

@@ -25,7 +25,7 @@ export interface ForYouRecommendSection {
 }
 
 export interface ForYouResponse {
-  moods: MoodStats[]; // อารมณ์ที่วิเคราะห์ได้จากเพลงที่ฟัง
+  moods: MoodStats[]; // Moods analyzed from listened songs
   recentlySearched: ForYouTrackItem[];
   recommendations: ForYouRecommendSection;
   topHits: ForYouTrackItem[];

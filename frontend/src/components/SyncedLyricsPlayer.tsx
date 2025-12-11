@@ -661,7 +661,7 @@ export default function SyncedLyricsPlayer({
                 onChange={(e) => {
                   const newValue = e.target.checked;
                   
-                  // ตรวจสอบว่าเพลงได้รับการอนุมัติหรือไม่ และผู้ใช้เป็นแอดมินหรือไม่
+                  // Check if song has been approved and if user is admin
                   if (isApproved && !isAdmin) {
                     toast.error('Cannot edit sync settings: This processing has been approved. Only admin can edit approved songs.');
                     return;
@@ -710,7 +710,7 @@ export default function SyncedLyricsPlayer({
                 onChange={(e) => {
                   const value = e.target.value === '' ? null : parseFloat(e.target.value);
                   
-                  // ตรวจสอบว่าเพลงได้รับการอนุมัติหรือไม่ และผู้ใช้เป็นแอดมินหรือไม่
+                  // Check if song has been approved and if user is admin
                   if (isApproved && !isAdmin) {
                     toast.error('Cannot edit sync settings: This processing has been approved. Only admin can edit approved songs.');
                     return;

@@ -40,7 +40,7 @@ class User {
     };
   }
 
-  // รับข้อมูล user สำหรับ public (ไม่รวมข้อมูลส่วนตัว)
+  // Get user data for public (excluding private information)
   toPublicJSON() {
     return {
       userID: this.userID,

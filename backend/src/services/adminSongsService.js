@@ -367,7 +367,7 @@ class AdminSongsService {
       const processing = checkResult.rows[0];
       const isApproved = processing.approvalstatus === 'approved' && processing.sharestatus === 'public_approved';
 
-      // เพิ่มกฎ: เพลงต้องไม่ได้รับการอนุมัติ หรือผู้ใช้ต้องเป็นแอดมิน
+      // Add rule: Song must not be approved, or user must be admin
       if (isApproved && !isAdmin) {
         throw new Error('Cannot edit lyrics: This processing has been approved. Only admin can edit approved songs.');
       }
