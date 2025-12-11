@@ -764,8 +764,8 @@ This project is part of an academic course:
 **Note:** MUSE Music is developed for educational purposes to demonstrate software engineering principles, full-stack development, AI integration, and modern web application architecture. This project is not intended for commercial use.
 
 For more information about privacy and terms of service, please see:
-- [Privacy Policy](/privacy)
-- [Terms of Service](/terms)
+- [Privacy Policy](http://localhost:3000/privacy) (Development) | [Production](https://musemusic.phitik.com/privacy)
+- [Terms of Service](http://localhost:3000/terms) (Development) | [Production](https://musemusic.phitik.com/terms)
 
 ---
 
