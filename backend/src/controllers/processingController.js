@@ -75,7 +75,7 @@ const updateCoverImage = async (req, res) => {
         const decoded = JWTService.verifyAccessToken(token);
         if (decoded && decoded.userID) {
           userId = decoded.userID;
-          // ตรวจสอบว่า user เป็น admin หรือไม่
+          // Check if user is admin
           try {
             const user = await UserService.findByID(userId);
             if (user) {
@@ -83,7 +83,7 @@ const updateCoverImage = async (req, res) => {
               isAdmin = userRole === 'admin' || userRole === 'super_admin';
             }
           } catch (err) {
-            // ถ้าไม่สามารถตรวจสอบได้ ให้ isAdmin = false
+            // If unable to verify, set isAdmin = false
             logger.warn('Failed to check admin status:', err);
           }
         }
@@ -155,7 +155,7 @@ const updateSyncSettings = async (req, res) => {
         const decoded = JWTService.verifyAccessToken(token);
         if (decoded && decoded.userID) {
           userId = decoded.userID;
-          // ตรวจสอบว่า user เป็น admin หรือไม่
+          // Check if user is admin
           try {
             const user = await UserService.findByID(userId);
             if (user) {
@@ -163,7 +163,7 @@ const updateSyncSettings = async (req, res) => {
               isAdmin = userRole === 'admin' || userRole === 'super_admin';
             }
           } catch (err) {
-            // ถ้าไม่สามารถตรวจสอบได้ ให้ isAdmin = false
+            // If unable to verify, set isAdmin = false
             logger.warn('Failed to check admin status:', err);
           }
         }

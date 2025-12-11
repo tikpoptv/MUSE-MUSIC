@@ -7,6 +7,7 @@ import { Toaster } from "react-hot-toast";
 import SetupRedirect from "../components/SetupRedirect";
 import ScrollToTop from "../components/ScrollToTop";
 import GoogleAnalytics from "../components/GoogleAnalytics";
+import EnvironmentWarning from "../components/EnvironmentWarning";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -78,6 +79,7 @@ export default function RootLayout({
         <GoogleAnalytics />
         <ScrollToTop />
         <SetupRedirect />
+        <EnvironmentWarning />
         <Navbar />
         <div className="min-h-screen pt-16 md:pt-20 lg:pt-[100px]">
         {children}

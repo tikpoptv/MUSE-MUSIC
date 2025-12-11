@@ -63,7 +63,7 @@ export default function LoginPage() {
       const data = await response.json();
 
       if (response.ok && data.success) {
-        // ตรวจสอบว่าต้องการ 2FA หรือไม่
+        // Check if 2FA is required
         if (data.data.requires2FA) {
           setShow2FAModal(true);
           setUserID(data.data.userID);
@@ -71,7 +71,7 @@ export default function LoginPage() {
           return;
         }
         
-        // Login สำเร็จ
+        // Login successful
         authService.setAuthData(data.data);
         toast.success('Successfully signed in!');
         setTimeout(() => {

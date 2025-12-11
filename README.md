@@ -81,8 +81,9 @@ MUSE-MUSIC/
 │   ├── public/                # Static assets
 │   └── package.json
 │
-├── docker-compose.dev.yml
-├── docker-compose.prod.yml
+├── docker-compose.infra.dev.yml  # Infrastructure services (PostgreSQL, MinIO, n8n)
+├── docker-compose.dev.yml         # Full stack (backend + frontend containers)
+├── docker-compose.prod.yml        # Production setup
 ├── Jenkinsfile
 └── TESTING.md
 ```
@@ -102,32 +103,213 @@ MUSE-MUSIC/
 # Clone repository
 git clone https://github.com/tikpoptv/MUSE-MUSIC.git
 cd MUSE-MUSIC
+```
 
-# Backend
-cd backend
-npm install
-cp env.example .env
+#### 1. Start Infrastructure Services
+
+First, start the infrastructure services (PostgreSQL, MinIO, n8n):
+
+```bash
+# Start infrastructure services
+docker-compose -f docker-compose.infra.dev.yml up -d
+
+# Verify services are running
+docker ps --filter "name=muse-"
+```
+
+**Infrastructure Services:**
+- **PostgreSQL**: `localhost:7770` (Database schema created automatically on first start)
+- **MinIO API**: `localhost:7771` | **MinIO Console**: `localhost:7772`
+- **n8n**: `http://localhost:7773`
+
+**Important:** When PostgreSQL container starts for the first time, it automatically:
+- Creates the `muse_music` database
+- Creates the `n8n` database (for n8n workflow storage)
+- Runs all migration files from `backend/database/migrations/` (via `docker-entrypoint-initdb.d`)
+- Sets up all tables, indexes, and database structure
+
+**No manual migration needed!** The database is ready to use after infrastructure starts.
+
+**⚠️ If migration fails:** If you encounter any database errors or migration issues, you can run migrations manually:
+```bash
 npm run migrate
-npm run dev
+```
 
-# Frontend (new terminal)
-cd frontend
-npm install
-cp env.example .env.local
+#### 2. Install Dependencies
+
+```bash
+# Install backend dependencies
+npm install --prefix backend
+
+# Install frontend dependencies
+npm install --prefix frontend
+```
+
+#### 3. Setup Environment Files
+
+```bash
+# Backend environment
+cp backend/env.example backend/.env
+
+# Frontend environment
+cp frontend/env.example frontend/.env.local
+```
+
+**Important:** The default values in `backend/env.example` are configured to connect to the infrastructure services:
+
+- `DB_HOST=localhost` and `DB_PORT=7770` - Connects to PostgreSQL container
+- `MINIO_ENDPOINT=localhost` and `MINIO_PORT=7771` - Connects to MinIO container
+- `MINIO_ACCESS_KEY=minio_admin` and `MINIO_SECRET_KEY=minio_secret_password` - Default MinIO credentials
+- `EMAIL_N8N_WEBHOOK_URL=http://localhost:7773/` - Connects to n8n container
+- `N8N_WORKFLOW_URL=http://localhost:7773/api/v1/workflows/...` - n8n workflow endpoints
+
+**Note:** Database migrations run automatically when PostgreSQL container starts for the first time (via `docker-entrypoint-initdb.d`). All tables and schema are created automatically - no manual migration needed!
+
+#### 4. Seed Database (Optional)
+
+If you want to seed the database with test data:
+
+```bash
+npm run db:seed
+```
+
+This will create test users:
+- **Admin**: `admin` / `Admin@123456`, `reviewer` / `Reviewer@123456`
+- **Customers**: `testuser` / `Test@123456`, `john_doe` / `John@123456`, `jane_smith` / `Jane@123456`
+
+#### 5. Start Development Servers
+
+**Option 1: Using VSCode Tasks (Recommended - Auto split terminals)**
+
+1. Press `Cmd+Shift+P` (Mac) or `Ctrl+Shift+P` (Windows/Linux)
+2. Type "Tasks: Run Task"
+3. Select `dev:all`
+
+This will automatically split terminals and run backend and frontend separately.
+
+**Option 2: Run both together (single terminal)**
+
+```bash
 npm run dev
 ```
 
-### Docker Setup
+**Option 3: Run separately (manual terminals)**
 
 ```bash
-# Development
+# Terminal 1 - Backend
+npm run dev:be
+
+# Terminal 2 - Frontend
+npm run dev:fe
+```
+
+This will start:
+- **Backend**: `http://localhost:3001`
+- **Frontend**: `http://localhost:3000`
+
+**Access:**
+- Frontend: `http://localhost:3000`
+- Backend: `http://localhost:3001`
+- API Docs: `http://localhost:3001/api-docs` (Swagger UI)
+- **n8n**: `http://localhost:7773` (Workflow automation)
+
+## 🔄 N8N Workflow Setup
+
+N8N is used for AI-powered lyrics translation and analysis. The infrastructure includes a pre-configured n8n instance.
+
+### Access N8N
+
+After starting infrastructure services, access n8n at:
+- **URL**: `http://localhost:7773`
+- **Default**: No authentication required (dev environment)
+
+### Import Translator Workflow
+
+A ready-to-use translator workflow is available in the repository:
+
+**Workflow File**: [`n8n-translator-workflow.json`](./n8n-translator-workflow.json)
+
+**Import Steps:**
+
+1. **Open n8n**: Navigate to `http://localhost:7773`
+
+2. **Import Workflow**:
+   - Click **"Workflows"** in the sidebar
+   - Click **"+"** button → **"Import from File"** or **"Import from URL"**
+   - Upload `n8n-translator-workflow.json` or paste its content
+
+3. **Configure Ollama Credentials**:
+   - Open the workflow
+   - Click on **"Ollama Chat Model"** node
+   - Set up Ollama API credentials:
+     - **Base URL**: `http://localhost:11434` (or your Ollama endpoint)
+     - **Model**: `gpt-oss:120b` (ensure this model is downloaded in Ollama)
+   - Save credentials
+
+4. **Activate Workflow**:
+   - Toggle the **"Active"** switch at the top right
+   - The workflow is now listening for webhook requests
+
+5. **Get Webhook URL**:
+   - Click on the **"Webhook"** node
+   - Copy the **Production URL** (e.g., `http://localhost:7773/webhook/translator`)
+
+6. **Configure Backend**:
+   - Open `backend/.env`
+   - Set the webhook URL:
+     ```bash
+     TRANSLATE_WEBHOOK=http://localhost:7773/webhook/translator
+     N8N_WORKFLOW_URL=http://localhost:7773/webhook/translator
+     ```
+   - If n8n has API authentication enabled, also set:
+     ```bash
+     N8N_API_KEY=your-n8n-api-key-here
+     ```
+
+### Workflow Features
+
+The translator workflow provides:
+- **Line-by-line translation** with poetic naturalness
+- **Cultural interpretation** of song meaning
+- **Mood analysis** (optional) - analyzes emotional tone using 22 mood classes
+- **Multi-language support** - translate between any language pairs
+
+### Testing the Workflow
+
+You can test the workflow directly from n8n:
+1. Open the workflow
+2. Click **"Execute Workflow"** button
+3. Provide test input:
+   ```json
+   {
+     "language1": "Thai",
+     "language2": "English",
+     "lyrics": "ตัวอย่างเนื้อเพลง\nTest lyrics here",
+     "moodEnabled": true,
+     "moodTopK": 4
+   }
+   ```
+4. Check the output for translation, interpretation, and mood analysis
+
+### Requirements
+
+- **Ollama**: Must be running with `gpt-oss:120b` model downloaded
+- **Model Download**: Run `ollama pull gpt-oss:120b` in your terminal
+- **Alternative**: You can replace Ollama node with OpenRouter API or other LLM providers
+
+### Docker Setup (Alternative)
+
+**Note:** For development, it's recommended to use `npm run dev` (runs backend/frontend locally) with infrastructure services in Docker. The full Docker setup below runs everything in containers.
+
+```bash
+# Development (full Docker stack)
 docker-compose -f docker-compose.dev.yml up --build
 
 # Production
 docker-compose -f docker-compose.prod.yml up --build
 ```
 
-**Access:**
+**Access (Docker):**
 - Frontend: `http://localhost:7664` (dev) / `http://localhost:7661` (prod)
 - Backend: `http://localhost:7665` (dev) / `http://localhost:7662` (prod)
 - API Docs: `http://localhost:7665/api-docs` (Swagger UI)
@@ -135,42 +317,62 @@ docker-compose -f docker-compose.prod.yml up --build
 ## 🔧 Environment Variables
 
 ### Backend (`backend/.env`)
-See `backend/env.example` for all required variables:
+
+Copy `backend/env.example` to `backend/.env` and configure the following:
+
+#### Default Values (from Infrastructure)
+
+These values are pre-configured in `env.example` to connect to the development infrastructure:
 
 ```bash
-# Database
+# Database (connects to docker-compose.infra.dev.yml PostgreSQL)
 DB_HOST=localhost
-DB_PORT=5432
+DB_PORT=7770                    # PostgreSQL container port
 DB_NAME=muse_music
 DB_USER=postgres
-DB_PASSWORD=your_password
+DB_PASSWORD=postgres123
 
+# MinIO (connects to docker-compose.infra.dev.yml MinIO)
+MINIO_ENDPOINT=localhost
+MINIO_PORT=7771                 # MinIO API port
+MINIO_USE_SSL=false
+MINIO_ACCESS_KEY=minio_admin
+MINIO_SECRET_KEY=minio_secret_password
+MINIO_BUCKET_NAME=muse-music
+MINIO_PUBLIC_URL=http://localhost:7771
+
+# N8N (connects to docker-compose.infra.dev.yml n8n)
+EMAIL_N8N_WEBHOOK_URL=http://localhost:7773/
+N8N_WORKFLOW_URL=http://localhost:7773/api/v1/workflows/...
+```
+
+#### Required Configuration
+
+You need to set these values:
+
+```bash
 # Server
 BACKEND_PORT=3001
 NODE_ENV=development
 FRONTEND_URL=http://localhost:3000
 
-# JWT
-JWT_SECRET=your-secret-key
+# JWT (⚠️ Change this in production!)
+JWT_SECRET=your-super-secret-jwt-key-here-change-this-in-production
 JWT_ACCESS_EXPIRES_IN=7d
 JWT_REFRESH_EXPIRES_IN=30d
 
-# Google OAuth
-GOOGLE_CLIENT_ID=your-client-id
-GOOGLE_CLIENT_SECRET=your-client-secret
+# Google OAuth (get from Google Cloud Console)
+GOOGLE_CLIENT_ID=your-google-client-id-here
+GOOGLE_CLIENT_SECRET=your-google-client-secret-here
 
-# MinIO
-MINIO_ENDPOINT=your-minio-endpoint
-MINIO_ACCESS_KEY=your-access-key
-MINIO_SECRET_KEY=your-secret-key
-MINIO_BUCKET_NAME=muse-music
-
-# YouTube API
-YOUTUBE_API_KEY=your-youtube-api-key
+# YouTube API (get from Google Cloud Console)
+YOUTUBE_API_KEY=your-youtube-api-key-here
 
 # LRCLIB
 LRCLIB_BASE_URL=https://lrclib.net
 ```
+
+See `backend/env.example` for complete list of all environment variables.
 
 ### Frontend (`frontend/.env.local`)
 See `frontend/env.example`:
@@ -206,20 +408,75 @@ Full API documentation available via **Swagger UI**:
 
 ### Migrations
 
+**✅ Automatic Migration:** When using `docker-compose.infra.dev.yml`, database migrations run **automatically** when PostgreSQL container starts for the first time. The migration files from `backend/database/migrations/` are executed via `docker-entrypoint-initdb.d`, creating all tables, indexes, and database structure. **You don't need to run migrations manually!**
+
+**When migrations run:**
+- First time starting infrastructure: `docker-compose -f docker-compose.infra.dev.yml up -d`
+- When PostgreSQL volume is empty (fresh start)
+- All migration files in `backend/database/migrations/` are executed automatically
+
+**⚠️ Troubleshooting:** If automatic migration fails or you encounter database errors, you can run migrations manually:
+
 ```bash
-cd backend
-
-# Run migrations
 npm run migrate
+```
 
-# Reset database (⚠️ WARNING: Deletes all data)
-npm run db:reset
+This will check which migrations have been executed and run any missing ones.
 
-# Environment-specific
+**If you need to run migrations manually** (e.g., for production or non-Docker setup):
+
+```bash
+# From project root
+npm run migrate
 npm run migrate:dev
 npm run migrate:prod
+
+# Or from backend directory
+cd backend
+npm run migrate
+npm run migrate:dev
+npm run migrate:prod
+```
+
+### Seeding
+
+Seed the database with test data:
+
+```bash
+# From project root
+npm run db:seed
+npm run db:seed:dev
+npm run db:seed:prod
+
+# Or from backend directory
+cd backend
+npm run db:seed
+npm run db:seed:dev
+npm run db:seed:prod
+```
+
+**Test Credentials (after seeding):**
+- Admin: `admin` / `Admin@123456`, `reviewer` / `Reviewer@123456`
+- Customers: `testuser` / `Test@123456`, `john_doe` / `John@123456`, `jane_smith` / `Jane@123456`
+
+### Reset Database
+
+⚠️ **WARNING**: This deletes all data!
+
+```bash
+# From backend directory (reset commands not available from root)
+cd backend
+
+# Reset database
+npm run db:reset
+
+# Reset + Seed
+npm run db:fresh
+
+# Environment-specific
 npm run db:reset:dev
 npm run db:reset:prod
+npm run db:fresh:dev
 ```
 
 ## 🧪 Testing
@@ -308,22 +565,38 @@ All release notes and documentation are available in the [`releases/`](./release
 
 ## 📝 Scripts
 
-### Root
+### Root (Run from project root)
+
 ```bash
-npm run dev  # Run both frontend & backend concurrently
+# Development
+npm run dev          # Run both frontend & backend concurrently (single terminal)
+npm run dev:be       # Run backend only
+npm run dev:fe       # Run frontend only
+
+# Database
+npm run migrate      # Run database migrations
+npm run migrate:dev  # Run migrations (development)
+npm run migrate:prod # Run migrations (production)
+npm run db:seed      # Seed database with test data
+npm run db:seed:dev  # Seed database (development)
+npm run db:seed:prod # Seed database (production)
 ```
 
-### Backend
+### Backend (Run from `backend/` directory)
+
 ```bash
 npm run dev          # Development server
 npm run start        # Production server
 npm run migrate      # Run database migrations
 npm run db:reset     # Reset database
+npm run db:seed      # Seed database
+npm run db:fresh     # Reset + Seed
 npm test             # Run all tests
 npm run lint         # ESLint
 ```
 
-### Frontend
+### Frontend (Run from `frontend/` directory)
+
 ```bash
 npm run dev          # Development server
 npm run build        # Production build

@@ -830,7 +830,9 @@ curl -X PATCH https://n8n.your-domain.com/api/v1/workflows/{id}/activate \
 
 #### Backend Environment (`backend/.env`)
 
-**Important**: Copy from `backend/env.example` and update values
+**Important**: Copy from `backend/env.example` and update values. The `env.example` file includes default values for development infrastructure (PostgreSQL, MinIO, n8n) that connect to `docker-compose.infra.dev.yml` services.
+
+**For Production**: Replace all values with your production infrastructure details.
 
 ```bash
 # Server Configuration
@@ -839,6 +841,7 @@ BACKEND_HOST=api.your-domain.com
 NODE_ENV=production
 
 # Database Configuration
+# Production: Use your production PostgreSQL host
 DB_HOST=your-postgres-host
 DB_PORT=5432
 DB_NAME=muse_music
@@ -848,12 +851,12 @@ DB_PASSWORD=secure-password
 # CORS Configuration
 FRONTEND_URL=https://your-domain.com
 
-# JWT Configuration
+# JWT Configuration (⚠️ REQUIRED - Change in production!)
 JWT_SECRET=generate-secure-random-string-here
 JWT_ACCESS_EXPIRES_IN=7d
 JWT_REFRESH_EXPIRES_IN=30d
 
-# Google OAuth Configuration
+# Google OAuth Configuration (⚠️ REQUIRED)
 GOOGLE_CLIENT_ID=your-google-client-id
 GOOGLE_CLIENT_SECRET=your-google-client-secret
 
@@ -871,11 +874,12 @@ N8N_API_KEY=your-n8n-api-key
 N8N_WORKFLOW_URL=https://n8n.your-domain.com/api/v1/workflows/your-workflow-id
 N8N_WORKFLOW_TEST_URL=https://n8n.your-domain.com/api/v1/workflows/your-test-workflow-id
 
-# LRCLIB (Lyrics) Configuration
+# LRCLIB (Lyrics) Configuration (has defaults, optional)
 LRCLIB_BASE_URL=https://lrclib.net
 LRCLIB_USER_AGENT=MUSE-MUSIC Backend (https://github.com/your-org/MUSE-MUSIC)
 
-# MinIO Configuration
+# MinIO Configuration (⚠️ REQUIRED)
+# Production: Use your production MinIO endpoint
 MINIO_ENDPOINT=minio.your-domain.com
 MINIO_PORT=443
 MINIO_USE_SSL=true
@@ -884,9 +888,11 @@ MINIO_SECRET_KEY=your-minio-secret-key
 MINIO_BUCKET_NAME=muse-music
 MINIO_PUBLIC_URL=https://minio.your-domain.com
 
-# YouTube Data API v3 Configuration
+# YouTube Data API v3 Configuration (⚠️ REQUIRED)
 YOUTUBE_API_KEY=your-youtube-api-key
 ```
+
+**Note**: The health check endpoint (`/api/health`) will report missing required environment variables. All external API configurations marked with ⚠️ REQUIRED must be set for the system to function properly.
 
 #### Frontend Environment (`frontend/.env.local`)
 
@@ -1005,14 +1011,33 @@ Development: https://coolify.your-domain.com/webhooks/{development-uuid}
 
 #### 5.3 Docker Compose Configuration (Optional)
 
-**Note**: The project includes `docker-compose.dev.yml` and `docker-compose.prod.yml` for local development and testing.
+**Note**: The project includes three docker-compose files for different purposes:
+- `docker-compose.infra.dev.yml` - Infrastructure services (PostgreSQL, MinIO, n8n) for local development
+- `docker-compose.dev.yml` - Full stack (backend + frontend containers) for development
+- `docker-compose.prod.yml` - Production setup
+
+**Infrastructure Services** (`docker-compose.infra.dev.yml`):
+```yaml
+# Services:
+# - PostgreSQL: 7770:5432
+# - MinIO API: 7771:9000
+# - MinIO Console: 7772:9001
+# - N8N: 7773:5678
+# Network: muse-network-dev (bridge)
+# 
+# Note: Database migrations run automatically on first startup
+# via docker-entrypoint-initdb.d
+```
 
 **Development** (`docker-compose.dev.yml`):
 ```yaml
 # Ports: 
 # - Frontend: 7664:3000
 # - Backend: 7665:3001
-# Network: muse-network (bridge)
+# Network: muse-network-dev (external, must exist)
+# 
+# Note: Requires infrastructure services to be running first
+# (via docker-compose.infra.dev.yml)
 ```
 
 **Production** (`docker-compose.prod.yml`):
@@ -1025,14 +1050,17 @@ Development: https://coolify.your-domain.com/webhooks/{development-uuid}
 
 **Usage**:
 ```bash
-# Development
+# 1. Start infrastructure services (for local development)
+docker-compose -f docker-compose.infra.dev.yml up -d
+
+# 2. Start application services (requires infrastructure)
 docker-compose -f docker-compose.dev.yml up -d
 
-# Production
+# Production (full stack)
 docker-compose -f docker-compose.prod.yml up -d
 ```
 
-**Note**: These docker-compose files are for reference only. Coolify handles the actual production deployment.
+**Note**: These docker-compose files are for reference only. Coolify handles the actual production deployment. For local development, it's recommended to use `npm run dev` with infrastructure services in Docker.
 
 ### Step 6: Run Database Migrations
 
@@ -1103,14 +1131,59 @@ curl https://your-domain.com
 ```bash
 curl https://api.your-domain.com/api/health
 
-# Expected response:
+# Expected response (all configurations complete):
 {
   "status": "ok",
+  "message": "MUSE Music API is running",
   "timestamp": "2025-11-12T...",
   "uptime": 12345,
-  "database": "connected"
+  "environment": "production",
+  "version": "1.0.0",
+  "database": true,
+  "externalApis": {
+    "configured": {
+      "jwt": { "name": "JWT Authentication", "vars": ["JWT_SECRET"] },
+      "googleOAuth": { "name": "Google OAuth", "vars": ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"] },
+      "youtube": { "name": "YouTube API", "vars": ["YOUTUBE_API_KEY"] },
+      "minio": { "name": "MinIO Storage", "vars": ["MINIO_ENDPOINT", "MINIO_ACCESS_KEY", "MINIO_SECRET_KEY"] },
+      "n8nWorkflow": { "name": "N8N Workflow", "vars": ["N8N_API_KEY", "N8N_WORKFLOW_URL"] }
+    },
+    "missing": [],
+    "summary": {
+      "total": 6,
+      "configured": 6,
+      "missing": 0,
+      "missingRequired": 0
+    }
+  }
+}
+
+# Response when configurations are missing:
+{
+  "status": "WARNING",
+  "message": "API running but 3 required external API configuration(s) are missing. System will not function completely.",
+  "database": true,
+  "externalApis": {
+    "configured": { ... },
+    "missing": [
+      {
+        "service": "Google OAuth",
+        "missingVariables": ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"],
+        "affectedFeatures": ["Google login", "Social authentication", "User registration via Google"]
+      },
+      ...
+    ],
+    "summary": {
+      "total": 6,
+      "configured": 3,
+      "missing": 3,
+      "missingRequired": 3
+    }
+  }
 }
 ```
+
+**Note**: The frontend will display a warning modal on initial load if external API configurations are incomplete, showing which features will not work.
 
 #### Frontend Health Check
 ```bash

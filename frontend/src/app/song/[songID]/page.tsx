@@ -844,7 +844,7 @@ export default function SongDetailPage() {
   const handleCoverImageChange = async (imageUrl: string | null) => {
     if (!isAnalysisRoute) return;
     
-    // ตรวจสอบว่าเพลงได้รับการอนุมัติหรือไม่ และผู้ใช้เป็นแอดมินหรือไม่
+    // Check if song has been approved and if user is admin
     const isApproved = processingData?.approvalStatus === 'approved' && processingData?.shareStatus === 'public_approved';
     if (isApproved && !isAdmin) {
       toast.error('Cannot edit cover image: This processing has been approved. Only admin can edit approved songs.');
@@ -884,7 +884,7 @@ export default function SongDetailPage() {
             <div className="h-9 bg-gray-200 rounded w-96 mb-8 mx-auto"></div>
             
             <div className="grid grid-cols-1 lg:grid-cols-[40%_60%] gap-8">
-              {/* ฝั่งย่อ Skeleton */}
+              {/* Summary Side Skeleton */}
               <div className="space-y-6">
                 {/* Centered Section */}
                 <div className="flex flex-col items-center">
@@ -963,7 +963,7 @@ export default function SongDetailPage() {
                 </div>
               </div>
               
-              {/* ฝั่งรายละเอียด Skeleton */}
+              {/* Details Side Skeleton */}
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '54px', width: '100%' }}>
                 {/* Song Details Card Skeleton (only in analysis route) */}
                 {isAnalysisRoute && (
@@ -1128,7 +1128,7 @@ export default function SongDetailPage() {
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-[40%_60%] gap-8">
-          {/* ฝั่งย่อ (40%) - Desktop only */}
+          {/* Summary Side (40%) - Desktop only */}
           <div className="hidden lg:block space-y-6">
             {/* Centered Section */}
             <div className="flex flex-col items-center">
@@ -1404,7 +1404,7 @@ export default function SongDetailPage() {
             </div>
           </div>
 
-          {/* ฝั่งรายละเอียด (60%) */}
+          {/* Details Side (60%) */}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', width: '100%' }} className="lg:items-start items-center">
             {/* Song Details Card (analysis route) */}
             {isAnalysisRoute && (
@@ -1557,7 +1557,7 @@ export default function SongDetailPage() {
             {/* Mood Analyze Section */}
             <MoodAnalyzeSection processingData={processingData} />
 
-            {/* Mobile: Feedback Section - อยู่หลัง Mood Analyze */}
+            {/* Mobile: Feedback Section - Located after Mood Analyze */}
             <div
               id={`${feedbackSectionAnchorId}-mobile`}
               className="lg:hidden mt-6 w-full flex justify-center"
@@ -1569,7 +1569,7 @@ export default function SongDetailPage() {
               />
             </div>
 
-            {/* Mobile: Recommend with language - อยู่หลัง Mood Analyze */}
+            {/* Mobile: Recommend with language - Located after Mood Analyze */}
             {processingData?.originalLanguage && (
               <div className="lg:hidden flex flex-col items-center mx-auto mt-6 mb-6" style={{ width: '100%', maxWidth: '304px' }}>
                 <h2 className="text-lg font-semibold text-gray-900 mb-3 w-full">Recommend with language</h2>
@@ -1597,7 +1597,7 @@ export default function SongDetailPage() {
               </div>
             )}
 
-            {/* Mobile: Recommend with Mood - อยู่หลัง Mood Analyze */}
+            {/* Mobile: Recommend with Mood - Located after Mood Analyze */}
             {processingData?.moodType && (
               <div className="lg:hidden flex flex-col items-center mx-auto mt-6" style={{ width: '100%', maxWidth: '304px' }}>
                 <h2 className="text-lg font-semibold text-gray-900 mb-3 w-full">Recommend with Mood</h2>

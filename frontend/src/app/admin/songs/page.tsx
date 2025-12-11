@@ -324,10 +324,10 @@ export default function Page() {
             return;
         }
 
-        // ตรวจสอบว่าเพลงได้รับการอนุมัติหรือไม่ (admin สามารถแก้ไขได้เสมอ)
+        // Check if song has been approved (admin can always edit)
         const isApproved = processingDetail?.approvalStatus === 'approved' && processingDetail?.shareStatus === 'public_approved';
         if (isApproved) {
-            // Admin สามารถแก้ไขได้ แต่แสดง warning
+            // Admin can edit but show warning
             const confirmed = window.confirm('This processing has been approved. Are you sure you want to edit the lyrics?');
             if (!confirmed) {
                 return;
@@ -367,10 +367,10 @@ export default function Page() {
             return;
         }
         
-        // ตรวจสอบว่าเพลงได้รับการอนุมัติหรือไม่ (admin สามารถแก้ไขได้เสมอ)
+        // Check if song has been approved (admin can always edit)
         const isApproved = processingDetail?.approvalStatus === 'approved' && processingDetail?.shareStatus === 'public_approved';
         if (isApproved) {
-            // Admin สามารถแก้ไขได้ แต่แสดง warning
+            // Admin can edit but show warning
             const confirmed = window.confirm('This processing has been approved. Are you sure you want to edit the cover image?');
             if (!confirmed) {
                 return;

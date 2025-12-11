@@ -5,7 +5,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const isDevDomain = /dev\.musemusic\.phitik\.com$/i.test(siteUrl);
 
   if (isDevDomain) {
-    // บน dev domain ไม่ให้สร้าง sitemap
+    // Don't generate sitemap on dev domain
     return [];
   }
 

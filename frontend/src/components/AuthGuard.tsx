@@ -6,7 +6,7 @@ import { authService } from '@/services/authService';
 
 interface AuthGuardProps {
   children: React.ReactNode;
-  requireAuth?: boolean; // true = ต้องเข้าสู่ระบบ, false = ต้องไม่เข้าสู่ระบบ
+  requireAuth?: boolean; // true = must be logged in, false = must not be logged in
   redirectTo?: string;
 }
 

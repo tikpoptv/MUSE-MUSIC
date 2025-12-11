@@ -111,7 +111,7 @@ export default function ForYouPage() {
 
   return (
     <AuthGuard redirectTo="/login">
-      <main className="min-h-screen bg-white">
+    <main className="min-h-screen bg-white">
       <section className="mx-auto max-w-6xl px-6 pt-12 pb-6">
         <h1 className="text-[32px] md:text-[40px] font-bold text-black text-center mb-6">
           Your vibe! Your feeling!

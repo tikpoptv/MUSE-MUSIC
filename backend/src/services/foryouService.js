@@ -73,11 +73,11 @@ class ForYouService {
             p.songid,
             p.moodtype,
             p.createdat
-          FROM songaiprocessing p
-          WHERE p.createdby = $1
-            AND p.status = 'completed'
-            AND p.moodtype IS NOT NULL
-            AND p.moodtype != ''
+        FROM songaiprocessing p
+        WHERE p.createdby = $1
+          AND p.status = 'completed'
+          AND p.moodtype IS NOT NULL
+          AND p.moodtype != ''
           ORDER BY p.songid, p.createdat DESC
         ),
         history_songs AS (
