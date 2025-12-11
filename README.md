@@ -213,6 +213,139 @@ This will start:
 - API Docs: `http://localhost:3001/api-docs` (Swagger UI)
 - **n8n**: `http://localhost:7773` (Workflow automation)
 
+---
+
+## 🧱 Part C — TA Testing Environment & Functional Limitations
+
+Since the MUSE Music project relies heavily on external services such as YouTube API, LRCLIB, Google OAuth, MinIO (object storage), n8n (AI workflows), and email automation systems, we cannot include real API keys per Part C requirements (no `.env` files allowed). As a result, when running on TA's machine, many critical features will not be functional.
+
+### 🚫 Features That **Will Not Work** in TA's Environment
+
+* ❌ **Lyrics Fetching / YouTube Transcript** (requires External API key)
+* ❌ **AI Analysis / Translation / Mood Detection** (requires n8n workflow + AI model)
+* ❌ **Image Upload / Image Processing** (requires MinIO storage)
+* ❌ **Email Notification (noreply)** (requires n8n webhook)
+* ❌ **Edit Prompt / Backend-AI Integration** (requires n8n)
+* ❌ **Admin Tools that depend on External Data**
+* ❌ **OAuth Login (Google)**
+
+### ⚠️ Pages That May Show Incomplete Data or Be Empty
+
+* **Home** page (no song data because it requires YouTube API)
+* **AI Analysis / Translation** pages
+* **Admin Dashboard** (some sections)
+* **Prompt Editing** page
+
+### ✔ Features That Will Still Work
+
+* ✅ Login / Logout (via seed DB)
+* ✅ Basic UI navigation
+* ✅ Endpoints that don't use External API
+* ✅ Database operations via seed data
+* ✅ Swagger API docs (`http://localhost:3001/api-docs`)
+* ✅ Basic admin (read data from DB)
+* ✅ Health check endpoint (`/api/health`)
+
+### 📝 Important Notes
+
+Part C emphasizes **process over product**, so the team has prepared:
+
+* ✅ Well-structured codebase
+* ✅ Database schema + seed data
+* ✅ Example env files in `backend/env.example` and `frontend/env.example`
+* ✅ Known Issues documented per environment limitations
+* ✅ Documentation linked to Part B
+* ✅ Health check endpoint that reports external API configuration status
+
+The system that TA can run will be a **Minimal Functional Version** and does not reflect the full capabilities of MUSE Music in a Production Environment.
+
+**For Testing:** TA can use test credentials from seed data to test authentication and basic features that don't depend on external services.
+
+### 🔧 Setting Up Full Functionality (Optional)
+
+If you want to enable full functionality (not required for Part C), you need to configure external API keys. **Please read `backend/env.example` carefully** - it contains detailed comments explaining each variable and where to obtain them.
+
+#### How to Obtain Each Environment Variable
+
+**1. Google OAuth (for Google Login)**
+- **Variables:** `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`
+- **Where to get:** [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
+- **Steps:**
+  1. Go to Google Cloud Console → APIs & Services → Credentials
+  2. Create OAuth 2.0 Client ID
+  3. Configure authorized redirect URIs: `http://localhost:3000/api/auth/google/callback`
+  4. Copy Client ID and Client Secret to `.env`
+
+**2. YouTube Data API v3 (for Lyrics & Video Search)**
+- **Variable:** `YOUTUBE_API_KEY`
+- **Where to get:** [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
+- **Steps:**
+  1. Go to Google Cloud Console → APIs & Services → Credentials
+  2. Enable "YouTube Data API v3" in APIs & Services → Library
+  3. Create API Key (or use existing one)
+  4. Copy API Key to `.env`
+
+**3. N8N Workflow (for AI Translation & Analysis)**
+- **Variables:** `N8N_API_KEY`, `N8N_WORKFLOW_URL`, `TRANSLATE_WEBHOOK`
+- **Where to get:** From your n8n instance (see [N8N Workflow Setup](#-n8n-workflow-setup) section)
+- **Steps:**
+  1. Start n8n: `docker-compose -f docker-compose.infra.dev.yml up -d`
+  2. Access n8n at `http://localhost:7773`
+  3. Import workflow from `n8n-translator-workflow.json`
+  4. Activate workflow and copy webhook URL
+  5. If API authentication is enabled, create API key in n8n Settings
+  6. Copy webhook URL and API key to `.env`
+
+**4. MinIO (for Image Storage)**
+- **Variables:** `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY`
+- **Where to get:** From MinIO setup (default values provided in `env.example`)
+- **Steps:**
+  1. Start infrastructure: `docker-compose -f docker-compose.infra.dev.yml up -d`
+  2. Access MinIO Console at `http://localhost:7772`
+  3. Login with default credentials: `minio_admin` / `minio_secret_password`
+  4. Create bucket `muse-music` if not exists
+  5. Use default credentials or create new access keys in MinIO Settings
+
+**5. Email Service (N8N Webhook)**
+- **Variables:** `EMAIL_N8N_USERNAME`, `EMAIL_N8N_PASSWORD`, `EMAIL_N8N_WEBHOOK_URL`
+- **Where to get:** From n8n email workflow webhook
+- **Steps:**
+  1. Create email workflow in n8n
+  2. Configure email credentials (SMTP settings)
+  3. Copy webhook URL to `.env`
+  4. Set email username/password if required by workflow
+
+**6. LRCLIB (Lyrics API)**
+- **Variables:** `LRCLIB_BASE_URL`, `LRCLIB_USER_AGENT`
+- **Note:** 
+  - No API key required - LRCLIB is a public API
+  - **Important:** LRCLIB requires a User-Agent header to identify your application
+  - Default `LRCLIB_USER_AGENT` is already configured: `MUSE-MUSIC Backend (https://github.com/tikpoptv/MUSE-MUSIC)`
+  - The User-Agent is automatically sent in all LRCLIB API requests (see `backend/src/services/lyricsService.js`)
+  - You can customize it in `.env` if needed, but the default value is recommended
+
+**7. JWT Secret**
+- **Variable:** `JWT_SECRET`
+- **How to generate:** Use any secure random string generator
+- **Example:** `openssl rand -base64 32` or use an online generator
+- **⚠️ Important:** Change this in production! Never commit real secrets to git.
+
+#### Quick Setup Checklist
+
+For full functionality, ensure these are configured in `backend/.env`:
+
+- [ ] `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` (for Google OAuth)
+- [ ] `YOUTUBE_API_KEY` (for lyrics and video search)
+- [ ] `N8N_API_KEY` and `N8N_WORKFLOW_URL` (for AI translation)
+- [ ] `TRANSLATE_WEBHOOK` (n8n webhook URL)
+- [ ] `MINIO_ACCESS_KEY` and `MINIO_SECRET_KEY` (for image storage)
+- [ ] `EMAIL_N8N_WEBHOOK_URL` (for email notifications)
+- [ ] `JWT_SECRET` (generate a secure random string)
+
+**Note:** All default values and detailed instructions are available in `backend/env.example`. Read it carefully for complete setup instructions.
+
+---
+
 ## 🔄 N8N Workflow Setup
 
 N8N is used for AI-powered lyrics translation and analysis. The infrastructure includes a pre-configured n8n instance.
@@ -616,6 +749,23 @@ npm run lint         # ESLint
 ## 📄 License
 
 See `LICENSE` file for details.
+
+---
+
+## 📚 Academic Information
+
+This project is part of an academic course:
+
+- **Course:** CPE 334 Software Engineering
+- **Institution:** King Mongkut's University of Technology Thonburi (KMUTT)
+- **Project Type:** Educational / Academic Project
+- **Team:** F5 Team
+
+**Note:** MUSE Music is developed for educational purposes to demonstrate software engineering principles, full-stack development, AI integration, and modern web application architecture. This project is not intended for commercial use.
+
+For more information about privacy and terms of service, please see:
+- [Privacy Policy](/privacy)
+- [Terms of Service](/terms)
 
 ---
 
