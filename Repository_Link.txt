@@ -1,0 +1,6 @@
+Repository URL:
+https://github.com/tikpoptv/MUSE-MUSIC
+
+Note:
+This repository is public and serves as a backup reference
+for Part C (Source Code Delivery & Deployment Guide).
