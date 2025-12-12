@@ -539,6 +539,26 @@ Full API documentation available via **Swagger UI**:
 
 ## 🗄️ Database
 
+### 📄 Database Assets (Schema & Seed Files)
+
+**Schema File:**
+- **Location**: `backend/database/migrations/001_create_initial_schema.sql`
+- **Description**: Complete database schema with all tables, indexes, triggers, and constraints
+- **Lines**: 826 lines of production-ready SQL
+- **Features**: 15+ tables, UUID support, full-text search indexes, automatic timestamps
+
+**Seed Data:**
+- **Location**: `backend/database/scripts/seed.js`
+- **Description**: Seed script with test users (admin + customers) using bcrypt password hashing
+- **Test Credentials**: 
+  - Admin: `admin` / `Admin@123456`
+  - Customers: `testuser` / `Test@123456`, `john_doe` / `John@123456`, `jane_smith` / `Jane@123456`
+- **Run**: `npm run db:seed` (from project root or backend directory)
+
+**Documentation:**
+- `backend/database/SEEDING.md` - Complete seeding documentation
+- `backend/database/README.md` - Database management guide
+
 ### Migrations
 
 **✅ Automatic Migration:** When using `docker-compose.infra.dev.yml`, database migrations run **automatically** when PostgreSQL container starts for the first time. The migration files from `backend/database/migrations/` are executed via `docker-entrypoint-initdb.d`, creating all tables, indexes, and database structure. **You don't need to run migrations manually!**
