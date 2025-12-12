@@ -165,7 +165,7 @@ cp frontend/env.example frontend/.env.local
 
 **Note:** Database migrations run automatically when PostgreSQL container starts for the first time (via `docker-entrypoint-initdb.d`). All tables and schema are created automatically - no manual migration needed!
 
-#### 4. Seed Database (Optional)
+#### 4. Seed Database
 
 If you want to seed the database with test data:
 
