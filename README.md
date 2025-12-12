@@ -147,6 +147,10 @@ npm install --prefix frontend
 
 #### 3. Setup Environment Files
 
+> **📝 Note on Environment Files:**  
+> This project intentionally uses `env.example` (without dot prefix) to improve cross-platform visibility and ease of use.
+> Please follow the configuration steps below.
+
 ```bash
 # Backend environment
 cp backend/env.example backend/.env
